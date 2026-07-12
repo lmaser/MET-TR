@@ -1007,6 +1007,33 @@
 
     const W = 700;
     const H = 1320;
+    const METER_LAYOUT = {
+      canvasWidth: W,
+      minHeight: 420,
+      left: 28,
+      right: 28,
+      top: 48,
+      bottom: 24,
+      titleOffset: 24,
+      stackedTitleOffset: 20,
+      collapsedAdvance: 22,
+      stackedCollapsedAdvance: 28,
+      rowGap: 26,
+      fullWidth: 644,
+      halfWidth: 314,
+      rightColumnX: 358,
+      spectrum: { height: 118, advance: 150 },
+      oscilloscope: { height: 70, advance: 100 },
+      waveformShort: { height: 54, advance: 82 },
+      waveformMedium: { height: 58, advance: 86 },
+      waveformLong: { height: 58, advance: 102 },
+      stereo: { height: 202, compactHeight: 150 },
+      loudness: { height: 202, compactHeight: 150 },
+      dualMetersAdvance: 238,
+      compactMeterAdvance: 186,
+      pattern: { height: 430, advance: 466 },
+      compactBreakpoint: 560
+    };
     let activeStageHeight = H;
     const lowW = 240;
     const lowH = 240;
@@ -1089,25 +1116,6 @@
       visible: 480,
       start: 0
     };
-    const meteringBaseLayout = [
-      { draw: drawSpectrumPanel, args: [28, 46, 644, 118] },
-      { draw: drawOscilloscopePanel, args: [28, 196, 644, 70] },
-      { draw: drawWaveformShortPanel, args: [28, 296, 644, 54] },
-      { draw: drawWaveformMediumPanel, args: [28, 378, 644, 58] },
-      { draw: drawWaveformPanel, args: [28, 464, 644, 58] },
-      { draw: drawStereoPanel, args: [28, 566, 314, 202] },
-      { draw: drawLoudnessPanel, args: [358, 566, 314, 202] }
-    ];
-    const nmstrMeteringLayout = [
-      { draw: drawSpectrumPanel, args: [28, 42, 644, 104] },
-      { draw: drawOscilloscopePanel, args: [28, 176, 644, 62] },
-      { draw: drawWaveformShortPanel, args: [28, 268, 644, 48] },
-      { draw: drawWaveformMediumPanel, args: [28, 344, 644, 52] },
-      { draw: drawWaveformPanel, args: [28, 424, 644, 52] },
-      { draw: drawStereoPanel, args: [28, 508, 314, 130] },
-      { draw: drawLoudnessPanel, args: [358, 508, 314, 130] },
-      { draw: drawPatternPanel, args: [28, 684, 644, 190] }
-    ];
     const meteringBaseControls = [
       "input",
       "algorithm",
@@ -1124,13 +1132,11 @@
       base: {
         id: "METERING BASE",
         label: "Base reference",
-        layout: meteringBaseLayout,
         controls: meteringBaseControls
       },
       nmstr: {
         id: "METERING V1b",
         label: "Editable branch",
-        layout: nmstrMeteringLayout,
         controls: nmstrMeteringControls
       }
     };
@@ -1322,20 +1328,21 @@
     function positionModuleControl(key, top) {
       const group = graphControls?.querySelector(`[data-module="${key}"]`);
       if (!group) return;
+      const layout = METER_LAYOUT;
       const compact = useCompactGraphLayout();
       group.style.top = `${Math.max(2, top)}px`;
       if (compact && (key === "stereo" || key === "loudness")) {
-        group.style.left = "28px";
-        group.style.width = "644px";
+        group.style.left = `${layout.left}px`;
+        group.style.width = `${layout.fullWidth}px`;
       } else if (key === "loudness") {
-        group.style.left = "358px";
-        group.style.width = "314px";
+        group.style.left = `${layout.rightColumnX}px`;
+        group.style.width = `${layout.halfWidth}px`;
       } else if (key === "stereo") {
-        group.style.left = "28px";
-        group.style.width = "314px";
+        group.style.left = `${layout.left}px`;
+        group.style.width = `${layout.halfWidth}px`;
       } else {
-        group.style.left = "28px";
-        group.style.width = "644px";
+        group.style.left = `${layout.left}px`;
+        group.style.width = `${layout.fullWidth}px`;
       }
     }
 
@@ -1347,28 +1354,29 @@
     }
 
     function useCompactGraphLayout() {
-      return stageEl.clientWidth < 560;
+      return stageEl.clientWidth < METER_LAYOUT.compactBreakpoint;
     }
 
     function calculateMeteringHeight() {
       const algorithm = getCurrentAlgorithm();
+      const layout = METER_LAYOUT;
       const compact = useCompactGraphLayout();
-      let y = 48;
-      y += graphOpenState.spectrum ? 150 : 22;
-      y += graphOpenState.oscilloscope ? 100 : 22;
-      y += 26 + (graphOpenState.waveformShort ? 82 : 10);
-      y += 26 + (graphOpenState.waveformMedium ? 86 : 10);
-      y += 26 + (graphOpenState.waveformLong ? 102 : 10);
+      let y = layout.top;
+      y += graphOpenState.spectrum ? layout.spectrum.advance : layout.collapsedAdvance;
+      y += graphOpenState.oscilloscope ? layout.oscilloscope.advance : layout.collapsedAdvance;
+      y += layout.rowGap + (graphOpenState.waveformShort ? layout.waveformShort.advance : 10);
+      y += layout.rowGap + (graphOpenState.waveformMedium ? layout.waveformMedium.advance : 10);
+      y += layout.rowGap + (graphOpenState.waveformLong ? layout.waveformLong.advance : 10);
       if (compact) {
-        y += graphOpenState.stereo ? 186 : 28;
-        y += graphOpenState.loudness ? 186 : 28;
+        y += graphOpenState.stereo ? layout.compactMeterAdvance : layout.stackedCollapsedAdvance;
+        y += graphOpenState.loudness ? layout.compactMeterAdvance : layout.stackedCollapsedAdvance;
       } else {
-        y += graphOpenState.stereo || graphOpenState.loudness ? 238 : 28;
+        y += graphOpenState.stereo || graphOpenState.loudness ? layout.dualMetersAdvance : layout.stackedCollapsedAdvance;
       }
       if (algorithm === meteringAlgorithms.nmstr) {
-        y += graphOpenState.pattern ? 466 : 22;
+        y += graphOpenState.pattern ? layout.pattern.advance : layout.collapsedAdvance;
       }
-      return Math.max(420, Math.ceil(y + 24));
+      return Math.max(layout.minHeight, Math.ceil(y + layout.bottom));
     }
 
     function setStageHeight(height) {
@@ -4206,85 +4214,60 @@
         });
       }
 
-      let y = 48;
-      positionModuleControl("spectrum", y - 24);
-      if (graphOpenState.spectrum) {
-        drawSpectrumPanel(28, y, 644, 118);
-        y += 150;
-      } else {
-        y += 22;
-      }
+      const layout = METER_LAYOUT;
+      let y = layout.top;
+      const drawFullModule = (key, renderer, rect) => {
+        positionModuleControl(key, y - layout.titleOffset);
+        if (graphOpenState[key]) {
+          renderer(layout.left, y, layout.fullWidth, rect.height);
+          y += rect.advance;
+        } else {
+          y += layout.collapsedAdvance;
+        }
+      };
+      const drawStackedModule = (key, renderer, height) => {
+        positionModuleControl(key, y - layout.titleOffset);
+        if (graphOpenState[key]) {
+          renderer(layout.left, y, layout.fullWidth, height);
+          y += layout.compactMeterAdvance;
+        } else {
+          y += layout.stackedCollapsedAdvance;
+        }
+      };
 
-      positionModuleControl("oscilloscope", y - 24);
-      if (graphOpenState.oscilloscope) {
-        drawOscilloscopePanel(28, y, 644, 70);
-        y += 100;
-      } else {
-        y += 22;
-      }
+      drawFullModule("spectrum", drawSpectrumPanel, layout.spectrum);
+      drawFullModule("oscilloscope", drawOscilloscopePanel, layout.oscilloscope);
 
-      positionModuleControl("waveformShort", y - 20);
-      y += 26;
-      if (graphOpenState.waveformShort) {
-        drawWaveformShortPanel(28, y, 644, 54);
-        y += 82;
-      } else {
-        y += 10;
-      }
-
-      positionModuleControl("waveformMedium", y - 20);
-      y += 26;
-      if (graphOpenState.waveformMedium) {
-        drawWaveformMediumPanel(28, y, 644, 58);
-        y += 86;
-      } else {
-        y += 10;
-      }
-
-      positionModuleControl("waveformLong", y - 20);
-      y += 26;
-      if (graphOpenState.waveformLong) {
-        drawWaveformPanel(28, y, 644, 58);
-        y += 102;
-      } else {
-        y += 10;
-      }
+      y += layout.rowGap;
+      drawFullModule("waveformShort", drawWaveformShortPanel, layout.waveformShort);
+      y += layout.rowGap;
+      drawFullModule("waveformMedium", drawWaveformMediumPanel, layout.waveformMedium);
+      y += layout.rowGap;
+      drawFullModule("waveformLong", drawWaveformPanel, layout.waveformLong);
 
       const compactGraph = useCompactGraphLayout();
       if (compactGraph) {
-        positionModuleControl("stereo", y - 24);
-        if (graphOpenState.stereo) {
-          drawStereoPanel(28, y, 644, 150);
-          y += 186;
-        } else {
-          y += 28;
-        }
-        positionModuleControl("loudness", y - 24);
-        if (graphOpenState.loudness) {
-          drawLoudnessPanel(28, y, 644, 150);
-          y += 186;
-        } else {
-          y += 28;
-        }
+        drawStackedModule("stereo", drawStereoPanel, layout.stereo.compactHeight);
+        drawStackedModule("loudness", drawLoudnessPanel, layout.loudness.compactHeight);
       } else {
-        positionModuleControl("stereo", y - 24);
-        positionModuleControl("loudness", y - 24);
+        positionModuleControl("stereo", y - layout.titleOffset);
+        positionModuleControl("loudness", y - layout.titleOffset);
         if (graphOpenState.stereo) {
-          drawStereoPanel(28, y, 314, 202);
+          drawStereoPanel(layout.left, y, layout.halfWidth, layout.stereo.height);
         }
         if (graphOpenState.loudness) {
-          drawLoudnessPanel(358, y, 314, 202);
+          drawLoudnessPanel(layout.rightColumnX, y, layout.halfWidth, layout.loudness.height);
         }
-        y += graphOpenState.stereo || graphOpenState.loudness ? 238 : 28;
+        y += graphOpenState.stereo || graphOpenState.loudness ? layout.dualMetersAdvance : layout.stackedCollapsedAdvance;
       }
 
       if (algorithm === meteringAlgorithms.nmstr) {
-        positionModuleControl("pattern", y - 24);
+        positionModuleControl("pattern", y - layout.titleOffset);
         if (graphOpenState.pattern) {
-          drawPatternPanel(28, y, 644, 430);
-          y += 466;
+          drawPatternPanel(layout.left, y, layout.fullWidth, layout.pattern.height);
+          y += layout.pattern.advance;
         } else {
-          y += 22;
+          y += layout.collapsedAdvance;
         }
       }
 

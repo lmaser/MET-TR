@@ -125,6 +125,7 @@
     let rightFreq = new Uint8Array(512);
     let floatFreqData = new Float32Array(1024);
     let previousFreqData = new Uint8Array(1024);
+    let previousPatternFreqData = new Uint8Array(1024);
     let inputSource = "system";
     let metrics = { rms: 0, low: 0, mid: 0, high: 0, side: 0, peak: 0, density: 0, centroid: 0, bassHit: 0, midHit: 0, flux: 0, left: 0, right: 0 };
     let smoothed = { rms: 0, low: 0, mid: 0, high: 0, side: 0, peak: 0, density: 0, centroid: 0, bassHit: 0, midHit: 0, flux: 0, left: 0, right: 0 };
@@ -164,6 +165,14 @@
       snareFlash: 0,
       hatFlash: 0,
       cymbalFlash: 0
+    };
+    const PATTERN_DETECTOR_PROFILE = {
+      kick: { sensitivity: 1, threshold: 1, gain: 2.8, envAttack: 0.04, envRelease: 0.16, hold: 0.68 },
+      tom: { sensitivity: 1.38, threshold: 0.74, gain: 3.2, envAttack: 0.035, envRelease: 0.18, hold: 0.7 },
+      snare: { sensitivity: 1, threshold: 1, gain: 2.85, envAttack: 0.04, envRelease: 0.16, hold: 0.68 },
+      hat: { sensitivity: 1.82, threshold: 0.5, gain: 3.8, envAttack: 0.018, envRelease: 0.28, hold: 0.58 },
+      cymbal: { sensitivity: 1.55, threshold: 0.55, gain: 3.35, envAttack: 0.018, envRelease: 0.34, hold: 0.74 },
+      global: { sensitivity: 1, threshold: 1, gain: 2.8, envAttack: 0.04, envRelease: 0.16, hold: 0.68 }
     };
     const spectralOutState = {
       r: 0,
@@ -259,22 +268,20 @@
       return METER_LAYOUT[module.rect || module.id];
     }
 
-    function getCompactHeightBoost() {
-      if (!useCompactGraphLayout()) return 1;
+    function getCompactResponsiveT() {
+      if (!useCompactGraphLayout()) return 0;
       const responsive = contract.responsive || {};
       const minWidth = responsive.compactMinWidth || 360;
       const maxWidth = responsive.compactMaxWidth || 600;
-      const maxBoost = responsive.maxHeightBoost || 2;
       const width = stageEl.clientWidth || window.innerWidth || maxWidth;
       const t = clamp((maxWidth - width) / Math.max(1, maxWidth - minWidth), 0, 1);
-      return lerp(1, maxBoost, t);
+      return smoothstep(0, 1, t);
     }
 
     function getModuleHeightScale(module) {
       if (!useCompactGraphLayout()) return 1;
       const moduleScale = contract.responsive?.modules?.[module.id]?.compactScale || 1;
-      const boost = getCompactHeightBoost();
-      return lerp(1, moduleScale, clamp(boost - 1, 0, 1));
+      return lerp(1, moduleScale, getCompactResponsiveT());
     }
 
     function getModuleHeight(module, compact = useCompactGraphLayout()) {
@@ -283,9 +290,33 @@
       return Math.round(baseHeight * getModuleHeightScale(module));
     }
 
+    function getMeteringTop() {
+      if (!useCompactGraphLayout()) return METER_LAYOUT.top;
+      return Math.max(METER_LAYOUT.top, contract.responsive?.compactTop || METER_LAYOUT.top);
+    }
+
     function getCollapsedAdvance(module, compact = useCompactGraphLayout()) {
       if (module.flow === "dual" && compact) return METER_LAYOUT.stackedCollapsedAdvance;
       return METER_LAYOUT.collapsedAdvance;
+    }
+
+    function getCompactControlLaneGap() {
+      if (!useCompactGraphLayout()) return 0;
+      const scale = Math.max(0.001, stageEl.clientWidth / W || graphControlScale || 1);
+      const summaries = Array.from(graphControls?.querySelectorAll(".control-group > summary") || []);
+      const controlHeight = summaries.reduce((max, summary) => {
+        const style = getComputedStyle(summary);
+        const minHeight = parseFloat(style.minHeight) || 0;
+        return Math.max(max, summary.getBoundingClientRect().height || 0, minHeight);
+      }, 28);
+      return (Math.max(38, controlHeight) + 14) / scale;
+    }
+
+    function getCompactAdvanceClearance(module, baseHeight, nominalAdvance) {
+      if (!useCompactGraphLayout() || module.id === "pattern") return 0;
+      const currentGap = Math.max(0, nominalAdvance - baseHeight);
+      const requiredGap = getCompactControlLaneGap();
+      return Math.max(0, requiredGap - currentGap);
     }
 
     function getOpenAdvance(module, compact = useCompactGraphLayout()) {
@@ -294,10 +325,14 @@
       if (module.flow === "dual" && compact) {
         const compactBase = rect.compactHeight || rect.height;
         const heightDelta = getModuleHeight(module, compact) - compactBase;
-        return METER_LAYOUT.compactMeterAdvance + Math.max(0, heightDelta);
+        return METER_LAYOUT.compactMeterAdvance
+          + Math.max(0, heightDelta)
+          + getCompactAdvanceClearance(module, compactBase, METER_LAYOUT.compactMeterAdvance);
       }
       const heightDelta = getModuleHeight(module, compact) - rect.height;
-      return rect.advance + Math.max(0, heightDelta);
+      return rect.advance
+        + Math.max(0, heightDelta)
+        + getCompactAdvanceClearance(module, rect.height, rect.advance);
     }
 
     function getModuleAdvance(module, compact = useCompactGraphLayout()) {
@@ -435,13 +470,23 @@
       updateGraphControlScale();
     }
 
-    function positionModuleControl(key, top) {
+    function getModuleControlHeight(group) {
+      const summary = group?.querySelector("summary");
+      if (!summary) return 24;
+      const style = getComputedStyle(summary);
+      const minHeight = parseFloat(style.minHeight) || 0;
+      return Math.max(summary.getBoundingClientRect().height || 0, minHeight, 20);
+    }
+
+    function positionModuleControl(key, graphTop) {
       const group = graphControls?.querySelector(`[data-module="${key}"]`);
       if (!group) return;
       const layout = METER_LAYOUT;
       const compact = useCompactGraphLayout();
       const scale = graphControlScale;
-      group.style.top = `${Math.max(2, top * scale)}px`;
+      const controlGap = compact ? 5 : 3;
+      const controlTop = graphTop * scale - getModuleControlHeight(group) - controlGap;
+      group.style.top = `${Math.max(2, controlTop)}px`;
       if (compact && (key === "stereo" || key === "loudness")) {
         group.style.left = `${layout.left * scale}px`;
         group.style.width = `${layout.fullWidth * scale}px`;
@@ -472,7 +517,7 @@
     function calculateMeteringHeight() {
       const layout = METER_LAYOUT;
       const compact = useCompactGraphLayout();
-      let y = layout.top;
+      let y = getMeteringTop();
       const moduleIds = getAlgorithmModuleIds();
       for (const item of METERING_FLOW) {
         if (item.type === "module") {
@@ -628,6 +673,7 @@
       freqData = new Uint8Array(analyser.frequencyBinCount);
       floatFreqData = new Float32Array(analyser.frequencyBinCount);
       previousFreqData = new Uint8Array(analyser.frequencyBinCount);
+      previousPatternFreqData = new Uint8Array(analyser.frequencyBinCount);
       timeData = new Uint8Array(analyser.fftSize);
       resetSpectrumState();
     }
@@ -1346,6 +1392,43 @@
       return count ? sum / count : 0;
     }
 
+    function bandPositiveFluxHz(freq, previous, minHz, maxHz, weightPower = 0) {
+      if (!audioContext || !freq.length || !previous || previous.length !== freq.length) return 0;
+      const nyquist = audioContext.sampleRate * 0.5;
+      const start = clamp(Math.floor(minHz / nyquist * freq.length), 0, freq.length - 1);
+      const end = clamp(Math.ceil(maxHz / nyquist * freq.length), start + 1, freq.length);
+      let sum = 0;
+      let weightSum = 0;
+      for (let i = start; i < end; i += 1) {
+        const current = freq[i] / 255;
+        const last = previous[i] / 255;
+        const binHz = (i + 0.5) / freq.length * nyquist;
+        const norm = clamp((binHz - minHz) / Math.max(1, maxHz - minHz), 0, 1);
+        const weight = weightPower ? Math.pow(0.35 + norm, weightPower) : 1;
+        sum += Math.max(0, current - last) * weight;
+        weightSum += weight;
+      }
+      return weightSum ? sum / weightSum : 0;
+    }
+
+    function bandHfcHz(freq, minHz, maxHz, weightPower = 1) {
+      if (!audioContext || !freq.length) return 0;
+      const nyquist = audioContext.sampleRate * 0.5;
+      const start = clamp(Math.floor(minHz / nyquist * freq.length), 0, freq.length - 1);
+      const end = clamp(Math.ceil(maxHz / nyquist * freq.length), start + 1, freq.length);
+      let sum = 0;
+      let weightSum = 0;
+      for (let i = start; i < end; i += 1) {
+        const mag = freq[i] / 255;
+        const binHz = (i + 0.5) / freq.length * nyquist;
+        const norm = clamp((binHz - minHz) / Math.max(1, maxHz - minHz), 0, 1);
+        const weight = Math.pow(0.3 + norm, weightPower);
+        sum += mag * mag * weight;
+        weightSum += weight;
+      }
+      return weightSum ? Math.sqrt(sum / weightSum) : 0;
+    }
+
     function resetPatternState() {
       for (const key of Object.keys(patternState.hits)) {
         patternState.previous[key] = 0;
@@ -1364,6 +1447,7 @@
       patternState.snareFlash = 0;
       patternState.hatFlash = 0;
       patternState.cymbalFlash = 0;
+      previousPatternFreqData = new Uint8Array(freqData.length);
     }
 
     function updatePatternDetector(hasLiveAudio) {
@@ -1412,26 +1496,39 @@
       const kickFundamental = bandAverageHz(freqData, 32, 85);
       const kickPunch = bandAverageHz(freqData, 70, 135);
       const tomBody = bandAverageHz(freqData, 90, 360);
+      const tomLowBody = bandAverageHz(freqData, 80, 190);
+      const tomMidBody = bandAverageHz(freqData, 190, 520);
       const snareShell = bandAverageHz(freqData, 120, 260);
       const snareBody = bandAverageHz(freqData, 170, 1800);
       const snareCrack = bandAverageHz(freqData, 1800, 7000);
       const clapNoise = bandAverageHz(freqData, 1500, 6500);
-      const hatBand = bandAverageHz(freqData, 6500, 13000);
-      const cymbalAir = bandAverageHz(freqData, 5000, 18000);
+      const hatBand = bandAverageHz(freqData, 7000, 14500);
+      const hatTick = bandHfcHz(freqData, 7800, 16000, 1.45);
+      const cymbalAir = bandAverageHz(freqData, 5200, 18000);
+      const cymbalWash = bandHfcHz(freqData, 6500, 19000, 1.2);
       const lowMid = bandAverageHz(freqData, 250, 900);
       const boxMid = bandAverageHz(freqData, 260, 900);
+      const kickFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 32, 145, 0);
+      const tomFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 90, 520, 0.15);
+      const snareFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 900, 7600, 0.45);
+      const hatFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 6800, 16000, 1.35);
+      const cymbalFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 4800, 19000, 1.05);
       const globalEnergy = metrics.rms * 0.4 + metrics.flux * 0.45 + metrics.peak * 0.15;
       const kickLowMass = kickFundamental * 0.68 + kickPunch * 0.48 + sub * 0.24;
       const snareNoiseMass = snareCrack * 0.58 + clapNoise * 0.34 + snareShell * 0.26;
       const kickDominance = clamp((kickLowMass - snareNoiseMass * 0.42 - boxMid * 0.18 - hatBand * 0.16 + 0.05) * 2.35, 0, 1);
       const snareDominance = clamp((snareNoiseMass + snareShell * 0.22 - kickLowMass * 0.58 + 0.03) * 1.85, 0, 1);
+      const tomBodyContrast = Math.max(tomLowBody, tomMidBody) - Math.max(kickFundamental * 0.48, snareCrack * 0.16);
+      const highTail = Math.max(patternState.envelope.hat * 0.58, patternState.envelope.cymbal * 0.42);
+      const hatTransient = Math.max(0, hatFlux * 5.8 + hatTick * 0.46 - highTail * 0.18);
+      const cymbalTransient = Math.max(0, cymbalFlux * 4.4 + cymbalWash * 0.34 - patternState.envelope.cymbal * 0.1);
 
       const features = {
-        kick: (kickFundamental * 0.72 + kickPunch * 0.48 + sub * 0.28 + Math.max(0, kickLowMass - snareShell) * 0.32 - snareCrack * 0.28 - clapNoise * 0.2 - hatBand * 0.18 - boxMid * 0.12) * (0.68 + kickDominance * 0.72),
-        tom: tomBody * 0.7 + lowMid * 0.18 - kickFundamental * 0.14 - hatBand * 0.16 - snareCrack * 0.08,
-        snare: (snareShell * 0.32 + snareBody * 0.22 + snareCrack * 0.52 + clapNoise * 0.24 + metrics.flux * 0.13 - kickFundamental * 0.24 - kickPunch * 0.12) * (0.7 + snareDominance * 0.65),
-        hat: hatBand * 0.78 + metrics.flux * 0.12 - kickFundamental * 0.16 - kickPunch * 0.08,
-        cymbal: cymbalAir * 0.68 + metrics.high * 0.24 - kickFundamental * 0.1,
+        kick: (kickFundamental * 0.72 + kickPunch * 0.48 + sub * 0.28 + kickFlux * 1.2 + Math.max(0, kickLowMass - snareShell) * 0.32 - snareCrack * 0.28 - clapNoise * 0.2 - hatBand * 0.18 - boxMid * 0.12) * (0.68 + kickDominance * 0.72),
+        tom: Math.max(0, tomBody * 0.58 + Math.max(0, tomBodyContrast) * 0.62 + tomFlux * 2.65 + lowMid * 0.1 - kickFundamental * 0.2 - snareCrack * 0.1 - hatBand * 0.1),
+        snare: (snareShell * 0.32 + snareBody * 0.22 + snareCrack * 0.48 + clapNoise * 0.22 + snareFlux * 1.2 + metrics.flux * 0.08 - kickFundamental * 0.24 - kickPunch * 0.12) * (0.7 + snareDominance * 0.65),
+        hat: Math.max(0, hatBand * 0.42 + hatTick * 0.34 + hatTransient * 0.78 + metrics.high * 0.18 - kickFundamental * 0.1 - kickPunch * 0.05),
+        cymbal: Math.max(0, cymbalAir * 0.42 + cymbalWash * 0.34 + cymbalTransient * 0.64 + metrics.high * 0.2 - kickFundamental * 0.06),
         global: globalEnergy
       };
 
@@ -1442,19 +1539,26 @@
       }
 
       for (const key of Object.keys(features)) {
+        const profile = PATTERN_DETECTOR_PROFILE[key] || PATTERN_DETECTOR_PROFILE.global;
         const value = clamp(features[key], 0, 1);
         const env = patternState.envelope[key];
         const rise = Math.max(0, value - patternState.previous[key]);
-        const novelty = Math.max(0, value - env) + rise * 0.8;
-        const hit = clamp((novelty * sensitivity - threshold * 0.34) * 2.8, 0, 1);
-        patternState.hits[key] = Math.max(patternState.hits[key] * 0.68, hit);
-        patternState.envelope[key] = lerp(env, value, value > env ? 0.04 : 0.16);
+        const relativeNovelty = Math.max(0, value - env) / Math.max(0.045, env * 0.7 + 0.035);
+        const novelty = Math.max(0, value - env) + rise * 0.8 + relativeNovelty * 0.045;
+        const localThreshold = threshold * 0.34 * profile.threshold;
+        const hit = clamp((novelty * sensitivity * profile.sensitivity - localThreshold) * profile.gain, 0, 1);
+        patternState.hits[key] = Math.max(patternState.hits[key] * profile.hold, hit);
+        patternState.envelope[key] = lerp(env, value, value > env ? profile.envAttack : profile.envRelease);
         patternState.previous[key] = value;
-        if (hit > threshold && now - patternState.lastHit[key] > minSeparation) {
+        if (hit > threshold * profile.threshold && now - patternState.lastHit[key] > minSeparation) {
           patternState.lastHit[key] = now;
           patternState.events.push({ time: now, type: key, strength: hit });
         }
       }
+      if (previousPatternFreqData.length !== freqData.length) {
+        previousPatternFreqData = new Uint8Array(freqData.length);
+      }
+      previousPatternFreqData.set(freqData);
 
       patternState.events = patternState.events.filter((event) => now - event.time < rhythmWindow);
       const globalEvents = patternState.events.filter((event) => event.type === "global");
@@ -3229,9 +3333,16 @@
         ["Hat", "hat", "#7ed6ff"],
         ["Cymbal", "cymbal", "#bc30ec"]
       ];
-      const topPad = Math.max(18, h * 0.08);
-      const bottomPad = Math.max(350, h * 0.62);
-      const usableH = Math.max(58, h - topPad - bottomPad);
+      const compact = useCompactGraphLayout();
+      const topPad = Math.max(18, compact ? h * 0.035 : h * 0.08);
+      const displayOpen = graphOpenState.patternDisplayRender;
+      const displayBoost = compact
+        ? lerp(1, contract.responsive?.patternDisplay?.compactScale || 1.8, getCompactResponsiveT())
+        : 1;
+      const displayGap = displayOpen ? Math.round(compact ? clamp(h * 0.026, 22, 38) : 30 * displayBoost) : 0;
+      const historyH = Math.round(compact ? clamp(h * 0.135, 96, 180) : 48);
+      const rowsBlockH = Math.round(compact ? clamp(h * 0.24, 124, 220) : clamp(h * 0.24, 92, 150));
+      const usableH = Math.max(58, rowsBlockH);
       const rowGap = Math.max(4, Math.min(9, usableH * 0.055));
       const rowH = Math.max(14, (usableH - rowGap * (rows.length - 1)) / rows.length);
       const barH = Math.max(9, Math.min(16, rowH * 0.62));
@@ -3251,18 +3362,24 @@
         ctx.fillRect(barX, barY + 2, barW * clamp(patternState.hits[key], 0, 1), Math.max(3, barH - 4));
       }
 
-      const displayBoost = useCompactGraphLayout()
-        ? lerp(1, contract.responsive?.patternDisplay?.compactScale || 1.8, clamp(getCompactHeightBoost() - 1, 0, 1))
-        : 1;
-      const displayFieldH = Math.round(72 * displayBoost);
-      const displayGap = Math.round(30 * displayBoost);
-      const spectralY = y + h - displayFieldH - 12;
-      const spectralLabelY = spectralY - 12;
-      const elementsY = spectralLabelY - displayGap - displayFieldH;
-      const elementsLabelY = elementsY - 12;
-      const displayHeaderY = elementsLabelY - 30;
-      const historyY = displayHeaderY - 60;
-      const rhythmY = historyY - 16;
+      const rhythmY = y + topPad + usableH + Math.max(18, compact ? h * 0.025 : 16);
+      const historyY = rhythmY + Math.max(14, compact ? h * 0.018 : 16);
+      const displayHeaderY = historyY + historyH + Math.max(28, compact ? h * 0.035 : 30);
+      const elementsLabelY = displayHeaderY + 30;
+      const elementsY = elementsLabelY + 14;
+      const footerPad = compact ? 18 : 12;
+      const spectralLabelGap = 14;
+      const displayAvailableH = Math.max(
+        0,
+        y + h - footerPad - elementsY - displayGap - spectralLabelGap
+      );
+      const displayFieldH = displayOpen
+        ? Math.round(compact
+          ? clamp(displayAvailableH * 0.5, 120, Math.max(120, displayAvailableH * 0.5))
+          : Math.min(72 * displayBoost, displayAvailableH * 0.5))
+        : 0;
+      const spectralLabelY = elementsY + displayFieldH + displayGap;
+      const spectralY = spectralLabelY + 14;
       const bpm = patternState.bpm ? Math.round(patternState.bpm) : "--";
       const conf = Math.round(patternState.confidence * 100);
       const rate = patternState.onsetRate.toFixed(1);
@@ -3270,17 +3387,17 @@
 
       const now = audioContext ? audioContext.currentTime : performance.now() / 1000;
       ctx.fillStyle = "#050505";
-      ctx.fillRect(x + 10, historyY, w - 20, 48);
+      ctx.fillRect(x + 10, historyY, w - 20, historyH);
       ctx.strokeStyle = "rgba(255,255,255,0.1)";
-      ctx.strokeRect(x + 10, historyY, w - 20, 48);
+      ctx.strokeRect(x + 10, historyY, w - 20, historyH);
       for (const event of patternState.events) {
         if (event.type === "global") continue;
         const age = now - event.time;
         const px = x + w - 10 - age / Math.max(0.001, Number(patternWindowSelect.value)) * (w - 20);
         if (px < x + 4 || px > x + w - 4) continue;
-        const py = historyY + 42;
+        const py = historyY + historyH - 6;
         ctx.fillStyle = event.type === "kick" ? "#ff3a18" : event.type === "snare" ? "#39ff14" : event.type === "hat" ? "#7ed6ff" : event.type === "cymbal" ? "#bc30ec" : "#ff8b2a";
-        ctx.fillRect(px, py - 42 * clamp(event.strength, 0.2, 1), 3, 42 * clamp(event.strength, 0.2, 1));
+        ctx.fillRect(px, py - (historyH - 12) * clamp(event.strength, 0.2, 1), 3, (historyH - 12) * clamp(event.strength, 0.2, 1));
       }
       const displayHeaderW = 154;
       patternDisplayToggleRect = {
@@ -3378,11 +3495,10 @@
       }
 
       const layout = METER_LAYOUT;
-      let y = layout.top;
+      let y = getMeteringTop();
       const moduleIds = getAlgorithmModuleIds(algorithm);
       const drawFullModule = (module) => {
-        const rect = getModuleRect(module);
-        positionModuleControl(module.id, y - layout.titleOffset);
+        positionModuleControl(module.id, y);
         if (graphOpenState[module.id]) {
           module.renderer(layout.left, y, layout.fullWidth, getModuleHeight(module));
           y += getModuleAdvance(module);
@@ -3391,7 +3507,7 @@
         }
       };
       const drawStackedModule = (module) => {
-        positionModuleControl(module.id, y - layout.titleOffset);
+        positionModuleControl(module.id, y);
         if (graphOpenState[module.id]) {
           module.renderer(layout.left, y, layout.fullWidth, getModuleHeight(module));
           y += getModuleAdvance(module, true);
@@ -3414,7 +3530,7 @@
           if (useCompactGraphLayout()) {
             modules.forEach(drawStackedModule);
           } else {
-            for (const module of modules) positionModuleControl(module.id, y - layout.titleOffset);
+            for (const module of modules) positionModuleControl(module.id, y);
             for (const module of modules) {
               if (!graphOpenState[module.id]) continue;
               const rect = getModuleRect(module);

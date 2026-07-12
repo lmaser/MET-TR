@@ -32,20 +32,21 @@ window.METTR_CONTRACT = {
   },
   responsive: {
     compactMinWidth: 360,
-    compactMaxWidth: 600,
-    maxHeightBoost: 2,
+    compactMaxWidth: 840,
+    compactTop: 82,
+    maxHeightBoost: 2.4,
     modules: {
-      spectrum: { compactScale: 1.55 },
-      oscilloscope: { compactScale: 1.65 },
-      waveformShort: { compactScale: 1.55 },
-      waveformMedium: { compactScale: 1.45 },
-      waveformLong: { compactScale: 1.45 },
-      stereo: { compactScale: 1.25 },
-      loudness: { compactScale: 1.25 },
-      pattern: { compactScale: 1.45 }
+      spectrum: { compactScale: 3.2 },
+      oscilloscope: { compactScale: 3.05 },
+      waveformShort: { compactScale: 2.75 },
+      waveformMedium: { compactScale: 2.55 },
+      waveformLong: { compactScale: 2.55 },
+      stereo: { compactScale: 1.75 },
+      loudness: { compactScale: 1.75 },
+      pattern: { compactScale: 2.55 }
     },
     patternDisplay: {
-      compactScale: 1.8
+      compactScale: 2.55
     }
   },
   algorithms: {

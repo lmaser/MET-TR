@@ -1119,30 +1119,49 @@
       visible: 480,
       start: 0
     };
-    const meteringBaseControls = [
-      "input",
-      "algorithm",
-      "spectrum",
-      "oscilloscope",
-      "waveform",
-      "readout"
-    ];
-    const nmstrMeteringControls = [
-      ...meteringBaseControls,
-      "pattern"
-    ];
     const meteringAlgorithms = {
       base: {
         id: "METERING BASE",
         label: "Base reference",
-        controls: meteringBaseControls
+        modules: [
+          "spectrum",
+          "oscilloscope",
+          "waveformShort",
+          "waveformMedium",
+          "waveformLong",
+          "stereo",
+          "loudness"
+        ]
       },
       nmstr: {
         id: "METERING V1b",
         label: "Editable branch",
-        controls: nmstrMeteringControls
+        extends: "base",
+        modules: [
+          "pattern"
+        ]
       }
     };
+    const METERING_MODULES = [
+      { id: "spectrum", renderer: drawSpectrumPanel, rect: "spectrum", flow: "full" },
+      { id: "oscilloscope", renderer: drawOscilloscopePanel, rect: "oscilloscope", flow: "full" },
+      { id: "waveformShort", renderer: drawWaveformShortPanel, rect: "waveformShort", flow: "full", beforeGap: true },
+      { id: "waveformMedium", renderer: drawWaveformMediumPanel, rect: "waveformMedium", flow: "full", beforeGap: true },
+      { id: "waveformLong", renderer: drawWaveformPanel, rect: "waveformLong", flow: "full", beforeGap: true },
+      { id: "stereo", renderer: drawStereoPanel, rect: "stereo", flow: "dual", column: "left" },
+      { id: "loudness", renderer: drawLoudnessPanel, rect: "loudness", flow: "dual", column: "right" },
+      { id: "pattern", renderer: drawPatternPanel, rect: "pattern", flow: "full" }
+    ];
+    const METERING_MODULE_BY_ID = Object.fromEntries(METERING_MODULES.map((module) => [module.id, module]));
+    const METERING_FLOW = [
+      { type: "module", id: "spectrum" },
+      { type: "module", id: "oscilloscope" },
+      { type: "module", id: "waveformShort", beforeGap: true },
+      { type: "module", id: "waveformMedium", beforeGap: true },
+      { type: "module", id: "waveformLong", beforeGap: true },
+      { type: "dual", ids: ["stereo", "loudness"] },
+      { type: "module", id: "pattern" }
+    ];
     const graphOpenState = {
       spectrum: true,
       oscilloscope: true,
@@ -1192,6 +1211,36 @@
 
     function getCurrentAlgorithm() {
       return meteringAlgorithms[algorithmSelect.value] || meteringAlgorithms.nmstr;
+    }
+
+    function getAlgorithmModuleIds(algorithm = getCurrentAlgorithm(), seen = new Set()) {
+      if (!algorithm || seen.has(algorithm.id)) return [];
+      seen.add(algorithm.id);
+      const inherited = algorithm.extends
+        ? getAlgorithmModuleIds(meteringAlgorithms[algorithm.extends], seen)
+        : [];
+      return [...new Set([...inherited, ...(algorithm.modules || [])])];
+    }
+
+    function getModuleRect(module) {
+      return METER_LAYOUT[module.rect || module.id];
+    }
+
+    function getCollapsedAdvance(module, compact = useCompactGraphLayout()) {
+      if (module.flow === "dual" && compact) return METER_LAYOUT.stackedCollapsedAdvance;
+      return METER_LAYOUT.collapsedAdvance;
+    }
+
+    function getOpenAdvance(module, compact = useCompactGraphLayout()) {
+      if (module.flow === "dual" && compact) return METER_LAYOUT.compactMeterAdvance;
+      const rect = getModuleRect(module);
+      return rect?.advance || METER_LAYOUT.collapsedAdvance;
+    }
+
+    function getModuleAdvance(module, compact = useCompactGraphLayout()) {
+      return graphOpenState[module.id]
+        ? getOpenAdvance(module, compact)
+        : getCollapsedAdvance(module, compact);
     }
 
     function moveControlById(id, mount) {
@@ -1318,16 +1367,6 @@
       updateGraphControlScale();
     }
 
-    function moduleIsOpen(key) {
-      const group = graphControls?.querySelector(`[data-module="${key}"]`);
-      return Boolean(group?.open);
-    }
-
-    function moduleControlHeight(key) {
-      if (key === "pattern" && getCurrentAlgorithm() !== meteringAlgorithms.nmstr) return 0;
-      return 0;
-    }
-
     function positionModuleControl(key, top) {
       const group = graphControls?.querySelector(`[data-module="${key}"]`);
       if (!group) return;
@@ -1361,23 +1400,29 @@
     }
 
     function calculateMeteringHeight() {
-      const algorithm = getCurrentAlgorithm();
       const layout = METER_LAYOUT;
       const compact = useCompactGraphLayout();
       let y = layout.top;
-      y += graphOpenState.spectrum ? layout.spectrum.advance : layout.collapsedAdvance;
-      y += graphOpenState.oscilloscope ? layout.oscilloscope.advance : layout.collapsedAdvance;
-      y += layout.rowGap + (graphOpenState.waveformShort ? layout.waveformShort.advance : 10);
-      y += layout.rowGap + (graphOpenState.waveformMedium ? layout.waveformMedium.advance : 10);
-      y += layout.rowGap + (graphOpenState.waveformLong ? layout.waveformLong.advance : 10);
-      if (compact) {
-        y += graphOpenState.stereo ? layout.compactMeterAdvance : layout.stackedCollapsedAdvance;
-        y += graphOpenState.loudness ? layout.compactMeterAdvance : layout.stackedCollapsedAdvance;
-      } else {
-        y += graphOpenState.stereo || graphOpenState.loudness ? layout.dualMetersAdvance : layout.stackedCollapsedAdvance;
-      }
-      if (algorithm === meteringAlgorithms.nmstr) {
-        y += graphOpenState.pattern ? layout.pattern.advance : layout.collapsedAdvance;
+      const moduleIds = getAlgorithmModuleIds();
+      for (const item of METERING_FLOW) {
+        if (item.type === "module") {
+          if (!moduleIds.includes(item.id)) continue;
+          const module = METERING_MODULE_BY_ID[item.id];
+          if (item.beforeGap || module.beforeGap) y += layout.rowGap;
+          y += getModuleAdvance(module, compact);
+        } else if (item.type === "dual") {
+          const modules = item.ids
+            .filter((id) => moduleIds.includes(id))
+            .map((id) => METERING_MODULE_BY_ID[id]);
+          if (!modules.length) continue;
+          if (compact) {
+            for (const module of modules) y += getModuleAdvance(module, compact);
+          } else {
+            y += modules.some((module) => graphOpenState[module.id])
+              ? layout.dualMetersAdvance
+              : layout.stackedCollapsedAdvance;
+          }
+        }
       }
       return Math.max(layout.minHeight, Math.ceil(y + layout.bottom));
     }
@@ -4206,66 +4251,63 @@
       }
 
       if (graphControls) {
+        const moduleIds = getAlgorithmModuleIds(algorithm);
         graphControls.querySelectorAll(".control-group").forEach((group) => {
-          const isPattern = group.dataset.module === "pattern";
-          group.hidden = isPattern && algorithm !== meteringAlgorithms.nmstr;
+          const moduleId = group.dataset.module;
+          if (!METERING_MODULE_BY_ID[moduleId]) return;
+          group.hidden = !moduleIds.includes(moduleId);
         });
       }
 
       const layout = METER_LAYOUT;
       let y = layout.top;
-      const drawFullModule = (key, renderer, rect) => {
-        positionModuleControl(key, y - layout.titleOffset);
-        if (graphOpenState[key]) {
-          renderer(layout.left, y, layout.fullWidth, rect.height);
+      const moduleIds = getAlgorithmModuleIds(algorithm);
+      const drawFullModule = (module) => {
+        const rect = getModuleRect(module);
+        positionModuleControl(module.id, y - layout.titleOffset);
+        if (graphOpenState[module.id]) {
+          module.renderer(layout.left, y, layout.fullWidth, rect.height);
           y += rect.advance;
         } else {
           y += layout.collapsedAdvance;
         }
       };
-      const drawStackedModule = (key, renderer, height) => {
-        positionModuleControl(key, y - layout.titleOffset);
-        if (graphOpenState[key]) {
-          renderer(layout.left, y, layout.fullWidth, height);
+      const drawStackedModule = (module) => {
+        const rect = getModuleRect(module);
+        positionModuleControl(module.id, y - layout.titleOffset);
+        if (graphOpenState[module.id]) {
+          module.renderer(layout.left, y, layout.fullWidth, rect.compactHeight || rect.height);
           y += layout.compactMeterAdvance;
         } else {
           y += layout.stackedCollapsedAdvance;
         }
       };
 
-      drawFullModule("spectrum", drawSpectrumPanel, layout.spectrum);
-      drawFullModule("oscilloscope", drawOscilloscopePanel, layout.oscilloscope);
-
-      y += layout.rowGap;
-      drawFullModule("waveformShort", drawWaveformShortPanel, layout.waveformShort);
-      y += layout.rowGap;
-      drawFullModule("waveformMedium", drawWaveformMediumPanel, layout.waveformMedium);
-      y += layout.rowGap;
-      drawFullModule("waveformLong", drawWaveformPanel, layout.waveformLong);
-
-      const compactGraph = useCompactGraphLayout();
-      if (compactGraph) {
-        drawStackedModule("stereo", drawStereoPanel, layout.stereo.compactHeight);
-        drawStackedModule("loudness", drawLoudnessPanel, layout.loudness.compactHeight);
-      } else {
-        positionModuleControl("stereo", y - layout.titleOffset);
-        positionModuleControl("loudness", y - layout.titleOffset);
-        if (graphOpenState.stereo) {
-          drawStereoPanel(layout.left, y, layout.halfWidth, layout.stereo.height);
-        }
-        if (graphOpenState.loudness) {
-          drawLoudnessPanel(layout.rightColumnX, y, layout.halfWidth, layout.loudness.height);
-        }
-        y += graphOpenState.stereo || graphOpenState.loudness ? layout.dualMetersAdvance : layout.stackedCollapsedAdvance;
-      }
-
-      if (algorithm === meteringAlgorithms.nmstr) {
-        positionModuleControl("pattern", y - layout.titleOffset);
-        if (graphOpenState.pattern) {
-          drawPatternPanel(layout.left, y, layout.fullWidth, layout.pattern.height);
-          y += layout.pattern.advance;
-        } else {
-          y += layout.collapsedAdvance;
+      for (const item of METERING_FLOW) {
+        if (item.type === "module") {
+          if (!moduleIds.includes(item.id)) continue;
+          const module = METERING_MODULE_BY_ID[item.id];
+          if (item.beforeGap || module.beforeGap) y += layout.rowGap;
+          drawFullModule(module);
+        } else if (item.type === "dual") {
+          const modules = item.ids
+            .filter((id) => moduleIds.includes(id))
+            .map((id) => METERING_MODULE_BY_ID[id]);
+          if (!modules.length) continue;
+          if (useCompactGraphLayout()) {
+            modules.forEach(drawStackedModule);
+          } else {
+            for (const module of modules) positionModuleControl(module.id, y - layout.titleOffset);
+            for (const module of modules) {
+              if (!graphOpenState[module.id]) continue;
+              const rect = getModuleRect(module);
+              const x = module.column === "right" ? layout.rightColumnX : layout.left;
+              module.renderer(x, y, layout.halfWidth, rect.height);
+            }
+            y += modules.some((module) => graphOpenState[module.id])
+              ? layout.dualMetersAdvance
+              : layout.stackedCollapsedAdvance;
+          }
         }
       }
 

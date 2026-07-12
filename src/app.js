@@ -167,11 +167,11 @@
       cymbalFlash: 0
     };
     const PATTERN_DETECTOR_PROFILE = {
-      kick: { sensitivity: 1, threshold: 1, gain: 2.8, envAttack: 0.04, envRelease: 0.16, hold: 0.68 },
-      tom: { sensitivity: 1.38, threshold: 0.74, gain: 3.2, envAttack: 0.035, envRelease: 0.18, hold: 0.7 },
-      snare: { sensitivity: 1, threshold: 1, gain: 2.85, envAttack: 0.04, envRelease: 0.16, hold: 0.68 },
-      hat: { sensitivity: 1.82, threshold: 0.5, gain: 3.8, envAttack: 0.018, envRelease: 0.28, hold: 0.58 },
-      cymbal: { sensitivity: 1.55, threshold: 0.55, gain: 3.35, envAttack: 0.018, envRelease: 0.34, hold: 0.74 },
+      kick: { sensitivity: 1.1, threshold: 0.92, gain: 3.05, envAttack: 0.04, envRelease: 0.16, hold: 0.68 },
+      tom: { sensitivity: 1.1, threshold: 0.8, gain: 2.85, envAttack: 0.035, envRelease: 0.18, hold: 0.68 },
+      snare: { sensitivity: 1.08, threshold: 0.9, gain: 3.1, envAttack: 0.04, envRelease: 0.16, hold: 0.68 },
+      hat: { sensitivity: 1.25, threshold: 0.74, gain: 2.65, envAttack: 0.018, envRelease: 0.26, hold: 0.55 },
+      cymbal: { sensitivity: 1.1, threshold: 0.82, gain: 2.45, envAttack: 0.018, envRelease: 0.34, hold: 0.7 },
       global: { sensitivity: 1, threshold: 1, gain: 2.8, envAttack: 0.04, envRelease: 0.16, hold: 0.68 }
     };
     const spectralOutState = {
@@ -296,8 +296,10 @@
     }
 
     function getCollapsedAdvance(module, compact = useCompactGraphLayout()) {
-      if (module.flow === "dual" && compact) return METER_LAYOUT.stackedCollapsedAdvance;
-      return METER_LAYOUT.collapsedAdvance;
+      const baseAdvance = module.flow === "dual" && compact
+        ? METER_LAYOUT.stackedCollapsedAdvance
+        : METER_LAYOUT.collapsedAdvance;
+      return compact ? Math.max(baseAdvance, getCompactControlLaneGap()) : baseAdvance;
     }
 
     function getCompactControlLaneGap() {
@@ -1493,48 +1495,63 @@
       }
 
       const sub = bandAverageHz(freqData, 28, 70);
-      const kickFundamental = bandAverageHz(freqData, 32, 85);
-      const kickPunch = bandAverageHz(freqData, 70, 135);
-      const tomBody = bandAverageHz(freqData, 90, 360);
-      const tomLowBody = bandAverageHz(freqData, 80, 190);
-      const tomMidBody = bandAverageHz(freqData, 190, 520);
+      const deepSub = bandAverageHz(freqData, 28, 60);
+      const kickFundamental = bandAverageHz(freqData, 32, 70);
+      const kickPunch = bandAverageHz(freqData, 70, 115);
+      const tomCore = bandAverageHz(freqData, 70, 125);
+      const tomRing = bandAverageHz(freqData, 90, 180);
+      const tomUpper = bandAverageHz(freqData, 125, 260);
       const snareShell = bandAverageHz(freqData, 120, 260);
       const snareBody = bandAverageHz(freqData, 170, 1800);
       const snareCrack = bandAverageHz(freqData, 1800, 7000);
       const clapNoise = bandAverageHz(freqData, 1500, 6500);
-      const hatBand = bandAverageHz(freqData, 7000, 14500);
-      const hatTick = bandHfcHz(freqData, 7800, 16000, 1.45);
-      const cymbalAir = bandAverageHz(freqData, 5200, 18000);
-      const cymbalWash = bandHfcHz(freqData, 6500, 19000, 1.2);
+      const hatCore = bandAverageHz(freqData, 3800, 8200);
+      const hatAir = bandAverageHz(freqData, 8200, 12500);
+      const hatTick = bandHfcHz(freqData, 3600, 9200, 1.05);
+      const cymbalBody = bandAverageHz(freqData, 4800, 9000);
+      const cymbalAir = bandAverageHz(freqData, 8500, 18000);
+      const cymbalWash = bandHfcHz(freqData, 5200, 18000, 1.2);
       const lowMid = bandAverageHz(freqData, 250, 900);
       const boxMid = bandAverageHz(freqData, 260, 900);
-      const kickFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 32, 145, 0);
-      const tomFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 90, 520, 0.15);
+      const highBand = bandAverageHz(freqData, 8000, 20000);
+      const kickFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 32, 118, 0);
+      const tomFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 70, 260, 0.1);
       const snareFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 900, 7600, 0.45);
-      const hatFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 6800, 16000, 1.35);
-      const cymbalFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 4800, 19000, 1.05);
+      const hatFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 3600, 9200, 1.05);
+      const cymbalFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 5200, 18000, 1.1);
       const globalEnergy = metrics.rms * 0.4 + metrics.flux * 0.45 + metrics.peak * 0.15;
-      const kickLowMass = kickFundamental * 0.68 + kickPunch * 0.48 + sub * 0.24;
-      const snareNoiseMass = snareCrack * 0.58 + clapNoise * 0.34 + snareShell * 0.26;
-      const kickDominance = clamp((kickLowMass - snareNoiseMass * 0.42 - boxMid * 0.18 - hatBand * 0.16 + 0.05) * 2.35, 0, 1);
-      const snareDominance = clamp((snareNoiseMass + snareShell * 0.22 - kickLowMass * 0.58 + 0.03) * 1.85, 0, 1);
-      const tomBodyContrast = Math.max(tomLowBody, tomMidBody) - Math.max(kickFundamental * 0.48, snareCrack * 0.16);
-      const highTail = Math.max(patternState.envelope.hat * 0.58, patternState.envelope.cymbal * 0.42);
-      const hatTransient = Math.max(0, hatFlux * 5.8 + hatTick * 0.46 - highTail * 0.18);
-      const cymbalTransient = Math.max(0, cymbalFlux * 4.4 + cymbalWash * 0.34 - patternState.envelope.cymbal * 0.1);
+      const kickLowMass = kickFundamental * 0.9 + deepSub * 0.46 + kickPunch * 0.24;
+      const snareNoiseMass = snareCrack * 0.5 + clapNoise * 0.3 + snareShell * 0.3;
+      const kickDominance = clamp((kickLowMass - snareNoiseMass * 0.45 - boxMid * 0.16 - hatCore * 0.12 + 0.05) * 2.35, 0, 1);
+      const snareDominance = clamp((snareNoiseMass + snareShell * 0.24 - kickLowMass * 0.5 + 0.03) * 1.85, 0, 1);
+      const tomDominance = clamp((tomCore * 0.95 + tomRing * 0.45 - deepSub * 0.62 - snareCrack * 0.16 - hatCore * 0.08 + 0.02) * 2, 0, 1);
+      const hatDominance = clamp((hatCore * 0.9 + hatTick * 0.32 - cymbalAir * 0.44 - snareShell * 0.1 + 0.01) * 1.8, 0, 1);
+      const cymbalDominance = clamp((cymbalAir * 0.92 + cymbalWash * 0.5 + highBand * 0.24 - hatCore * 0.12 + 0.01) * 1.6, 0, 1);
+      const tomRatio = tomCore / Math.max(0.001, deepSub + kickFundamental * 0.28);
+      const tomGate = smoothstep(0.95, 1.75, tomRatio) * smoothstep(0.3, 0.82, tomDominance);
+      const kickTransientGate = smoothstep(0.002, 0.018, kickFlux + Math.max(0, kickFundamental - patternState.envelope.kick) * 0.14 + metrics.bassHit * 0.035);
+      const highTail = Math.max(patternState.envelope.hat * 0.5, patternState.envelope.cymbal * 0.4);
+      const hatTransient = Math.max(0, hatFlux * 3 + hatTick * 0.26 - highTail * 0.16);
+      const cymbalTransient = Math.max(0, cymbalFlux * 2.6 + cymbalWash * 0.28 - patternState.envelope.cymbal * 0.1);
 
       const features = {
-        kick: (kickFundamental * 0.72 + kickPunch * 0.48 + sub * 0.28 + kickFlux * 1.2 + Math.max(0, kickLowMass - snareShell) * 0.32 - snareCrack * 0.28 - clapNoise * 0.2 - hatBand * 0.18 - boxMid * 0.12) * (0.68 + kickDominance * 0.72),
-        tom: Math.max(0, tomBody * 0.58 + Math.max(0, tomBodyContrast) * 0.62 + tomFlux * 2.65 + lowMid * 0.1 - kickFundamental * 0.2 - snareCrack * 0.1 - hatBand * 0.1),
-        snare: (snareShell * 0.32 + snareBody * 0.22 + snareCrack * 0.48 + clapNoise * 0.22 + snareFlux * 1.2 + metrics.flux * 0.08 - kickFundamental * 0.24 - kickPunch * 0.12) * (0.7 + snareDominance * 0.65),
-        hat: Math.max(0, hatBand * 0.42 + hatTick * 0.34 + hatTransient * 0.78 + metrics.high * 0.18 - kickFundamental * 0.1 - kickPunch * 0.05),
-        cymbal: Math.max(0, cymbalAir * 0.42 + cymbalWash * 0.34 + cymbalTransient * 0.64 + metrics.high * 0.2 - kickFundamental * 0.06),
+        kick: Math.max(0, (kickFundamental * 0.94 + deepSub * 0.44 + kickPunch * 0.28 + kickFlux * 1.35 + Math.max(0, kickLowMass - snareShell) * 0.24 - tomCore * 0.18 - snareShell * 0.2 - snareCrack * 0.3 - clapNoise * 0.18 - hatCore * 0.12 - boxMid * 0.1) * (0.72 + kickDominance * 0.64) * (0.24 + kickTransientGate * 0.76)),
+        tom: Math.max(0, (tomCore * 0.78 + tomRing * 0.32 + tomUpper * 0.14 + Math.max(0, tomCore - deepSub * 0.55) * 0.62 + tomFlux * 0.85 + lowMid * 0.04 - kickFundamental * 0.12 - deepSub * 0.18 - snareCrack * 0.1 - hatCore * 0.08) * (0.36 + tomDominance * 0.64) * tomGate),
+        snare: Math.max(0, (snareShell * 0.52 + snareBody * 0.18 + snareCrack * 0.55 + clapNoise * 0.24 + snareFlux * 0.95 + metrics.flux * 0.06 - kickFundamental * 0.2 - kickPunch * 0.1 - hatCore * 0.18) * (0.74 + snareDominance * 0.58)),
+        hat: Math.max(0, (hatCore * 0.54 + hatTick * 0.22 + hatAir * 0.12 + hatTransient * 0.42 + highBand * 0.08 - kickFundamental * 0.05 - kickPunch * 0.03 - cymbalAir * 0.22) * (0.72 + hatDominance * 0.36)),
+        cymbal: Math.max(0, (cymbalBody * 0.24 + cymbalAir * 0.5 + cymbalWash * 0.32 + cymbalTransient * 0.38 + highBand * 0.14 - kickFundamental * 0.04) * (0.74 + cymbalDominance * 0.36)),
         global: globalEnergy
       };
 
+      if (features.kick > features.tom * 0.72 || kickDominance > tomDominance + 0.08) {
+        features.tom *= 0.04 + tomGate * 0.1;
+      } else if (features.tom > features.kick * 1.25 && tomGate > 0.55) {
+        features.kick *= 0.5 + kickDominance * 0.12;
+      }
+
       if (features.snare > features.kick * 0.92 && snareDominance > kickDominance) {
         features.kick *= 0.42 + kickDominance * 0.36;
-      } else if (features.kick > features.snare * 0.82 && kickDominance > snareDominance) {
+      } else if (features.kick > features.snare * 0.82 && kickDominance > snareDominance && snareDominance < 0.42) {
         features.snare *= 0.54 + snareDominance * 0.24;
       }
 
@@ -1547,7 +1564,11 @@
         const novelty = Math.max(0, value - env) + rise * 0.8 + relativeNovelty * 0.045;
         const localThreshold = threshold * 0.34 * profile.threshold;
         const hit = clamp((novelty * sensitivity * profile.sensitivity - localThreshold) * profile.gain, 0, 1);
-        patternState.hits[key] = Math.max(patternState.hits[key] * profile.hold, hit);
+        const strongestOther = Math.max(...Object.entries(features)
+          .filter(([other]) => other !== key && other !== "global")
+          .map(([, otherValue]) => clamp(otherValue, 0, 1)));
+        const dominantHold = value >= strongestOther * 0.85 ? profile.hold : Math.min(profile.hold, 0.46);
+        patternState.hits[key] = Math.max(patternState.hits[key] * dominantHold, hit);
         patternState.envelope[key] = lerp(env, value, value > env ? profile.envAttack : profile.envRelease);
         patternState.previous[key] = value;
         if (hit > threshold * profile.threshold && now - patternState.lastHit[key] > minSeparation) {
@@ -2865,6 +2886,69 @@
       }
     }
 
+    function drawStereoRadialField(cx, cy, r, compact) {
+      const balance = clamp((smoothed.right - smoothed.left) / Math.max(0.02, smoothed.left + smoothed.right), -1, 1);
+      const baseAngle = -Math.PI / 2 + balance * 1.18;
+      const globalWidth = clamp(smoothed.side * 0.9 + (1 - clamp(meterState.correlation, -1, 1)) * 0.22, 0, 1);
+      const bandSpecs = [
+        { value: smoothed.low, corr: meterState.lowCorrelation, color: [255, 58, 24], angle: -0.22 },
+        { value: smoothed.mid, corr: meterState.midCorrelation, color: [188, 48, 236], angle: 0 },
+        { value: smoothed.high, corr: meterState.highCorrelation, color: [97, 242, 138], angle: 0.22 }
+      ];
+
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      for (const spec of bandSpecs) {
+        const corrWidth = Math.sqrt(clamp(1 - (spec.corr + 1) * 0.5, 0, 1));
+        const width = clamp(corrWidth * 0.72 + globalWidth * 0.42, 0, 1);
+        const level = clamp(Math.pow(spec.value, 0.68) + smoothed.peak * 0.08, 0, 1);
+        const outer = r * (0.34 + width * 0.72 + level * 0.06);
+        const inner = r * (0.18 + level * 0.08);
+        const span = 0.16 + width * (compact ? 0.72 : 0.88);
+        const angle = baseAngle + spec.angle + Math.sin(t * 0.025 + spec.angle * 7) * 0.035 * level;
+        const [red, green, blue] = spec.color;
+        const alpha = clamp(0.08 + level * 0.34 + width * 0.08, 0.06, 0.48);
+        const grad = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
+        grad.addColorStop(0, `rgba(${red},${green},${blue},0)`);
+        grad.addColorStop(0.48, `rgba(${red},${green},${blue},${alpha * 0.58})`);
+        grad.addColorStop(1, `rgba(${red},${green},${blue},${alpha})`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, outer, angle - span, angle + span);
+        ctx.arc(cx, cy, inner, angle + span * 0.58, angle - span * 0.58, true);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      const corr = clamp(meterState.correlation, -1, 1);
+      const corrPositive = clamp((corr + 1) * 0.5, 0, 1);
+      const ringR = r * (0.92 + globalWidth * 0.08);
+      const ringSpan = 0.28 + corrPositive * Math.PI * 0.94;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = `rgba(245,245,245,${0.16 + corrPositive * 0.42})`;
+      ctx.lineWidth = compact ? 1.2 : 1.4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringR, -Math.PI / 2 - ringSpan, -Math.PI / 2 + ringSpan);
+      ctx.stroke();
+      if (corr < 0) {
+        ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = `rgba(255,58,24,${clamp(-corr * 0.45, 0, 0.45)})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringR * 0.96, Math.PI * 0.15, Math.PI * 0.85);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      const needleLen = r * (0.36 + globalWidth * 0.44 + smoothed.rms * 0.08);
+      ctx.strokeStyle = `rgba(245,245,245,${0.12 + smoothed.rms * 0.18})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(baseAngle) * needleLen, cy + Math.sin(baseAngle) * needleLen);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function drawStereoPanel(x, y, w, h) {
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
@@ -2883,17 +2967,28 @@
       ctx.lineTo(cx, cy + r);
       ctx.stroke();
 
+      drawStereoRadialField(cx, cy, r, compact);
+
       if (leftAnalyser && rightAnalyser) {
         leftAnalyser.getByteTimeDomainData(leftTime);
         rightAnalyser.getByteTimeDomainData(rightTime);
       }
       ctx.fillStyle = "rgba(245,245,245,0.65)";
       const step = Math.max(1, Math.floor(leftTime.length / 420));
+      const midGain = compact ? 2.35 : 2.75;
+      const sideGain = compact ? 2.15 : 2.45;
       for (let i = 0; i < leftTime.length; i += step) {
         const l = (leftTime[i] - 128) / 128;
         const rr = (rightTime[i] - 128) / 128;
-        const sx = cx + (l - rr) * r * 0.72;
-        const sy = cy - (l + rr) * r * 0.5;
+        let dx = Math.tanh((l - rr) * 0.5 * sideGain);
+        let dy = Math.tanh((l + rr) * 0.5 * midGain);
+        const mag = Math.hypot(dx, dy);
+        if (mag > 1) {
+          dx /= mag;
+          dy /= mag;
+        }
+        const sx = cx + dx * r;
+        const sy = cy - dy * r;
         ctx.fillRect(sx, sy, 1.6, 1.6);
       }
 
@@ -3503,7 +3598,7 @@
           module.renderer(layout.left, y, layout.fullWidth, getModuleHeight(module));
           y += getModuleAdvance(module);
         } else {
-          y += layout.collapsedAdvance;
+          y += getModuleAdvance(module);
         }
       };
       const drawStackedModule = (module) => {
@@ -3512,7 +3607,7 @@
           module.renderer(layout.left, y, layout.fullWidth, getModuleHeight(module));
           y += getModuleAdvance(module, true);
         } else {
-          y += layout.stackedCollapsedAdvance;
+          y += getModuleAdvance(module, true);
         }
       };
 

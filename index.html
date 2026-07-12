@@ -334,11 +334,14 @@
       line-height: 1.2;
       border: 1px solid #343434;
       background: #070707;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .header-select .select-display {
       position: absolute;
-      inset: 0 24px 0 8px;
+      inset: 0 30px 0 10px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -393,8 +396,8 @@
     .panel [data-module="readout"] summary {
       position: relative;
       justify-content: center;
-      padding-left: 10px;
-      padding-right: 34px;
+      padding-left: 12px;
+      padding-right: 36px;
     }
 
     .panel [data-module="readout"] .module-title {
@@ -556,7 +559,7 @@
       }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 760px) {
       :root {
         --page-pad: 12px;
         --gap: 10px;
@@ -1032,7 +1035,7 @@
       dualMetersAdvance: 238,
       compactMeterAdvance: 186,
       pattern: { height: 430, advance: 466 },
-      compactBreakpoint: 560
+      compactBreakpoint: 640
     };
     let activeStageHeight = H;
     const lowW = 240;
@@ -3477,7 +3480,6 @@
     }
 
     function drawSpectrumPanel(x, y, w, h) {
-      drawMeterText("Spectrum", x, y - 10, 15);
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
@@ -3613,7 +3615,6 @@
     }
 
     function drawStereoPanel(x, y, w, h) {
-      drawMeterText("Stereometer", x, y - 10, 15);
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
@@ -3771,7 +3772,6 @@
     }
 
     function drawOscilloscopePanel(x, y, w, h) {
-      drawMeterText("Oscilloscope", x, y - 10, 15);
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
@@ -4070,7 +4070,6 @@
     }
 
     function drawPatternPanel(x, y, w, h) {
-      drawMeterText("Pattern Detector", x, y - 10, 15);
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
@@ -4151,7 +4150,6 @@
     }
 
     function drawLoudnessPanel(x, y, w, h) {
-      drawMeterText("Loudness", x, y - 10, 15);
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";

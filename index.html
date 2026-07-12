@@ -30,17 +30,182 @@
     }
 
     main {
-      width: min(100vw, 1060px);
+      width: min(100vw, 760px);
       padding: 24px;
       display: grid;
-      grid-template-columns: minmax(320px, 700px) minmax(260px, 1fr);
-      gap: 20px;
+      grid-template-columns: 1fr;
+      gap: 14px;
       align-items: start;
+      justify-items: center;
+    }
+
+    .graph-controls {
+      width: min(700px, calc(100vw - 48px));
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .control-group {
+      background: #080808;
+      border: 1px solid var(--line);
+    }
+
+    .control-group summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      color: var(--fg);
+      font-size: 13px;
+      font-weight: 500;
+      list-style: none;
+    }
+
+    .control-group summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .control-body {
+      padding: 0 12px 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .module-title {
+      display: inline-block;
+      min-width: 92px;
+    }
+
+    .param-icon {
+      color: var(--muted);
+      font-size: 11px;
+      padding-inline: 6px;
+    }
+
+    .graph-toggle {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--fg);
+      padding: 0 0 0 4px;
+      font-size: 13px;
+      line-height: 1;
+      min-width: 14px;
+      cursor: pointer;
+    }
+
+    .stage .graph-controls {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      display: block;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .stage .control-group {
+      position: absolute;
+      left: 28px;
+      background: transparent;
+      border: 0;
+      pointer-events: auto;
+    }
+
+    .stage .control-group summary {
+      width: max-content;
+      min-width: 118px;
+      padding: 2px 8px;
+      background: #000;
+      border: 1px solid #202020;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .stage .control-group summary::after {
+      padding-left: 12px;
+    }
+
+    .stage .control-body {
+      width: min(320px, 100%);
+      margin-top: 6px;
+      padding: 10px;
+      background: rgba(5, 5, 5, 0.96);
+      border: 1px solid #242424;
+      gap: 10px;
+    }
+
+    .floating-inspector {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      width: min(340px, calc(100vw - 48px));
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 12px;
+      display: none;
+      gap: 12px;
+      background: rgba(5, 5, 5, 0.98);
+      border: 1px solid #2b2b2b;
+      box-shadow: 0 14px 44px rgba(0, 0, 0, 0.64);
+      z-index: 20;
+    }
+
+    .inspector-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(0, 0, 0, 0.66666);
+      z-index: 19;
+    }
+
+    .inspector-backdrop.is-open {
+      display: block;
+    }
+
+    .floating-inspector.is-open {
+      display: grid;
+    }
+
+    .floating-inspector header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: sticky;
+      top: -12px;
+      margin: -12px -12px 0;
+      padding: 10px 12px;
+      background: rgba(5, 5, 5, 0.98);
+      border-bottom: 1px solid #1f1f1f;
+      z-index: 1;
+    }
+
+    .floating-inspector h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .floating-inspector button {
+      width: 28px;
+      min-height: 28px;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .floating-inspector .control-body {
+      padding: 0;
+      gap: 12px;
+    }
+
+    .hidden-control-mount {
+      display: none;
     }
 
     .stage {
       width: min(700px, calc(100vw - 48px));
-      aspect-ratio: 700 / 820;
+      aspect-ratio: 700 / 1320;
       background: #000;
       position: relative;
       overflow: hidden;
@@ -86,11 +251,161 @@
     }
 
     .panel {
+      width: min(700px, calc(100vw - 48px));
       background: var(--panel);
       border: 1px solid var(--line);
-      padding: 16px;
+      padding: 8px;
       display: grid;
-      gap: 14px;
+      grid-template-columns: 1fr 3fr;
+      gap: 8px;
+      align-items: center;
+      order: -1;
+    }
+
+    .panel h1 {
+      min-width: 0;
+      font-size: 19px;
+      line-height: 1.2;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 38px;
+      border: 1px solid #242424;
+      background: #060606;
+    }
+
+    .panel .row {
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 6px;
+      display: contents;
+    }
+
+    .header-controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+      align-items: stretch;
+    }
+
+    .header-select {
+      display: flex;
+      align-items: center;
+      position: relative;
+      min-height: 38px;
+      border: 1px solid #343434;
+      background: #070707;
+    }
+
+    .header-select::after {
+      content: "";
+      position: absolute;
+      right: 11px;
+      top: 50%;
+      width: 7px;
+      height: 7px;
+      border-right: 1.5px solid var(--fg);
+      border-bottom: 1.5px solid var(--fg);
+      transform: translateY(-68%) rotate(45deg);
+      pointer-events: none;
+    }
+
+    .panel button,
+    .panel select,
+    .panel .control-group summary {
+      width: 100%;
+      min-height: 38px;
+      padding: 8px 10px;
+      color: var(--fg);
+      font: inherit;
+      font-size: 13px;
+      line-height: 1.2;
+      border: 1px solid #343434;
+      background: #070707;
+    }
+
+    .header-select .select-display {
+      position: absolute;
+      inset: 0 24px 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fg);
+      font-size: 13px;
+      line-height: 1.2;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .panel .header-select select {
+      appearance: none;
+      -webkit-appearance: none;
+      position: absolute;
+      inset: 0;
+      min-height: 0;
+      padding: 0;
+      color: var(--fg);
+      background: transparent;
+      border: 0;
+      opacity: 0.01;
+      cursor: pointer;
+    }
+
+    .panel .header-select select option {
+      color: #101010;
+      background: #f5f5f5;
+    }
+
+    .header-select:focus-within {
+      border-color: var(--fg);
+    }
+
+    .panel label {
+      min-width: 220px;
+      flex: 1;
+    }
+
+    .panel .control-group {
+      position: relative;
+      min-width: 0;
+      background: transparent;
+      border: 0;
+    }
+
+    .panel .control-group summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel [data-module="readout"] summary {
+      position: relative;
+      justify-content: center;
+      padding-left: 10px;
+      padding-right: 34px;
+    }
+
+    .panel [data-module="readout"] .module-title {
+      min-width: 0;
+      text-align: center;
+    }
+
+    .panel [data-module="readout"] .param-icon {
+      position: absolute;
+      right: 10px;
+      padding: 0;
+    }
+
+    .panel .control-group .control-body {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      width: 260px;
+      padding: 10px;
+      background: rgba(5, 5, 5, 0.98);
+      border: 1px solid #242424;
+      z-index: 5;
     }
 
     body.metering-prototype label:has(#styleSelect),
@@ -120,6 +435,14 @@
       color: var(--muted);
       font-size: 13px;
       line-height: 1.45;
+    }
+
+    .section-title {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-top: 4px;
     }
 
     button,
@@ -221,8 +544,8 @@
         grid-template-columns: 1fr;
       }
 
-      .stage {
-        margin-inline: auto;
+      .graph-controls {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -230,28 +553,78 @@
 <body class="metering-prototype">
   <main>
     <section class="stage" aria-label="Metering prototype">
-      <canvas id="blobCanvas" width="700" height="820"></canvas>
+      <canvas id="blobCanvas" width="700" height="1320"></canvas>
       <div class="hud">
         <span id="status" aria-live="polite"></span>
         <span id="modeLabel">METERING V1b</span>
       </div>
     </section>
 
+    <section class="graph-controls" aria-label="Graph parameters">
+      <details class="control-group" data-module="spectrum">
+        <summary><span class="module-title">Spectrum</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Spectrum graph">-</button></summary>
+        <div id="spectrumControlsMount" class="control-body"></div>
+      </details>
+      <details class="control-group" data-module="oscilloscope">
+        <summary><span class="module-title">Oscilloscope</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Oscilloscope graph">-</button></summary>
+        <div id="oscilloscopeControlsMount" class="control-body"></div>
+      </details>
+      <details class="control-group" data-module="waveformShort">
+        <summary><span class="module-title">Waveform Short</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Short graph">-</button></summary>
+        <div id="waveformShortControlsMount" class="control-body"></div>
+      </details>
+      <details class="control-group" data-module="waveformMedium">
+        <summary><span class="module-title">Waveform Medium</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Medium graph">-</button></summary>
+        <div id="waveformMediumControlsMount" class="control-body"></div>
+      </details>
+      <details class="control-group" data-module="waveformLong">
+        <summary><span class="module-title">Waveform Long</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Long graph">-</button></summary>
+        <div id="waveformLongControlsMount" class="control-body"></div>
+      </details>
+      <details class="control-group no-params" data-module="stereo">
+        <summary><span class="module-title">Stereometer</span><button class="graph-toggle" type="button" aria-label="Toggle Stereometer graph">-</button></summary>
+      </details>
+      <details class="control-group no-params" data-module="loudness">
+        <summary><span class="module-title">Loudness</span><button class="graph-toggle" type="button" aria-label="Toggle Loudness graph">-</button></summary>
+      </details>
+      <details class="control-group algorithm-local" data-module="pattern">
+        <summary><span class="module-title">Pattern Detector</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Pattern Detector graph">-</button></summary>
+        <div id="patternControlsMount" class="control-body"></div>
+      </details>
+    </section>
+
+    <div id="inspectorBackdrop" class="inspector-backdrop" aria-hidden="true"></div>
+    <aside id="floatingInspector" class="floating-inspector" aria-label="Floating parameters" aria-hidden="true">
+      <header>
+        <h2 id="floatingInspectorTitle">Parameters</h2>
+        <button id="floatingInspectorClose" type="button" aria-label="Close parameters">×</button>
+      </header>
+      <div id="floatingInspectorBody" class="control-body"></div>
+    </aside>
+    <div id="displayRenderControlsMount" class="control-body hidden-control-mount"></div>
+
     <aside class="panel">
-      <h1>Global Parameters</h1>
+      <h1>MET-TR</h1>
 
-      <div class="row">
-        <button id="systemAudioButton" class="input-source is-active" type="button" aria-pressed="true">System audio</button>
-        <button id="micButton" class="input-source" type="button" aria-pressed="false">Microphone</button>
+      <div class="header-controls">
+        <div class="row">
+          <button id="systemAudioButton" class="input-source is-active" type="button" aria-pressed="true">System audio</button>
+          <button id="micButton" class="input-source" type="button" aria-pressed="false">Microphone</button>
+        </div>
+
+        <div class="header-select">
+          <select id="algorithmSelect" aria-label="Algorithm">
+            <option value="base">METERING BASE</option>
+            <option value="nmstr" selected>METERING V1b</option>
+          </select>
+          <span id="algorithmSelectLabel" class="select-display" aria-hidden="true">METERING V1b</span>
+        </div>
+
+        <details class="control-group" data-module="readout">
+          <summary><span class="module-title">Readout</span><span class="param-icon" aria-hidden="true">⚙</span></summary>
+          <div id="readoutControlsMount" class="control-body"></div>
+        </details>
       </div>
-
-      <label>
-        Algorithm
-        <select id="algorithmSelect">
-          <option value="base">METERING BASE V1 MIN</option>
-          <option value="nmstr" selected>METERING V1b</option>
-        </select>
-      </label>
 
       <label>
         Visual mode
@@ -337,8 +710,8 @@
         </select>
       </label>
 
-      <section class="algorithm-local" aria-label="NMSTR local parameters">
-        <h1>NMSTR Pattern Detector</h1>
+      <section class="algorithm-local" aria-label="Pattern detector parameters">
+        <h1>Pattern Detector</h1>
 
         <label>
           Detection Sensitivity <span id="patternSensitivityValue">1.00</span>
@@ -366,6 +739,68 @@
             <option value="0.08" selected>Normal</option>
             <option value="0.12">Strict</option>
           </select>
+        </label>
+
+        <p class="section-title">Output Options</p>
+
+        <label>
+          General Flash Amount <span id="generalFlashAmountValue">1.00</span>
+          <input id="generalFlashAmount" type="range" min="0" max="4" step="0.01" value="1">
+        </label>
+
+        <label>
+          General Flash Smooth <span id="generalFlashSmoothValue">0.01s</span>
+          <input id="generalFlashSmooth" type="range" min="0.005" max="0.5" step="0.005" value="0.01">
+        </label>
+
+        <label>
+          Kick Flash Amount <span id="kickFlashAmountValue">1.00</span>
+          <input id="kickFlashAmount" type="range" min="0" max="4" step="0.01" value="1">
+        </label>
+
+        <label>
+          Kick Flash Smooth <span id="kickFlashSmoothValue">0.01s</span>
+          <input id="kickFlashSmooth" type="range" min="0.005" max="0.5" step="0.005" value="0.01">
+        </label>
+
+        <label>
+          Snare Flash Amount <span id="snareFlashAmountValue">1.00</span>
+          <input id="snareFlashAmount" type="range" min="0" max="4" step="0.01" value="1">
+        </label>
+
+        <label>
+          Snare Flash Smooth <span id="snareFlashSmoothValue">0.01s</span>
+          <input id="snareFlashSmooth" type="range" min="0.005" max="0.5" step="0.005" value="0.01">
+        </label>
+
+        <label>
+          Tom Flash Amount <span id="tomFlashAmountValue">1.00</span>
+          <input id="tomFlashAmount" type="range" min="0" max="4" step="0.01" value="1">
+        </label>
+
+        <label>
+          Tom Flash Smooth <span id="tomFlashSmoothValue">0.01s</span>
+          <input id="tomFlashSmooth" type="range" min="0.005" max="0.5" step="0.005" value="0.01">
+        </label>
+
+        <label>
+          Hat Flash Amount <span id="hatFlashAmountValue">1.00</span>
+          <input id="hatFlashAmount" type="range" min="0" max="4" step="0.01" value="1">
+        </label>
+
+        <label>
+          Hat Flash Smooth <span id="hatFlashSmoothValue">0.01s</span>
+          <input id="hatFlashSmooth" type="range" min="0.005" max="0.5" step="0.005" value="0.01">
+        </label>
+
+        <label>
+          Cymbal Flash Amount <span id="cymbalFlashAmountValue">1.00</span>
+          <input id="cymbalFlashAmount" type="range" min="0" max="4" step="0.01" value="1">
+        </label>
+
+        <label>
+          Cymbal Flash Smooth <span id="cymbalFlashSmoothValue">0.01s</span>
+          <input id="cymbalFlashSmooth" type="range" min="0.005" max="0.5" step="0.005" value="0.01">
         </label>
       </section>
 
@@ -411,6 +846,8 @@
         <span>Harmonic density</span><b id="densityText">0.00</b>
         <span>Bass hit</span><b id="hitText">0.00</b>
         <span>Image map</span><b id="imageMapText">Off</b>
+        <span>Frame cost</span><b id="frameCostText">0.0ms</b>
+        <span>Memory</span><b id="memoryText">n/a</b>
       </div>
     </aside>
   </main>
@@ -430,10 +867,13 @@
     const densityText = document.getElementById("densityText");
     const hitText = document.getElementById("hitText");
     const imageMapText = document.getElementById("imageMapText");
+    const frameCostText = document.getElementById("frameCostText");
+    const memoryText = document.getElementById("memoryText");
     const systemAudioButton = document.getElementById("systemAudioButton");
     const micButton = document.getElementById("micButton");
     const styleSelect = document.getElementById("styleSelect");
     const algorithmSelect = document.getElementById("algorithmSelect");
+    const algorithmSelectLabel = document.getElementById("algorithmSelectLabel");
     const spectrumFftSelect = document.getElementById("spectrumFftSelect");
     const spectrumBarsSelect = document.getElementById("spectrumBarsSelect");
     const scopeFollowSelect = document.getElementById("scopeFollowSelect");
@@ -442,12 +882,50 @@
     const waveformPeakSelect = document.getElementById("waveformPeakSelect");
     const waveformSpeedSelect = document.getElementById("waveformSpeedSelect");
     const waveformLoopSelect = document.getElementById("waveformLoopSelect");
+    const graphControls = document.querySelector(".graph-controls");
+    const spectrumControlsMount = document.getElementById("spectrumControlsMount");
+    const oscilloscopeControlsMount = document.getElementById("oscilloscopeControlsMount");
+    const waveformShortControlsMount = document.getElementById("waveformShortControlsMount");
+    const waveformMediumControlsMount = document.getElementById("waveformMediumControlsMount");
+    const waveformLongControlsMount = document.getElementById("waveformLongControlsMount");
+    const patternControlsMount = document.getElementById("patternControlsMount");
+    const readoutControlsMount = document.getElementById("readoutControlsMount");
+    const displayRenderControlsMount = document.getElementById("displayRenderControlsMount");
+    const inspectorBackdrop = document.getElementById("inspectorBackdrop");
+    const floatingInspector = document.getElementById("floatingInspector");
+    const floatingInspectorTitle = document.getElementById("floatingInspectorTitle");
+    const floatingInspectorBody = document.getElementById("floatingInspectorBody");
+    const floatingInspectorClose = document.getElementById("floatingInspectorClose");
     const patternSensitivity = document.getElementById("patternSensitivity");
     const patternThreshold = document.getElementById("patternThreshold");
     const patternWindowSelect = document.getElementById("patternWindowSelect");
     const patternSeparationSelect = document.getElementById("patternSeparationSelect");
     const patternSensitivityValue = document.getElementById("patternSensitivityValue");
     const patternThresholdValue = document.getElementById("patternThresholdValue");
+    const generalFlashAmount = document.getElementById("generalFlashAmount");
+    const generalFlashSmooth = document.getElementById("generalFlashSmooth");
+    const generalFlashAmountValue = document.getElementById("generalFlashAmountValue");
+    const generalFlashSmoothValue = document.getElementById("generalFlashSmoothValue");
+    const kickFlashAmount = document.getElementById("kickFlashAmount");
+    const kickFlashSmooth = document.getElementById("kickFlashSmooth");
+    const kickFlashAmountValue = document.getElementById("kickFlashAmountValue");
+    const kickFlashSmoothValue = document.getElementById("kickFlashSmoothValue");
+    const snareFlashAmount = document.getElementById("snareFlashAmount");
+    const snareFlashSmooth = document.getElementById("snareFlashSmooth");
+    const snareFlashAmountValue = document.getElementById("snareFlashAmountValue");
+    const snareFlashSmoothValue = document.getElementById("snareFlashSmoothValue");
+    const tomFlashAmount = document.getElementById("tomFlashAmount");
+    const tomFlashSmooth = document.getElementById("tomFlashSmooth");
+    const tomFlashAmountValue = document.getElementById("tomFlashAmountValue");
+    const tomFlashSmoothValue = document.getElementById("tomFlashSmoothValue");
+    const hatFlashAmount = document.getElementById("hatFlashAmount");
+    const hatFlashSmooth = document.getElementById("hatFlashSmooth");
+    const hatFlashAmountValue = document.getElementById("hatFlashAmountValue");
+    const hatFlashSmoothValue = document.getElementById("hatFlashSmoothValue");
+    const cymbalFlashAmount = document.getElementById("cymbalFlashAmount");
+    const cymbalFlashSmooth = document.getElementById("cymbalFlashSmooth");
+    const cymbalFlashAmountValue = document.getElementById("cymbalFlashAmountValue");
+    const cymbalFlashSmoothValue = document.getElementById("cymbalFlashSmoothValue");
     const sensitivity = document.getElementById("sensitivity");
     const glitch = document.getElementById("glitch");
     const pixel = document.getElementById("pixel");
@@ -459,7 +937,8 @@
     const imageInfluenceValue = document.getElementById("imageInfluenceValue");
 
     const W = 700;
-    const H = 820;
+    const H = 1320;
+    let activeStageHeight = H;
     const lowW = 240;
     const lowH = 240;
     const lowCanvas = document.createElement("canvas");
@@ -500,6 +979,7 @@
     let inputSource = "system";
     let metrics = { rms: 0, low: 0, mid: 0, high: 0, side: 0, peak: 0, density: 0, centroid: 0, bassHit: 0, midHit: 0, flux: 0, left: 0, right: 0 };
     let smoothed = { rms: 0, low: 0, mid: 0, high: 0, side: 0, peak: 0, density: 0, centroid: 0, bassHit: 0, midHit: 0, flux: 0, left: 0, right: 0 };
+    let frameCostMs = 0;
     const meterState = {
       spectrum: [],
       spectrumDelta: [],
@@ -528,7 +1008,13 @@
       bpm: 0,
       confidence: 0,
       onsetRate: 0,
-      stability: 0
+      stability: 0,
+      generalFlash: 0,
+      kickFlash: 0,
+      tomFlash: 0,
+      snareFlash: 0,
+      hatFlash: 0,
+      cymbalFlash: 0
     };
     const scopeState = {
       visible: 480,
@@ -551,7 +1037,7 @@
       { draw: drawWaveformPanel, args: [28, 424, 644, 52] },
       { draw: drawStereoPanel, args: [28, 508, 314, 130] },
       { draw: drawLoudnessPanel, args: [358, 508, 314, 130] },
-      { draw: drawPatternPanel, args: [28, 684, 644, 100] }
+      { draw: drawPatternPanel, args: [28, 684, 644, 190] }
     ];
     const meteringBaseControls = [
       "input",
@@ -567,7 +1053,7 @@
     ];
     const meteringAlgorithms = {
       base: {
-        id: "METERING BASE V1 MIN",
+        id: "METERING BASE",
         label: "Base reference",
         layout: meteringBaseLayout,
         controls: meteringBaseControls
@@ -579,6 +1065,20 @@
         controls: nmstrMeteringControls
       }
     };
+    const graphOpenState = {
+      spectrum: true,
+      oscilloscope: true,
+      waveformShort: true,
+      waveformMedium: true,
+      waveformLong: true,
+      stereo: true,
+      loudness: true,
+      pattern: true,
+      patternDisplayRender: true
+    };
+    let patternDisplayToggleRect = null;
+    let patternDisplayGearRect = null;
+    let activeInspectorMount = null;
     let cameraTilt = { x: 0, y: 0, twist: 0 };
     const planePhysics = [
       { z: 0, vz: 0, x: 0, y: 0, vx: 0, vy: 0, phase: 0.2 },
@@ -616,6 +1116,178 @@
       return meteringAlgorithms[algorithmSelect.value] || meteringAlgorithms.nmstr;
     }
 
+    function moveControlById(id, mount) {
+      const control = document.getElementById(id);
+      const wrapper = control ? control.closest("label") : null;
+      if (wrapper && mount) mount.appendChild(wrapper);
+    }
+
+    function openFloatingInspector(title, mount, anchorRect = null) {
+      if (!floatingInspector || !floatingInspectorBody || !mount) return;
+      if (activeInspectorMount && activeInspectorMount !== mount) {
+        while (floatingInspectorBody.firstElementChild) {
+          activeInspectorMount.appendChild(floatingInspectorBody.firstElementChild);
+        }
+      }
+      activeInspectorMount = mount;
+      floatingInspectorTitle.textContent = title;
+      while (mount.firstElementChild) {
+        floatingInspectorBody.appendChild(mount.firstElementChild);
+      }
+      floatingInspector.classList.add("is-open");
+      inspectorBackdrop?.classList.add("is-open");
+      floatingInspector.setAttribute("aria-hidden", "false");
+      const margin = 24;
+      const viewport = window.visualViewport || { width: window.innerWidth, height: window.innerHeight, offsetLeft: 0, offsetTop: 0 };
+      const viewportLeft = viewport.offsetLeft || 0;
+      const viewportTop = viewport.offsetTop || 0;
+      const viewportWidth = viewport.width || window.innerWidth;
+      const viewportHeight = viewport.height || window.innerHeight;
+      const width = Math.min(340, viewportWidth - margin * 2);
+      const maxHeight = Math.max(220, viewportHeight - margin * 2);
+      floatingInspector.style.width = `${width}px`;
+      floatingInspector.style.maxHeight = `${maxHeight}px`;
+      floatingInspector.style.left = `${viewportLeft + (viewportWidth - width) * 0.5}px`;
+      floatingInspector.style.right = "auto";
+      floatingInspector.style.top = `${viewportTop + margin}px`;
+
+      const inspectorRect = floatingInspector.getBoundingClientRect();
+      const panelHeight = Math.min(inspectorRect.height, maxHeight);
+      const stableTop = viewportTop + Math.max(margin, (viewportHeight - panelHeight) * 0.35);
+      floatingInspector.style.top = `${clamp(stableTop, viewportTop + margin, viewportTop + viewportHeight - panelHeight - margin)}px`;
+    }
+
+    function closeFloatingInspector() {
+      if (!floatingInspector || !floatingInspectorBody || !activeInspectorMount) return;
+      while (floatingInspectorBody.firstElementChild) {
+        activeInspectorMount.appendChild(floatingInspectorBody.firstElementChild);
+      }
+      floatingInspector.classList.remove("is-open");
+      inspectorBackdrop?.classList.remove("is-open");
+      floatingInspector.setAttribute("aria-hidden", "true");
+      activeInspectorMount = null;
+    }
+
+    function organizeGraphControls() {
+      if (graphControls && graphControls.parentElement !== stageEl) {
+        stageEl.appendChild(graphControls);
+      }
+      graphControls?.querySelectorAll(".control-group").forEach((group) => {
+        group.querySelector("summary")?.addEventListener("click", (event) => {
+          const clickedToggle = event.target.closest(".graph-toggle");
+          if (clickedToggle) return;
+          event.preventDefault();
+          if (!event.target.closest(".param-icon")) return;
+          const mount = group.querySelector(".control-body");
+          if (!mount) return;
+          const title = group.querySelector(".module-title")?.textContent?.trim() || "Parameters";
+          openFloatingInspector(title, mount, group.getBoundingClientRect());
+        });
+        if (group.classList.contains("no-params")) {
+          group.querySelector("summary")?.addEventListener("click", (event) => {
+            event.preventDefault();
+          });
+        }
+        group.addEventListener("toggle", () => {
+          if (!group.open) return;
+          graphControls.querySelectorAll(".control-group").forEach((other) => {
+            if (other !== group) other.open = false;
+          });
+        });
+        const toggle = group.querySelector(".graph-toggle");
+        toggle?.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const key = group.dataset.module;
+          graphOpenState[key] = !graphOpenState[key];
+          toggle.textContent = graphOpenState[key] ? "-" : "+";
+          toggle.setAttribute("aria-pressed", graphOpenState[key] ? "true" : "false");
+        });
+      });
+      moveControlById("spectrumFftSelect", spectrumControlsMount);
+      moveControlById("spectrumBarsSelect", spectrumControlsMount);
+      moveControlById("scopeFollowSelect", oscilloscopeControlsMount);
+      moveControlById("waveformChannelSelect", waveformShortControlsMount);
+      moveControlById("waveformColorSelect", waveformShortControlsMount);
+      moveControlById("waveformPeakSelect", waveformMediumControlsMount);
+      moveControlById("waveformSpeedSelect", waveformMediumControlsMount);
+      moveControlById("waveformLoopSelect", waveformLongControlsMount);
+
+      const patternSection = document.querySelector("aside .algorithm-local");
+      if (patternSection && patternControlsMount) {
+        const heading = patternSection.querySelector("h1");
+        if (heading) heading.remove();
+        while (patternSection.firstElementChild) {
+          patternControlsMount.appendChild(patternSection.firstElementChild);
+        }
+        patternSection.remove();
+      }
+      ["general", "kick", "snare", "tom", "hat", "cymbal"].forEach((name) => {
+        moveControlById(`${name}FlashAmount`, displayRenderControlsMount);
+        moveControlById(`${name}FlashSmooth`, displayRenderControlsMount);
+      });
+      const outputTitle = Array.from(patternControlsMount?.querySelectorAll(".section-title") || [])
+        .find((title) => title.textContent.trim().toLowerCase() === "output options");
+      if (outputTitle && displayRenderControlsMount) {
+        outputTitle.textContent = "Flash Output";
+        displayRenderControlsMount.prepend(outputTitle);
+      }
+
+      const meterWrapper = rmsMeter.closest(".meter")?.parentElement;
+      const readout = document.querySelector("aside .readout");
+      if (meterWrapper && readoutControlsMount) readoutControlsMount.appendChild(meterWrapper);
+      if (readout && readoutControlsMount) readoutControlsMount.appendChild(readout);
+    }
+
+    function moduleIsOpen(key) {
+      const group = graphControls?.querySelector(`[data-module="${key}"]`);
+      return Boolean(group?.open);
+    }
+
+    function moduleControlHeight(key) {
+      if (key === "pattern" && getCurrentAlgorithm() !== meteringAlgorithms.nmstr) return 0;
+      return 0;
+    }
+
+    function positionModuleControl(key, top) {
+      const group = graphControls?.querySelector(`[data-module="${key}"]`);
+      if (!group) return;
+      group.style.top = `${Math.max(2, top)}px`;
+      if (key === "loudness") {
+        group.style.left = "358px";
+        group.style.width = "314px";
+      } else if (key === "stereo") {
+        group.style.left = "28px";
+        group.style.width = "314px";
+      } else {
+        group.style.left = "28px";
+        group.style.width = "644px";
+      }
+    }
+
+    function calculateMeteringHeight() {
+      const algorithm = getCurrentAlgorithm();
+      let y = 48;
+      y += graphOpenState.spectrum ? 150 : 22;
+      y += graphOpenState.oscilloscope ? 100 : 22;
+      y += 26 + (graphOpenState.waveformShort ? 82 : 10);
+      y += 26 + (graphOpenState.waveformMedium ? 86 : 10);
+      y += 26 + (graphOpenState.waveformLong ? 102 : 10);
+      y += graphOpenState.stereo || graphOpenState.loudness ? 238 : 28;
+      if (algorithm === meteringAlgorithms.nmstr) {
+        y += graphOpenState.pattern ? 466 : 22;
+      }
+      return Math.max(420, Math.ceil(y + 24));
+    }
+
+    function setStageHeight(height) {
+      const nextHeight = Math.max(420, Math.ceil(height));
+      if (activeStageHeight === nextHeight && canvas.height === nextHeight) return;
+      activeStageHeight = nextHeight;
+      canvas.height = nextHeight;
+      stageEl.style.aspectRatio = `${W} / ${nextHeight}`;
+    }
+
     function setInputSource(source, message = "") {
       inputSource = source;
       const systemActive = source === "system";
@@ -629,7 +1301,41 @@
     function applyAlgorithmUi() {
       const algorithm = getCurrentAlgorithm();
       modeLabel.textContent = algorithm.id;
+      algorithmSelectLabel.textContent = algorithmSelect.options[algorithmSelect.selectedIndex]?.textContent || algorithm.id;
       document.body.dataset.algorithm = algorithmSelect.value;
+    }
+
+    function getPatternFlashColor(levels) {
+      const general = clamp(levels.general || 0, 0, 1);
+      const kick = clamp(levels.kick || 0, 0, 1);
+      const tom = clamp(levels.tom || 0, 0, 1);
+      const snare = clamp(levels.snare || 0, 0, 1);
+      const hat = clamp(levels.hat || 0, 0, 1);
+      const cymbal = clamp(levels.cymbal || 0, 0, 1);
+      const r = clamp(general * 255 + kick * 255 + tom * 255 + cymbal * 160, 0, 255);
+      const g = clamp(general * 255 + snare * 255 + tom * 130 + hat * 210, 0, 255);
+      const b = clamp(general * 255 + hat * 255 + cymbal * 255, 0, 255);
+      return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+    }
+
+    function drawPatternFlashField(x, y, w, h) {
+      const levels = {
+        general: patternState.generalFlash,
+        kick: patternState.kickFlash,
+        tom: patternState.tomFlash,
+        snare: patternState.snareFlash,
+        hat: patternState.hatFlash,
+        cymbal: patternState.cymbalFlash
+      };
+      const intensity = Math.max(...Object.values(levels));
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      ctx.strokeRect(x, y, w, h);
+      ctx.fillStyle = getPatternFlashColor(levels);
+      ctx.globalAlpha = clamp(0.16 + intensity * 0.84, 0, 1);
+      ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+      ctx.globalAlpha = 1;
     }
 
     function shapeAudio(value, drive = 1) {
@@ -1402,6 +2108,12 @@
       patternState.confidence = 0;
       patternState.onsetRate = 0;
       patternState.stability = 0;
+      patternState.generalFlash = 0;
+      patternState.kickFlash = 0;
+      patternState.tomFlash = 0;
+      patternState.snareFlash = 0;
+      patternState.hatFlash = 0;
+      patternState.cymbalFlash = 0;
     }
 
     function updatePatternDetector(hasLiveAudio) {
@@ -1410,11 +2122,36 @@
       const threshold = Number(patternThreshold.value);
       const minSeparation = Number(patternSeparationSelect.value);
       const rhythmWindow = Number(patternWindowSelect.value);
+      const generalAmount = Number(generalFlashAmount.value);
+      const generalSmooth = Number(generalFlashSmooth.value);
+      const kickAmount = Number(kickFlashAmount.value);
+      const kickSmooth = Number(kickFlashSmooth.value);
+      const snareAmount = Number(snareFlashAmount.value);
+      const snareSmooth = Number(snareFlashSmooth.value);
+      const tomAmount = Number(tomFlashAmount.value);
+      const tomSmooth = Number(tomFlashSmooth.value);
+      const hatAmount = Number(hatFlashAmount.value);
+      const hatSmooth = Number(hatFlashSmooth.value);
+      const cymbalAmount = Number(cymbalFlashAmount.value);
+      const cymbalSmooth = Number(cymbalFlashSmooth.value);
+      const generalRise = 1 - Math.exp(-1 / Math.max(1, generalSmooth * 60));
+      const kickRise = 1 - Math.exp(-1 / Math.max(1, kickSmooth * 60));
+      const snareRise = 1 - Math.exp(-1 / Math.max(1, snareSmooth * 60));
+      const tomRise = 1 - Math.exp(-1 / Math.max(1, tomSmooth * 60));
+      const hatRise = 1 - Math.exp(-1 / Math.max(1, hatSmooth * 60));
+      const cymbalRise = 1 - Math.exp(-1 / Math.max(1, cymbalSmooth * 60));
+      const flashFall = 1 - Math.exp(-1 / 7);
       if (!hasLiveAudio) {
         for (const key of Object.keys(patternState.hits)) {
           patternState.hits[key] *= 0.82;
           patternState.envelope[key] *= 0.98;
         }
+        patternState.generalFlash = lerp(patternState.generalFlash, 0, flashFall);
+        patternState.kickFlash = lerp(patternState.kickFlash, 0, flashFall);
+        patternState.tomFlash = lerp(patternState.tomFlash, 0, flashFall);
+        patternState.snareFlash = lerp(patternState.snareFlash, 0, flashFall);
+        patternState.hatFlash = lerp(patternState.hatFlash, 0, flashFall);
+        patternState.cymbalFlash = lerp(patternState.cymbalFlash, 0, flashFall);
         patternState.events = patternState.events.filter((event) => now - event.time < rhythmWindow);
         patternState.onsetRate = lerp(patternState.onsetRate, 0, 0.08);
         patternState.confidence = lerp(patternState.confidence, 0, 0.08);
@@ -1422,23 +2159,37 @@
       }
 
       const sub = bandAverageHz(freqData, 28, 70);
-      const kickBody = bandAverageHz(freqData, 45, 145);
-      const tomBody = bandAverageHz(freqData, 90, 320);
+      const kickFundamental = bandAverageHz(freqData, 32, 85);
+      const kickPunch = bandAverageHz(freqData, 70, 135);
+      const tomBody = bandAverageHz(freqData, 90, 360);
+      const snareShell = bandAverageHz(freqData, 120, 260);
       const snareBody = bandAverageHz(freqData, 170, 1800);
+      const snareCrack = bandAverageHz(freqData, 1800, 7000);
       const clapNoise = bandAverageHz(freqData, 1500, 6500);
       const hatBand = bandAverageHz(freqData, 6500, 13000);
       const cymbalAir = bandAverageHz(freqData, 5000, 18000);
       const lowMid = bandAverageHz(freqData, 250, 900);
+      const boxMid = bandAverageHz(freqData, 260, 900);
       const globalEnergy = metrics.rms * 0.4 + metrics.flux * 0.45 + metrics.peak * 0.15;
+      const kickLowMass = kickFundamental * 0.68 + kickPunch * 0.48 + sub * 0.24;
+      const snareNoiseMass = snareCrack * 0.58 + clapNoise * 0.34 + snareShell * 0.26;
+      const kickDominance = clamp((kickLowMass - snareNoiseMass * 0.42 - boxMid * 0.18 - hatBand * 0.16 + 0.05) * 2.35, 0, 1);
+      const snareDominance = clamp((snareNoiseMass + snareShell * 0.22 - kickLowMass * 0.58 + 0.03) * 1.85, 0, 1);
 
       const features = {
-        kick: kickBody * 0.72 + sub * 0.38 - clapNoise * 0.18 - hatBand * 0.16,
-        tom: tomBody * 0.72 + lowMid * 0.2 - sub * 0.16 - hatBand * 0.16,
-        snare: snareBody * 0.38 + clapNoise * 0.48 + metrics.flux * 0.16 - sub * 0.12,
-        hat: hatBand * 0.78 + metrics.flux * 0.12 - kickBody * 0.18,
-        cymbal: cymbalAir * 0.68 + metrics.high * 0.24 - kickBody * 0.12,
+        kick: (kickFundamental * 0.72 + kickPunch * 0.48 + sub * 0.28 + Math.max(0, kickLowMass - snareShell) * 0.32 - snareCrack * 0.28 - clapNoise * 0.2 - hatBand * 0.18 - boxMid * 0.12) * (0.68 + kickDominance * 0.72),
+        tom: tomBody * 0.7 + lowMid * 0.18 - kickFundamental * 0.14 - hatBand * 0.16 - snareCrack * 0.08,
+        snare: (snareShell * 0.32 + snareBody * 0.22 + snareCrack * 0.52 + clapNoise * 0.24 + metrics.flux * 0.13 - kickFundamental * 0.24 - kickPunch * 0.12) * (0.7 + snareDominance * 0.65),
+        hat: hatBand * 0.78 + metrics.flux * 0.12 - kickFundamental * 0.16 - kickPunch * 0.08,
+        cymbal: cymbalAir * 0.68 + metrics.high * 0.24 - kickFundamental * 0.1,
         global: globalEnergy
       };
+
+      if (features.snare > features.kick * 0.92 && snareDominance > kickDominance) {
+        features.kick *= 0.42 + kickDominance * 0.36;
+      } else if (features.kick > features.snare * 0.82 && kickDominance > snareDominance) {
+        features.snare *= 0.54 + snareDominance * 0.24;
+      }
 
       for (const key of Object.keys(features)) {
         const value = clamp(features[key], 0, 1);
@@ -1477,6 +2228,43 @@
       } else {
         patternState.confidence = lerp(patternState.confidence, 0, 0.06);
       }
+      const enabled = getCurrentAlgorithm() === meteringAlgorithms.nmstr;
+      const generalTarget = enabled ? clamp((metrics.peak * 0.72 + metrics.rms * 0.42) * generalAmount, 0, 1) : 0;
+      const kickTarget = enabled ? patternState.hits.kick * kickAmount : 0;
+      const tomTarget = enabled ? patternState.hits.tom * tomAmount : 0;
+      const snareTarget = enabled ? patternState.hits.snare * snareAmount : 0;
+      const hatTarget = enabled ? patternState.hits.hat * hatAmount : 0;
+      const cymbalTarget = enabled ? patternState.hits.cymbal * cymbalAmount : 0;
+      patternState.generalFlash = lerp(
+        patternState.generalFlash,
+        generalTarget,
+        generalTarget > patternState.generalFlash ? generalRise : flashFall
+      );
+      patternState.kickFlash = lerp(
+        patternState.kickFlash,
+        kickTarget,
+        kickTarget > patternState.kickFlash ? kickRise : flashFall
+      );
+      patternState.tomFlash = lerp(
+        patternState.tomFlash,
+        tomTarget,
+        tomTarget > patternState.tomFlash ? tomRise : flashFall
+      );
+      patternState.snareFlash = lerp(
+        patternState.snareFlash,
+        snareTarget,
+        snareTarget > patternState.snareFlash ? snareRise : flashFall
+      );
+      patternState.hatFlash = lerp(
+        patternState.hatFlash,
+        hatTarget,
+        hatTarget > patternState.hatFlash ? hatRise : flashFall
+      );
+      patternState.cymbalFlash = lerp(
+        patternState.cymbalFlash,
+        cymbalTarget,
+        cymbalTarget > patternState.cymbalFlash ? cymbalRise : flashFall
+      );
     }
 
     function rmsFromTime(values) {
@@ -3097,7 +3885,6 @@
     }
 
     function drawWaveformPanel(x, y, w, h) {
-      drawMeterText("Waveform", x, y - 10, 15);
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
@@ -3134,7 +3921,6 @@
     }
 
     function drawWaveformShortPanel(x, y, w, h) {
-      drawMeterText("Waveform Short", x, y - 10, 15);
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
@@ -3158,7 +3944,6 @@
     }
 
     function drawWaveformMediumPanel(x, y, w, h) {
-      drawMeterText("Waveform Medium", x, y - 10, 15);
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
@@ -3194,40 +3979,74 @@
       const rows = [
         ["Kick", "kick", "#ff3a18"],
         ["Tom", "tom", "#ff8b2a"],
-        ["Snare", "snare", "#f5f5f5"],
+        ["Snare", "snare", "#39ff14"],
         ["Hat", "hat", "#7ed6ff"],
         ["Cymbal", "cymbal", "#bc30ec"]
       ];
-      const compact = h < 52;
-      const rowH = compact ? 6 : 8;
-      const barX = x + 58;
-      const barW = w - 78;
+      const topPad = Math.max(18, h * 0.1);
+      const bottomPad = Math.max(236, h * 0.55);
+      const usableH = Math.max(58, h - topPad - bottomPad);
+      const rowGap = Math.max(4, Math.min(9, usableH * 0.055));
+      const rowH = Math.max(14, (usableH - rowGap * (rows.length - 1)) / rows.length);
+      const barH = Math.max(9, Math.min(16, rowH * 0.62));
+      const labelY = Math.max(9, Math.min(11, rowH * 0.5));
+      const barX = x + 66;
+      const barW = w - 88;
       for (let i = 0; i < rows.length; i += 1) {
         const [label, key, color] = rows[i];
-        const yy = y + (compact ? 7 : 12) + i * rowH;
-        drawMeterText(label, x + 10, yy + 5, compact ? 8 : 9, "rgba(245,245,245,0.78)");
+        const yy = y + topPad + i * (rowH + rowGap);
+        const barY = yy + (rowH - barH) * 0.5;
+        drawMeterText(label, x + 10, yy + labelY, 10, "rgba(245,245,245,0.78)");
         ctx.fillStyle = "#050505";
-        ctx.fillRect(barX, yy, barW, compact ? 4 : 5);
+        ctx.fillRect(barX, barY, barW, barH);
         ctx.strokeStyle = "rgba(255,255,255,0.12)";
-        ctx.strokeRect(barX, yy, barW, compact ? 4 : 5);
+        ctx.strokeRect(barX, barY, barW, barH);
         ctx.fillStyle = color;
-        ctx.fillRect(barX, yy + 1, barW * clamp(patternState.hits[key], 0, 1), compact ? 2 : 3);
+        ctx.fillRect(barX, barY + 2, barW * clamp(patternState.hits[key], 0, 1), Math.max(3, barH - 4));
       }
 
       const bpm = patternState.bpm ? Math.round(patternState.bpm) : "--";
       const conf = Math.round(patternState.confidence * 100);
       const rate = patternState.onsetRate.toFixed(1);
-      drawMeterText(`Rhythm ${bpm} BPM  conf ${conf}%  rate ${rate}/s`, x + 10, y + h - 5, compact ? 8 : 9, "rgba(166,166,166,0.86)");
+      drawMeterText(`Rhythm ${bpm} BPM  Conf ${conf}%  Rate ${rate}/s`, x + 10, y + h - 214, 10, "rgba(166,166,166,0.86)");
 
       const now = audioContext ? audioContext.currentTime : performance.now() / 1000;
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(x + 10, y + h - 198, w - 20, 48);
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      ctx.strokeRect(x + 10, y + h - 198, w - 20, 48);
       for (const event of patternState.events) {
         if (event.type === "global") continue;
         const age = now - event.time;
         const px = x + w - 10 - age / Math.max(0.001, Number(patternWindowSelect.value)) * (w - 20);
         if (px < x + 4 || px > x + w - 4) continue;
-        const py = y + h - (compact ? 12 : 18);
-        ctx.fillStyle = event.type === "kick" ? "#ff3a18" : event.type === "snare" ? "#f5f5f5" : event.type === "hat" ? "#7ed6ff" : event.type === "cymbal" ? "#bc30ec" : "#ff8b2a";
-        ctx.fillRect(px, py, 1.5, 6 * clamp(event.strength, 0.2, 1));
+        const py = y + h - 156;
+        ctx.fillStyle = event.type === "kick" ? "#ff3a18" : event.type === "snare" ? "#39ff14" : event.type === "hat" ? "#7ed6ff" : event.type === "cymbal" ? "#bc30ec" : "#ff8b2a";
+        ctx.fillRect(px, py - 42 * clamp(event.strength, 0.2, 1), 3, 42 * clamp(event.strength, 0.2, 1));
+      }
+      const displayHeaderY = y + h - 126;
+      const displayHeaderW = 154;
+      patternDisplayToggleRect = {
+        x: x + 10,
+        y: displayHeaderY - 12,
+        w: displayHeaderW,
+        h: 18
+      };
+      patternDisplayGearRect = {
+        x: x + 118,
+        y: displayHeaderY - 12,
+        w: 20,
+        h: 18
+      };
+      ctx.fillStyle = "#000";
+      ctx.fillRect(patternDisplayToggleRect.x, patternDisplayToggleRect.y, patternDisplayToggleRect.w, patternDisplayToggleRect.h);
+      ctx.strokeStyle = "#202020";
+      ctx.strokeRect(patternDisplayToggleRect.x, patternDisplayToggleRect.y, patternDisplayToggleRect.w, patternDisplayToggleRect.h);
+      drawMeterText("Display Render", x + 18, displayHeaderY, 10, "rgba(245,245,245,0.78)");
+      drawMeterText("⚙", x + 126, displayHeaderY, 10, "rgba(166,166,166,0.86)");
+      drawMeterText(graphOpenState.patternDisplayRender ? "-" : "+", x + 148, displayHeaderY, 11, "rgba(245,245,245,0.92)");
+      if (graphOpenState.patternDisplayRender) {
+        drawPatternFlashField(x + 10, y + h - 108, w - 20, 96);
       }
     }
 
@@ -3276,20 +4095,93 @@
 
     function drawMetering() {
       const algorithm = getCurrentAlgorithm();
+      setStageHeight(calculateMeteringHeight());
       ctx.imageSmoothingEnabled = false;
       ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(0, 0, W, activeStageHeight);
       ctx.strokeStyle = "rgba(255,255,255,0.06)";
-      for (let y = 40; y < H; y += 28) {
+      for (let y = 40; y < activeStageHeight; y += 28) {
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(W, y);
         ctx.stroke();
       }
-      for (const panel of algorithm.layout) {
-        panel.draw(...panel.args);
+
+      if (graphControls) {
+        graphControls.querySelectorAll(".control-group").forEach((group) => {
+          const isPattern = group.dataset.module === "pattern";
+          group.hidden = isPattern && algorithm !== meteringAlgorithms.nmstr;
+        });
       }
 
+      let y = 48;
+      positionModuleControl("spectrum", y - 24);
+      if (graphOpenState.spectrum) {
+        drawSpectrumPanel(28, y, 644, 118);
+        y += 150;
+      } else {
+        y += 22;
+      }
+
+      positionModuleControl("oscilloscope", y - 24);
+      if (graphOpenState.oscilloscope) {
+        drawOscilloscopePanel(28, y, 644, 70);
+        y += 100;
+      } else {
+        y += 22;
+      }
+
+      positionModuleControl("waveformShort", y - 20);
+      y += 26;
+      if (graphOpenState.waveformShort) {
+        drawWaveformShortPanel(28, y, 644, 54);
+        y += 82;
+      } else {
+        y += 10;
+      }
+
+      positionModuleControl("waveformMedium", y - 20);
+      y += 26;
+      if (graphOpenState.waveformMedium) {
+        drawWaveformMediumPanel(28, y, 644, 58);
+        y += 86;
+      } else {
+        y += 10;
+      }
+
+      positionModuleControl("waveformLong", y - 20);
+      y += 26;
+      if (graphOpenState.waveformLong) {
+        drawWaveformPanel(28, y, 644, 58);
+        y += 102;
+      } else {
+        y += 10;
+      }
+
+      positionModuleControl("stereo", y - 24);
+      positionModuleControl("loudness", y - 24);
+      if (graphOpenState.stereo) {
+        drawStereoPanel(28, y, 314, 202);
+      }
+      if (graphOpenState.loudness) {
+        drawLoudnessPanel(358, y, 314, 202);
+      }
+      y += graphOpenState.stereo || graphOpenState.loudness ? 238 : 28;
+
+      if (algorithm === meteringAlgorithms.nmstr) {
+        positionModuleControl("pattern", y - 24);
+        if (graphOpenState.pattern) {
+          drawPatternPanel(28, y, 644, 430);
+          y += 466;
+        } else {
+          y += 22;
+        }
+      }
+
+      updateReadout();
+    }
+
+    function updateReadout() {
       rmsMeter.style.width = `${clamp(smoothed.rms * 130, 0, 100)}%`;
       rmsText.textContent = smoothed.rms.toFixed(2);
       lowText.textContent = smoothed.low.toFixed(2);
@@ -3298,9 +4190,18 @@
       sideText.textContent = smoothed.side.toFixed(2);
       densityText.textContent = smoothed.density.toFixed(2);
       hitText.textContent = smoothed.bassHit.toFixed(2);
+      frameCostText.textContent = `${frameCostMs.toFixed(1)}ms`;
+      if (performance.memory && performance.memory.usedJSHeapSize) {
+        const used = performance.memory.usedJSHeapSize / 1048576;
+        const limit = performance.memory.jsHeapSizeLimit / 1048576;
+        memoryText.textContent = `${used.toFixed(0)} / ${limit.toFixed(0)}MB`;
+      } else {
+        memoryText.textContent = "n/a";
+      }
     }
 
     function drawFrame() {
+      const frameStart = performance.now();
       t += 1;
       updateMetrics();
 
@@ -3317,10 +4218,13 @@
 
       if (style === "metering") {
         drawMetering();
+        frameCostMs = lerp(frameCostMs, performance.now() - frameStart, frameCostMs ? 0.12 : 1);
+        updateReadout();
         requestAnimationFrame(drawFrame);
         return;
       }
 
+      setStageHeight(H);
       const g = Number(glitch.value) * (0.25 + smoothed.peak + smoothed.high);
       renderBlob(style);
 
@@ -3331,14 +4235,8 @@
       const crop = Math.floor(scale * 2);
       ctx.drawImage(lowCanvas, crop, crop, lowW - crop * 2, lowH - crop * 2, 0, 0, W, H);
 
-      rmsMeter.style.width = `${clamp(smoothed.rms * 130, 0, 100)}%`;
-      rmsText.textContent = smoothed.rms.toFixed(2);
-      lowText.textContent = smoothed.low.toFixed(2);
-      midText.textContent = smoothed.mid.toFixed(2);
-      highText.textContent = smoothed.high.toFixed(2);
-      sideText.textContent = smoothed.side.toFixed(2);
-      densityText.textContent = smoothed.density.toFixed(2);
-      hitText.textContent = smoothed.bassHit.toFixed(2);
+      frameCostMs = lerp(frameCostMs, performance.now() - frameStart, frameCostMs ? 0.12 : 1);
+      updateReadout();
 
       requestAnimationFrame(drawFrame);
     }
@@ -3361,11 +4259,79 @@
     patternThreshold.addEventListener("input", () => {
       patternThresholdValue.textContent = Number(patternThreshold.value).toFixed(2);
     });
+    generalFlashAmount.addEventListener("input", () => {
+      generalFlashAmountValue.textContent = Number(generalFlashAmount.value).toFixed(2);
+    });
+    generalFlashSmooth.addEventListener("input", () => {
+      generalFlashSmoothValue.textContent = `${Number(generalFlashSmooth.value).toFixed(2)}s`;
+    });
+    kickFlashAmount.addEventListener("input", () => {
+      kickFlashAmountValue.textContent = Number(kickFlashAmount.value).toFixed(2);
+    });
+    kickFlashSmooth.addEventListener("input", () => {
+      kickFlashSmoothValue.textContent = `${Number(kickFlashSmooth.value).toFixed(2)}s`;
+    });
+    snareFlashAmount.addEventListener("input", () => {
+      snareFlashAmountValue.textContent = Number(snareFlashAmount.value).toFixed(2);
+    });
+    snareFlashSmooth.addEventListener("input", () => {
+      snareFlashSmoothValue.textContent = `${Number(snareFlashSmooth.value).toFixed(2)}s`;
+    });
+    tomFlashAmount.addEventListener("input", () => {
+      tomFlashAmountValue.textContent = Number(tomFlashAmount.value).toFixed(2);
+    });
+    tomFlashSmooth.addEventListener("input", () => {
+      tomFlashSmoothValue.textContent = `${Number(tomFlashSmooth.value).toFixed(2)}s`;
+    });
+    hatFlashAmount.addEventListener("input", () => {
+      hatFlashAmountValue.textContent = Number(hatFlashAmount.value).toFixed(2);
+    });
+    hatFlashSmooth.addEventListener("input", () => {
+      hatFlashSmoothValue.textContent = `${Number(hatFlashSmooth.value).toFixed(2)}s`;
+    });
+    cymbalFlashAmount.addEventListener("input", () => {
+      cymbalFlashAmountValue.textContent = Number(cymbalFlashAmount.value).toFixed(2);
+    });
+    cymbalFlashSmooth.addEventListener("input", () => {
+      cymbalFlashSmoothValue.textContent = `${Number(cymbalFlashSmooth.value).toFixed(2)}s`;
+    });
     spectrumFftSelect.addEventListener("change", () => {
       configureSpectrumAnalyser();
     });
     algorithmSelect.addEventListener("change", applyAlgorithmUi);
+    canvas.addEventListener("click", (event) => {
+      if (!patternDisplayToggleRect || getCurrentAlgorithm() !== meteringAlgorithms.nmstr || !graphOpenState.pattern) return;
+      const rect = canvas.getBoundingClientRect();
+      const px = (event.clientX - rect.left) / rect.width * W;
+      const py = (event.clientY - rect.top) / rect.height * activeStageHeight;
+      const gear = patternDisplayGearRect;
+      if (gear && px >= gear.x && px <= gear.x + gear.w && py >= gear.y && py <= gear.y + gear.h) {
+        openFloatingInspector("Display Render", displayRenderControlsMount, {
+          left: rect.left + gear.x / W * rect.width,
+          right: rect.left + (gear.x + gear.w) / W * rect.width,
+          top: rect.top + gear.y / activeStageHeight * rect.height,
+          bottom: rect.top + (gear.y + gear.h) / activeStageHeight * rect.height
+        });
+        return;
+      }
+      const hit = patternDisplayToggleRect;
+      if (px < hit.x || px > hit.x + hit.w || py < hit.y || py > hit.y + hit.h) return;
+      graphOpenState.patternDisplayRender = !graphOpenState.patternDisplayRender;
+    });
+    floatingInspectorClose.addEventListener("click", closeFloatingInspector);
+    inspectorBackdrop.addEventListener("click", closeFloatingInspector);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeFloatingInspector();
+    });
+    document.addEventListener("click", (event) => {
+      if (!floatingInspector?.classList.contains("is-open")) return;
+      if (floatingInspector.contains(event.target)) return;
+      if (event.target.closest(".param-icon")) return;
+      if (event.target === canvas) return;
+      closeFloatingInspector();
+    });
 
+    organizeGraphControls();
     setInputSource("system");
     applyAlgorithmUi();
     drawFrame();

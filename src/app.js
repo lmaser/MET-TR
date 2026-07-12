@@ -71,6 +71,8 @@
     const cymbalFlashSmooth = document.getElementById("cymbalFlashSmooth");
     const cymbalFlashAmountValue = document.getElementById("cymbalFlashAmountValue");
     const cymbalFlashSmoothValue = document.getElementById("cymbalFlashSmoothValue");
+    const spectralTilt = document.getElementById("spectralTilt");
+    const spectralTiltValue = document.getElementById("spectralTiltValue");
     const sensitivity = document.getElementById("sensitivity");
     const glitch = document.getElementById("glitch");
     const pixel = document.getElementById("pixel");
@@ -206,6 +208,7 @@
     let patternDisplayToggleRect = null;
     let patternDisplayGearRect = null;
     let activeInspectorMount = null;
+    let graphControlScale = 1;
     let cameraTilt = { x: 0, y: 0, twist: 0 };
     const planePhysics = [
       { z: 0, vz: 0, x: 0, y: 0, vx: 0, vy: 0, phase: 0.2 },
@@ -256,15 +259,45 @@
       return METER_LAYOUT[module.rect || module.id];
     }
 
+    function getCompactHeightBoost() {
+      if (!useCompactGraphLayout()) return 1;
+      const responsive = contract.responsive || {};
+      const minWidth = responsive.compactMinWidth || 360;
+      const maxWidth = responsive.compactMaxWidth || 600;
+      const maxBoost = responsive.maxHeightBoost || 2;
+      const width = stageEl.clientWidth || window.innerWidth || maxWidth;
+      const t = clamp((maxWidth - width) / Math.max(1, maxWidth - minWidth), 0, 1);
+      return lerp(1, maxBoost, t);
+    }
+
+    function getModuleHeightScale(module) {
+      if (!useCompactGraphLayout()) return 1;
+      const moduleScale = contract.responsive?.modules?.[module.id]?.compactScale || 1;
+      const boost = getCompactHeightBoost();
+      return lerp(1, moduleScale, clamp(boost - 1, 0, 1));
+    }
+
+    function getModuleHeight(module, compact = useCompactGraphLayout()) {
+      const rect = getModuleRect(module);
+      const baseHeight = compact && rect.compactHeight ? rect.compactHeight : rect.height;
+      return Math.round(baseHeight * getModuleHeightScale(module));
+    }
+
     function getCollapsedAdvance(module, compact = useCompactGraphLayout()) {
       if (module.flow === "dual" && compact) return METER_LAYOUT.stackedCollapsedAdvance;
       return METER_LAYOUT.collapsedAdvance;
     }
 
     function getOpenAdvance(module, compact = useCompactGraphLayout()) {
-      if (module.flow === "dual" && compact) return METER_LAYOUT.compactMeterAdvance;
       const rect = getModuleRect(module);
-      return rect?.advance || METER_LAYOUT.collapsedAdvance;
+      if (!rect) return METER_LAYOUT.collapsedAdvance;
+      if (module.flow === "dual" && compact) {
+        const compactBase = rect.compactHeight || rect.height;
+        const heightDelta = getModuleHeight(module, compact) - compactBase;
+        return METER_LAYOUT.compactMeterAdvance + Math.max(0, heightDelta);
+      }
+      const heightDelta = getModuleHeight(module, compact) - rect.height;
+      return rect.advance + Math.max(0, heightDelta);
     }
 
     function getModuleAdvance(module, compact = useCompactGraphLayout()) {
@@ -384,11 +417,16 @@
         moveControlById(`${name}FlashSmooth`, displayRenderControlsMount);
       });
       const outputTitle = Array.from(patternControlsMount?.querySelectorAll(".section-title") || [])
-        .find((title) => title.textContent.trim().toLowerCase() === "output options");
+        .find((title) => title.textContent.trim().toLowerCase() === "elements out");
       if (outputTitle && displayRenderControlsMount) {
-        outputTitle.textContent = "Flash Output";
         displayRenderControlsMount.prepend(outputTitle);
       }
+      const spectralOutTitle = Array.from(patternControlsMount?.querySelectorAll(".section-title") || [])
+        .find((title) => title.textContent.trim().toLowerCase() === "spectral out");
+      if (spectralOutTitle && displayRenderControlsMount) {
+        displayRenderControlsMount.appendChild(spectralOutTitle);
+      }
+      moveControlById("spectralTilt", displayRenderControlsMount);
 
       const meterWrapper = rmsMeter.closest(".meter")?.parentElement;
       const readout = document.querySelector("aside .readout");
@@ -402,27 +440,29 @@
       if (!group) return;
       const layout = METER_LAYOUT;
       const compact = useCompactGraphLayout();
-      group.style.top = `${Math.max(2, top)}px`;
+      const scale = graphControlScale;
+      group.style.top = `${Math.max(2, top * scale)}px`;
       if (compact && (key === "stereo" || key === "loudness")) {
-        group.style.left = `${layout.left}px`;
-        group.style.width = `${layout.fullWidth}px`;
+        group.style.left = `${layout.left * scale}px`;
+        group.style.width = `${layout.fullWidth * scale}px`;
       } else if (key === "loudness") {
-        group.style.left = `${layout.rightColumnX}px`;
-        group.style.width = `${layout.halfWidth}px`;
+        group.style.left = `${layout.rightColumnX * scale}px`;
+        group.style.width = `${layout.halfWidth * scale}px`;
       } else if (key === "stereo") {
-        group.style.left = `${layout.left}px`;
-        group.style.width = `${layout.halfWidth}px`;
+        group.style.left = `${layout.left * scale}px`;
+        group.style.width = `${layout.halfWidth * scale}px`;
       } else {
-        group.style.left = `${layout.left}px`;
-        group.style.width = `${layout.fullWidth}px`;
+        group.style.left = `${layout.left * scale}px`;
+        group.style.width = `${layout.fullWidth * scale}px`;
       }
     }
 
     function updateGraphControlScale() {
       if (!graphControls) return;
-      const scale = stageEl.clientWidth / W;
-      graphControls.style.height = `${activeStageHeight}px`;
-      graphControls.style.transform = `scale(${scale})`;
+      graphControlScale = stageEl.clientWidth / W;
+      graphControls.style.width = `${stageEl.clientWidth}px`;
+      graphControls.style.height = `${activeStageHeight * graphControlScale}px`;
+      graphControls.style.transform = "none";
     }
 
     function useCompactGraphLayout() {
@@ -509,7 +549,7 @@
 
     function computeSpectralOutColor() {
       return window.METTR_DISPLAY_OUTPUT.computeSpectralOutColor(
-        { audioContext, floatFreqData, smoothed, spectralOutState },
+        { audioContext, floatFreqData, smoothed, spectralOutState, spectralTiltDb: Number(spectralTilt.value) },
         { clamp, lerp, smoothstep, interpolateFloatSpectrum }
       );
     }
@@ -3211,26 +3251,37 @@
         ctx.fillRect(barX, barY + 2, barW * clamp(patternState.hits[key], 0, 1), Math.max(3, barH - 4));
       }
 
+      const displayBoost = useCompactGraphLayout()
+        ? lerp(1, contract.responsive?.patternDisplay?.compactScale || 1.8, clamp(getCompactHeightBoost() - 1, 0, 1))
+        : 1;
+      const displayFieldH = Math.round(72 * displayBoost);
+      const displayGap = Math.round(30 * displayBoost);
+      const spectralY = y + h - displayFieldH - 12;
+      const spectralLabelY = spectralY - 12;
+      const elementsY = spectralLabelY - displayGap - displayFieldH;
+      const elementsLabelY = elementsY - 12;
+      const displayHeaderY = elementsLabelY - 30;
+      const historyY = displayHeaderY - 60;
+      const rhythmY = historyY - 16;
       const bpm = patternState.bpm ? Math.round(patternState.bpm) : "--";
       const conf = Math.round(patternState.confidence * 100);
       const rate = patternState.onsetRate.toFixed(1);
-      drawMeterText(`Rhythm ${bpm} BPM  Conf ${conf}%  Rate ${rate}/s`, x + 10, y + h - 328, 10, "rgba(166,166,166,0.86)");
+      drawMeterText(`Rhythm ${bpm} BPM  Conf ${conf}%  Rate ${rate}/s`, x + 10, rhythmY, 10, "rgba(166,166,166,0.86)");
 
       const now = audioContext ? audioContext.currentTime : performance.now() / 1000;
       ctx.fillStyle = "#050505";
-      ctx.fillRect(x + 10, y + h - 312, w - 20, 48);
+      ctx.fillRect(x + 10, historyY, w - 20, 48);
       ctx.strokeStyle = "rgba(255,255,255,0.1)";
-      ctx.strokeRect(x + 10, y + h - 312, w - 20, 48);
+      ctx.strokeRect(x + 10, historyY, w - 20, 48);
       for (const event of patternState.events) {
         if (event.type === "global") continue;
         const age = now - event.time;
         const px = x + w - 10 - age / Math.max(0.001, Number(patternWindowSelect.value)) * (w - 20);
         if (px < x + 4 || px > x + w - 4) continue;
-        const py = y + h - 270;
+        const py = historyY + 42;
         ctx.fillStyle = event.type === "kick" ? "#ff3a18" : event.type === "snare" ? "#39ff14" : event.type === "hat" ? "#7ed6ff" : event.type === "cymbal" ? "#bc30ec" : "#ff8b2a";
         ctx.fillRect(px, py - 42 * clamp(event.strength, 0.2, 1), 3, 42 * clamp(event.strength, 0.2, 1));
       }
-      const displayHeaderY = y + h - 240;
       const displayHeaderW = 154;
       patternDisplayToggleRect = {
         x: x + 10,
@@ -3254,14 +3305,10 @@
       if (graphOpenState.patternDisplayRender) {
         const fieldX = x + 10;
         const fieldW = w - 20;
-        const elementsLabelY = y + h - 210;
-        const elementsY = y + h - 198;
-        const spectralLabelY = y + h - 96;
-        const spectralY = y + h - 84;
         drawMeterText("ELEMENTS OUT", fieldX, elementsLabelY, 10, "rgba(245,245,245,0.76)");
-        drawPatternFlashField(fieldX, elementsY, fieldW, 72);
+        drawPatternFlashField(fieldX, elementsY, fieldW, displayFieldH);
         drawMeterText("SPECTRAL OUT", fieldX, spectralLabelY, 10, "rgba(245,245,245,0.76)");
-        drawSpectralOutField(fieldX, spectralY, fieldW, 72);
+        drawSpectralOutField(fieldX, spectralY, fieldW, displayFieldH);
       }
     }
 
@@ -3337,18 +3384,17 @@
         const rect = getModuleRect(module);
         positionModuleControl(module.id, y - layout.titleOffset);
         if (graphOpenState[module.id]) {
-          module.renderer(layout.left, y, layout.fullWidth, rect.height);
-          y += rect.advance;
+          module.renderer(layout.left, y, layout.fullWidth, getModuleHeight(module));
+          y += getModuleAdvance(module);
         } else {
           y += layout.collapsedAdvance;
         }
       };
       const drawStackedModule = (module) => {
-        const rect = getModuleRect(module);
         positionModuleControl(module.id, y - layout.titleOffset);
         if (graphOpenState[module.id]) {
-          module.renderer(layout.left, y, layout.fullWidth, rect.compactHeight || rect.height);
-          y += layout.compactMeterAdvance;
+          module.renderer(layout.left, y, layout.fullWidth, getModuleHeight(module));
+          y += getModuleAdvance(module, true);
         } else {
           y += layout.stackedCollapsedAdvance;
         }
@@ -3498,6 +3544,9 @@
     });
     cymbalFlashSmooth.addEventListener("input", () => {
       cymbalFlashSmoothValue.textContent = `${Number(cymbalFlashSmooth.value).toFixed(2)}s`;
+    });
+    spectralTilt.addEventListener("input", () => {
+      spectralTiltValue.textContent = `${Number(spectralTilt.value).toFixed(1)}dB`;
     });
     spectrumFftSelect.addEventListener("change", () => {
       configureSpectrumAnalyser();

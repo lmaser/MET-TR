@@ -40,7 +40,7 @@ window.METTR_DISPLAY_OUTPUT = (() => {
 
   function computeSpectralOutColor(input, api) {
     const { clamp, lerp, interpolateFloatSpectrum } = api;
-    const { audioContext, floatFreqData, smoothed, spectralOutState } = input;
+    const { audioContext, floatFreqData, smoothed, spectralOutState, spectralTiltDb = 0 } = input;
     const nyquist = audioContext ? audioContext.sampleRate / 2 : 24000;
     const minHz = 20;
     const maxHz = Math.min(20000, nyquist);
@@ -55,7 +55,8 @@ window.METTR_DISPLAY_OUTPUT = (() => {
         const p = i / Math.max(1, bins - 1);
         const freq = minHz * Math.pow(maxHz / minHz, p);
         const index = freq / nyquist * (floatFreqData.length - 1);
-        const db = interpolateFloatSpectrum(index);
+        const tiltDb = spectralTiltDb * (p - 0.5);
+        const db = interpolateFloatSpectrum(index) + tiltDb;
         const power = Math.pow(10, db / 10);
         weightedPosition += p * power;
         weightedFreq += freq * power;

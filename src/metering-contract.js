@@ -30,6 +30,24 @@ window.METTR_CONTRACT = {
     pattern: { height: 560, advance: 596 },
     compactBreakpoint: 640
   },
+  responsive: {
+    compactMinWidth: 360,
+    compactMaxWidth: 600,
+    maxHeightBoost: 2,
+    modules: {
+      spectrum: { compactScale: 1.55 },
+      oscilloscope: { compactScale: 1.65 },
+      waveformShort: { compactScale: 1.55 },
+      waveformMedium: { compactScale: 1.45 },
+      waveformLong: { compactScale: 1.45 },
+      stereo: { compactScale: 1.25 },
+      loudness: { compactScale: 1.25 },
+      pattern: { compactScale: 1.45 }
+    },
+    patternDisplay: {
+      compactScale: 1.8
+    }
+  },
   algorithms: {
     base: {
       id: "METERING BASE",

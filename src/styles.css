@@ -99,11 +99,10 @@
     .stage .graph-controls {
       position: absolute;
       inset: 0;
-      width: var(--stage-width);
+      width: 100%;
       display: block;
       pointer-events: none;
       z-index: 2;
-      transform-origin: top left;
     }
 
     .stage .control-group {
@@ -117,11 +116,13 @@
     .stage .control-group summary {
       width: max-content;
       min-width: 118px;
+      min-height: var(--module-title-height);
       padding: 2px 8px;
       background: #000;
       border: 1px solid #202020;
       font-size: 13px;
       line-height: 1.35;
+      align-items: center;
     }
 
     .stage .control-group summary::after {
@@ -559,6 +560,7 @@
         --control-gap: 6px;
         --control-height: 36px;
         --control-font: 12px;
+        --module-title-height: 28px;
         --inspector-width: 360px;
       }
 
@@ -601,6 +603,7 @@
       :root {
         --page-pad: 8px;
         --control-font: 11px;
+        --module-title-height: 28px;
       }
 
       .header-controls {

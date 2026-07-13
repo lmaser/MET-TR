@@ -43,7 +43,17 @@
     const spectrogramLoopSelect = document.getElementById("spectrogramLoopSelect");
     const tunerReference = document.getElementById("tunerReference");
     const tunerReferenceValue = document.getElementById("tunerReferenceValue");
-    const phaseDungeonModeSelect = document.getElementById("phaseDungeonModeSelect");
+    const signalCharacterModeSelect = document.getElementById("signalCharacterModeSelect");
+    const signalCharacterWindowSelect = document.getElementById("signalCharacterWindowSelect");
+    const signalCharacterDisplaySelect = document.getElementById("signalCharacterDisplaySelect");
+    const signalCharacterFftWeight = document.getElementById("signalCharacterFftWeight");
+    const signalCharacterFftWeightValue = document.getElementById("signalCharacterFftWeightValue");
+    const signalCharacterNoise = document.getElementById("signalCharacterNoise");
+    const signalCharacterNoiseValue = document.getElementById("signalCharacterNoiseValue");
+    const signalCharacterTransient = document.getElementById("signalCharacterTransient");
+    const signalCharacterTransientValue = document.getElementById("signalCharacterTransientValue");
+    const signalCharacterSmoothing = document.getElementById("signalCharacterSmoothing");
+    const signalCharacterSmoothingValue = document.getElementById("signalCharacterSmoothingValue");
     const phaseDungeonDetailSelect = document.getElementById("phaseDungeonDetailSelect");
     const phaseDungeonMemorySelect = document.getElementById("phaseDungeonMemorySelect");
     const phaseDungeonFog = document.getElementById("phaseDungeonFog");
@@ -74,6 +84,7 @@
     const spectralDynamicsControlsMount = document.getElementById("spectralDynamicsControlsMount");
     const spectrogramControlsMount = document.getElementById("spectrogramControlsMount");
     const tunerControlsMount = document.getElementById("tunerControlsMount");
+    const signalCharacterControlsMount = document.getElementById("signalCharacterControlsMount");
     const phaseDungeonControlsMount = document.getElementById("phaseDungeonControlsMount");
     const vectorLaserControlsMount = document.getElementById("vectorLaserControlsMount");
     const oscilloscopeControlsMount = document.getElementById("oscilloscopeControlsMount");
@@ -267,13 +278,37 @@
       lowAnchor: 0,
       tonal: 0,
       noisy: 0,
-      mapNoise: 0,
-      mapMotion: 0,
+      mapNoise: 0.5,
+      mapMotion: 0.5,
       sparse: 0,
       transient: 0,
       dynamic: 0
     };
+    const signalCharacterBackend = {
+      profile: { mode: "musical", window: "medium", fftWeight: 0.65 },
+      descriptors: {},
+      hints: {
+        tunerTrust: 0,
+        patternTrust: 0,
+        noiseRisk: 0,
+        transientBias: 0,
+        spectralConfidence: 0
+      },
+      updatedAt: 0
+    };
+    window.METTR_SIGNAL_CHARACTER = signalCharacterBackend;
     const signalCharacterTrail = [];
+    const signalCharacterPhysics = {
+      initialized: false,
+      lastSignalAt: -99,
+      headAlpha: 0,
+      trailAlpha: 0,
+      head: { x: 0, y: 0, vx: 0, vy: 0, color: [140, 40, 110] },
+      tailBlob: { x: 0, y: 0, vx: 0, vy: 0, color: [140, 40, 110], angles: [], freq: [], nodes: [] },
+      blobAngles: [],
+      blobFreq: [],
+      blobNodes: []
+    };
     const signalCharacterOnsets = [];
     let signalCharacterOnsetEnvelope = 0;
     let signalCharacterLastOnsetAt = -99;
@@ -284,7 +319,16 @@
     const phaseDungeonState = {
       cells: [],
       lastSignalAt: -99,
-      recurrence: 0
+      recurrence: 0,
+      tunnelTravel: 0,
+      tunnelZoom: 1,
+      tunnelHeading: 0,
+      tunnelDrop: 0,
+      previousEnergy: 0,
+      energyHistory: [],
+      sectionPower: 0,
+      brake: 0,
+      acceleration: 0
     };
     const vectorLaserState = {
       trails: [],
@@ -360,7 +404,7 @@
       spectrogram: "Spectrogram",
       tuner: "Tuner",
       signalCharacter: "Signal Character",
-      phaseDungeon: "Phase Dungeon",
+      phaseDungeon: "Kinetic",
       vectorLaser: "Vector Laser",
       oscilloscope: "Oscilloscope",
       waveformShort: "Waveform Short",
@@ -969,7 +1013,13 @@
       moveControlById("spectrogramPianoOverlaySelect", spectrogramControlsMount);
       moveControlById("spectrogramLoopSelect", spectrogramControlsMount);
       moveControlById("tunerReference", tunerControlsMount);
-      moveControlById("phaseDungeonModeSelect", phaseDungeonControlsMount);
+      moveControlById("signalCharacterModeSelect", signalCharacterControlsMount);
+      moveControlById("signalCharacterWindowSelect", signalCharacterControlsMount);
+      moveControlById("signalCharacterDisplaySelect", signalCharacterControlsMount);
+      moveControlById("signalCharacterFftWeight", signalCharacterControlsMount);
+      moveControlById("signalCharacterNoise", signalCharacterControlsMount);
+      moveControlById("signalCharacterTransient", signalCharacterControlsMount);
+      moveControlById("signalCharacterSmoothing", signalCharacterControlsMount);
       moveControlById("phaseDungeonDetailSelect", phaseDungeonControlsMount);
       moveControlById("phaseDungeonMemorySelect", phaseDungeonControlsMount);
       moveControlById("phaseDungeonFog", phaseDungeonControlsMount);
@@ -4004,16 +4054,56 @@
       return best;
     }
 
+    function signalCharacterProfile() {
+      const mode = signalCharacterModeSelect?.value || "musical";
+      const windowMode = signalCharacterWindowSelect?.value || "medium";
+      const windowProfiles = {
+        fast: { attack: 1.16, release: 1.08, densityWindow: 1.2 },
+        medium: { attack: 1, release: 1, densityWindow: 2.4 },
+        slow: { attack: 0.68, release: 0.62, densityWindow: 4.2 }
+      };
+      const window = windowProfiles[windowMode] || windowProfiles.medium;
+      return {
+        mode,
+        window: windowMode,
+        fftWeight: clampFinite(Number(signalCharacterFftWeight?.value || 0.65), 0, 1, 0.65),
+        noiseSensitivity: clampFinite(Number(signalCharacterNoise?.value || 1), 0.25, 2, 1),
+        transientSensitivity: clampFinite(Number(signalCharacterTransient?.value || 1), 0.25, 2, 1),
+        smoothing: clampFinite(Number(signalCharacterSmoothing?.value || 0.6), 0, 1, 0.6),
+        attackScale: window.attack,
+        releaseScale: window.release,
+        densityWindow: window.densityWindow,
+        musicalCompensation: mode === "musical" ? 0.28 : 0,
+        clinicalDetail: mode === "clinical" ? 1 : 0
+      };
+    }
+
     function updateSignalCharacterState(hasLiveAudio, spectral, time, freq) {
+      const profile = signalCharacterProfile();
       const crestDb = hasLiveAudio ? ampToDb(metrics.peak) - ampToDb(Math.max(metrics.rms, 0.000001)) : 0;
       const crestNorm = clamp((crestDb - 3) / 18, 0, 1);
       const zcr = hasLiveAudio ? zeroCrossingRateFromTime(time) : 0;
       const zcrNorm = clamp(zcr * 28, 0, 1);
       const transientFeatures = signalCharacterTransientFeatures(hasLiveAudio, freq || freqData);
-      const transientDensity = transientFeatures.density;
+      const transientDensity = clamp(transientFeatures.density * profile.transientSensitivity, 0, 1);
+      const signalConfidence = hasLiveAudio
+        ? clamp(
+          smoothstep(0.006, 0.04, metrics.rms) * 0.62
+            + smoothstep(0.014, 0.09, metrics.peak) * 0.38,
+          0,
+          1
+        )
+        : 0;
       const lowAnchor = clamp(tunerState.confidence * 0.72 + (tunerState.detected ? 0.28 : 0), 0, 1);
       const bandTotal = Math.max(0.0001, metrics.low + metrics.mid + metrics.high);
       const highRatio = clamp(metrics.high / bandTotal, 0, 1);
+      const fftWeight = profile.fftWeight;
+      const timeWeight = 1 - fftWeight;
+      const musicalNoiseTrim = profile.musicalCompensation * clamp(metrics.low * 0.32 + metrics.mid * 0.18, 0, 1);
+      const fftFlatness = clamp(spectral.flatness * profile.noiseSensitivity - musicalNoiseTrim, 0, 1);
+      const fftDensity = clamp(spectral.density * profile.noiseSensitivity - musicalNoiseTrim * 0.42, 0, 1);
+      const zcrSignal = clamp(zcrNorm * profile.noiseSensitivity, 0, 1);
+      const fftCrest = clamp(spectral.spectralCrest * (profile.mode === "clinical" ? 1.08 : 0.94), 0, 1);
       const hitEvidence = Math.max(
         patternState.hits.kick,
         patternState.hits.tom * 0.85,
@@ -4023,26 +4113,30 @@
         metrics.bassHit * 0.82,
         metrics.midHit * 0.74
       );
-      const tonal = clamp((1 - spectral.flatness) * 0.48 + spectral.spectralCrest * 0.34 + lowAnchor * 0.18 - zcrNorm * 0.08, 0, 1);
-      const noisy = clamp(spectral.flatness * 0.42 + zcrNorm * 0.24 + spectral.density * 0.18 + highRatio * 0.22 - spectral.spectralCrest * 0.06, 0, 1);
-      const sparse = clamp(1 - transientDensity * 0.78 - spectral.density * 0.22, 0, 1);
-      const transient = clamp(transientFeatures.impact * 0.78 + metrics.flux * 0.14 + Math.max(metrics.bassHit, metrics.midHit) * 0.08, 0, 1);
-      const mapNoise = clamp(shapeAudio(noisy * 0.9 + highRatio * 0.22 + (1 - tonal) * 0.08, 1.45), 0, 1);
-      const mapMotion = clamp(shapeAudio(
+      const tonal = clamp((1 - fftFlatness) * (0.28 + fftWeight * 0.34) + fftCrest * (0.18 + fftWeight * 0.28) + lowAnchor * 0.18 - zcrSignal * timeWeight * 0.16, 0, 1);
+      const noisy = clamp(fftFlatness * (0.24 + fftWeight * 0.36) + zcrSignal * (0.18 + timeWeight * 0.22) + fftDensity * 0.18 + highRatio * 0.22 - fftCrest * 0.08, 0, 1);
+      const sparse = clamp(1 - transientDensity * 0.78 - fftDensity * 0.22, 0, 1);
+      const transient = clamp((transientFeatures.impact * 0.78 + metrics.flux * 0.14 + Math.max(metrics.bassHit, metrics.midHit) * 0.08) * profile.transientSensitivity, 0, 1);
+      const rawMapNoise = clamp(shapeAudio(noisy * 0.9 + highRatio * 0.22 + (1 - tonal) * 0.08, 1.45), 0, 1);
+      const rawMapMotion = clamp(shapeAudio(
         transientFeatures.impact * 0.64
           + hitEvidence * 0.28
           + metrics.flux * 0.22
           + transientDensity * 0.12,
         2.35
       ), 0, 1);
+      const neutralBlend = smoothstep(0.08, 0.88, signalConfidence);
+      const mapPush = clamp(neutralBlend * (1.18 + signalConfidence * 0.42), 0, 1.45);
+      const mapNoise = clamp(0.5 + (rawMapNoise - 0.5) * mapPush, 0, 1);
+      const mapMotion = clamp(0.5 + (rawMapMotion - 0.5) * mapPush, 0, 1);
       const dynamic = crestNorm;
       const targets = {
-        flatness: spectral.flatness,
-        spectralCrest: spectral.spectralCrest,
+        flatness: fftFlatness,
+        spectralCrest: fftCrest,
         crestFactor: crestNorm,
-        zeroCrossing: zcrNorm,
+        zeroCrossing: zcrSignal,
         transientDensity,
-        transientImpact: transientFeatures.impact,
+        transientImpact: clamp(transientFeatures.impact * profile.transientSensitivity, 0, 1),
         eventDensity: transientDensity,
         lowAnchor,
         tonal,
@@ -4055,14 +4149,35 @@
       };
       for (const [key, value] of Object.entries(targets)) {
         const current = signalCharacterState[key] || 0;
-        const target = hasLiveAudio ? value : 0;
+        const target = hasLiveAudio ? value : (key === "mapNoise" || key === "mapMotion" ? 0.5 : 0);
         const isImpact = key === "transientImpact" || key === "transient" || key === "mapMotion";
         const isMapAxis = key === "mapNoise";
         const isDensity = key === "eventDensity" || key === "transientDensity";
-        const attack = isImpact ? 0.62 : isMapAxis ? 0.36 : isDensity ? 0.34 : 0.24;
-        const release = isImpact ? 0.3 : isMapAxis ? 0.18 : isDensity ? 0.16 : 0.12;
+        const smoothingScale = lerp(1.28, 0.46, profile.smoothing);
+        const attack = (isImpact ? 0.62 : isMapAxis ? 0.36 : isDensity ? 0.34 : 0.24) * profile.attackScale * smoothingScale;
+        const release = (isImpact ? 0.3 : isMapAxis ? 0.18 : isDensity ? 0.16 : 0.12) * profile.releaseScale * smoothingScale;
         signalCharacterState[key] = lerp(current, target, target > current ? attack : release);
       }
+      signalCharacterBackend.profile = profile;
+      signalCharacterBackend.descriptors = {
+        ...targets,
+        mode: profile.mode,
+        fftWeight,
+        timeWeight,
+        signalConfidence,
+        spectralDensity: fftDensity,
+        highRatio,
+        hitEvidence,
+        flux: metrics.flux
+      };
+      signalCharacterBackend.hints = {
+        tunerTrust: clamp(signalCharacterState.lowAnchor * 0.46 + signalCharacterState.tonal * 0.34 + (1 - signalCharacterState.noisy) * 0.2, 0, 1),
+        patternTrust: clamp(signalCharacterState.transientImpact * 0.5 + signalCharacterState.eventDensity * 0.3 + signalCharacterState.spectralCrest * 0.2, 0, 1),
+        noiseRisk: signalCharacterState.noisy,
+        transientBias: signalCharacterState.transientImpact,
+        spectralConfidence: clamp(signalCharacterState.tonal * 0.45 + signalCharacterState.spectralCrest * 0.35 + (1 - signalCharacterState.flatness) * 0.2, 0, 1)
+      };
+      signalCharacterBackend.updatedAt = audioContext ? audioContext.currentTime : performance.now() / 1000;
     }
 
     function chooseTunerPitchCandidate(yinResult, spectralResult) {
@@ -4565,21 +4680,187 @@
       ctx.fillRect(x, y, Math.max(1, w * v), 8);
     }
 
+    function resetSignalCharacterPhysics() {
+      signalCharacterTrail.length = 0;
+      signalCharacterPhysics.initialized = false;
+      signalCharacterPhysics.headAlpha = 0;
+      signalCharacterPhysics.trailAlpha = 0;
+      signalCharacterPhysics.lastSignalAt = -99;
+      signalCharacterPhysics.head.x = 0;
+      signalCharacterPhysics.head.y = 0;
+      signalCharacterPhysics.head.vx = 0;
+      signalCharacterPhysics.head.vy = 0;
+      signalCharacterPhysics.head.color = [140, 40, 110];
+      signalCharacterPhysics.tailBlob.x = 0;
+      signalCharacterPhysics.tailBlob.y = 0;
+      signalCharacterPhysics.tailBlob.vx = 0;
+      signalCharacterPhysics.tailBlob.vy = 0;
+      signalCharacterPhysics.tailBlob.color = [140, 40, 110];
+      signalCharacterPhysics.tailBlob.angles.length = 0;
+      signalCharacterPhysics.tailBlob.freq.length = 0;
+      signalCharacterPhysics.tailBlob.nodes.length = 0;
+      signalCharacterPhysics.blobAngles.length = 0;
+      signalCharacterPhysics.blobFreq.length = 0;
+      signalCharacterPhysics.blobNodes.length = 0;
+    }
+
+    function updateSpringMass(mass, targetX, targetY, stiffness, damping) {
+      const ax = (targetX - mass.x) * stiffness;
+      const ay = (targetY - mass.y) * stiffness;
+      mass.vx = (mass.vx + ax) * damping;
+      mass.vy = (mass.vy + ay) * damping;
+      mass.x += mass.vx;
+      mass.y += mass.vy;
+    }
+
+    function updateSignalCharacterPhysics(targetX, targetY, hasSignal, targetColor) {
+      const now = performance.now() / 1000;
+      if (hasSignal) signalCharacterPhysics.lastSignalAt = now;
+      const silenceAge = now - signalCharacterPhysics.lastSignalAt;
+      const shouldExist = hasSignal || silenceAge < 3.2;
+      if (!shouldExist && !signalCharacterPhysics.initialized) return null;
+
+      const trailCount = 10;
+      if (!signalCharacterPhysics.initialized) {
+        signalCharacterPhysics.initialized = true;
+        signalCharacterPhysics.head.x = targetX;
+        signalCharacterPhysics.head.y = targetY;
+        signalCharacterPhysics.head.vx = 0;
+        signalCharacterPhysics.head.vy = 0;
+        signalCharacterPhysics.head.color = targetColor.slice();
+        signalCharacterPhysics.tailBlob.x = targetX;
+        signalCharacterPhysics.tailBlob.y = targetY;
+        signalCharacterPhysics.tailBlob.vx = 0;
+        signalCharacterPhysics.tailBlob.vy = 0;
+        signalCharacterPhysics.tailBlob.color = targetColor.slice();
+        signalCharacterTrail.length = 0;
+        for (let i = 0; i < trailCount; i += 1) {
+          signalCharacterTrail.push({ x: targetX, y: targetY, vx: 0, vy: 0, color: targetColor.slice() });
+        }
+      }
+
+      while (signalCharacterTrail.length < trailCount) {
+        const last = signalCharacterTrail[signalCharacterTrail.length - 1] || signalCharacterPhysics.head;
+        signalCharacterTrail.push({ x: last.x, y: last.y, vx: 0, vy: 0, color: (last.color || targetColor).slice() });
+      }
+      if (signalCharacterTrail.length > trailCount) signalCharacterTrail.length = trailCount;
+
+      const stiffness = 0.062 + signalCharacterState.transientImpact * 0.055 + signalCharacterState.spectralCrest * 0.022;
+      const damping = 0.82 + signalCharacterState.dynamic * 0.08;
+      const headTargetX = targetX;
+      const headTargetY = targetY;
+      updateSpringMass(signalCharacterPhysics.head, headTargetX, headTargetY, stiffness, damping);
+      const headColorSpeed = hasSignal ? 0.22 : 0.04;
+      signalCharacterPhysics.head.color = signalCharacterPhysics.head.color.map((channel, index) => lerp(channel, targetColor[index], headColorSpeed));
+      updateSpringMass(signalCharacterPhysics.tailBlob, signalCharacterPhysics.head.x, signalCharacterPhysics.head.y, stiffness * 0.1, 0.965);
+      signalCharacterPhysics.tailBlob.color = signalCharacterPhysics.tailBlob.color.map((channel, index) => lerp(channel, signalCharacterPhysics.head.color[index], hasSignal ? 0.018 : 0.006));
+      let leader = signalCharacterPhysics.head;
+      for (let i = 0; i < signalCharacterTrail.length; i += 1) {
+        const follower = signalCharacterTrail[i];
+        const tailPosition = i / Math.max(1, signalCharacterTrail.length - 1);
+        const chainStiffness = 0.11 - tailPosition * 0.072;
+        const chainDamping = 0.64 + tailPosition * 0.2;
+        updateSpringMass(follower, leader.x, leader.y, chainStiffness, chainDamping);
+        const frontColorSpeed = 0.16;
+        const rearColorSpeed = 0.0045;
+        const colorEase = tailPosition * tailPosition;
+        const colorSpeed = lerp(frontColorSpeed, rearColorSpeed, colorEase);
+        const sourceColor = leader.color || targetColor;
+        follower.color = (follower.color || sourceColor).map((channel, index) => lerp(channel, sourceColor[index], colorSpeed));
+        leader = follower;
+      }
+
+      const desiredTrailAlpha = hasSignal || silenceAge < 2 ? 1 : 0;
+      const desiredHeadAlpha = hasSignal || silenceAge < 2.7 ? 1 : 0;
+      signalCharacterPhysics.trailAlpha = lerp(signalCharacterPhysics.trailAlpha, desiredTrailAlpha, desiredTrailAlpha > signalCharacterPhysics.trailAlpha ? 0.28 : 0.12);
+      signalCharacterPhysics.headAlpha = lerp(signalCharacterPhysics.headAlpha, desiredHeadAlpha, desiredHeadAlpha > signalCharacterPhysics.headAlpha ? 0.34 : 0.075);
+      if (signalCharacterPhysics.headAlpha < 0.01 && signalCharacterPhysics.trailAlpha < 0.01 && !hasSignal) {
+        resetSignalCharacterPhysics();
+        return null;
+      }
+      return signalCharacterPhysics;
+    }
+
+    function drawSignalCharacterBlob(body, color, alpha, options = {}) {
+      const nodeCount = options.nodeCount || 13;
+      const angles = options.angles || signalCharacterPhysics.blobAngles;
+      const frequencies = options.frequencies || signalCharacterPhysics.blobFreq;
+      const nodes = options.nodes || signalCharacterPhysics.blobNodes;
+      while (angles.length < nodeCount) {
+        const index = angles.length;
+        angles.push((index / nodeCount) * Math.PI * 2);
+        frequencies.push((options.frequencyBase || 0.018) + ((index * 37) % 71) / (options.frequencyDivisor || 2600));
+        nodes.push({ x: body.x, y: body.y, vx: 0, vy: 0 });
+      }
+      const speed = Math.hypot(body.vx, body.vy);
+      const inertiaScale = options.inertiaScale || 1;
+      const sizeScale = options.sizeScale || 1;
+      const wobble = clamp(speed * 0.06 + signalCharacterState.transientImpact * 0.46 * inertiaScale + signalCharacterState.noisy * 0.25, 0, 1.35);
+      const baseRadius = (25 + signalCharacterState.dynamic * 9 + signalCharacterState.noisy * 7) * sizeScale;
+      const velocityAngle = Math.atan2(body.vy, body.vx || 0.0001);
+      const stretch = clamp(speed * 0.52 + signalCharacterState.transientImpact * 22 * inertiaScale + signalCharacterState.eventDensity * 12, 0, 48 * sizeScale);
+      const lateralSquash = clamp(stretch * 0.32 + signalCharacterState.noisy * 7, 0, 24);
+      const points = [];
+      for (let i = 0; i < nodeCount; i += 1) {
+        angles[i] += frequencies[i] * (1 + wobble * 3.2);
+        const angle = (i / nodeCount) * Math.PI * 2 - Math.PI / 2;
+        const alignment = Math.cos(angle - velocityAngle);
+        const lateral = Math.sin(angle - velocityAngle);
+        const organic = Math.sin(angles[i] + i * 0.91) * wobble * 11 * sizeScale;
+        const radius = baseRadius + organic + alignment * stretch - Math.abs(lateral) * lateralSquash;
+        const targetX = body.x + Math.cos(angle) * radius;
+        const targetY = body.y + Math.sin(angle) * radius;
+        const node = nodes[i];
+        const nodeStiffness = (0.055 + Math.max(0, alignment) * 0.018 + signalCharacterState.transientImpact * 0.018) / inertiaScale;
+        const nodeDamping = clamp(0.9 + Math.abs(lateral) * 0.045 + (inertiaScale - 1) * 0.018, 0, 0.985);
+        node.vx = (node.vx + (targetX - node.x) * nodeStiffness) * nodeDamping;
+        node.vy = (node.vy + (targetY - node.y) * nodeStiffness) * nodeDamping;
+        node.x += node.vx;
+        node.y += node.vy;
+        points.push({ x: node.x, y: node.y });
+      }
+
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      const glow = ctx.createRadialGradient(body.x, body.y, 2, body.x, body.y, baseRadius * 2.6);
+      glow.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${0.26 * alpha})`);
+      glow.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(body.x, body.y, baseRadius * 2.85 + stretch * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${0.9 * alpha})`;
+      ctx.strokeStyle = `rgba(245,245,245,${0.62 * alpha})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i += 1) {
+        const p0 = points[(i - 1 + points.length) % points.length];
+        const p1 = points[i];
+        const midX = (p0.x + p1.x) * 0.5;
+        const midY = (p0.y + p1.y) * 0.5;
+        if (i === 0) ctx.moveTo(midX, midY);
+        ctx.quadraticCurveTo(p1.x, p1.y, (p1.x + points[(i + 1) % points.length].x) * 0.5, (p1.y + points[(i + 1) % points.length].y) * 0.5);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function drawSignalCharacterMap(x, y, w, h) {
       const noiseAxis = clampFinite(signalCharacterState.mapNoise, 0, 1, 0);
       const motionAxis = clampFinite(signalCharacterState.mapMotion, 0, 1, 0);
       const hasSignal = smoothed.rms > 0.012 || metrics.rms > 0.008 || metrics.peak > 0.018;
       const px = x + noiseAxis * w;
       const py = y + motionAxis * h;
-      if (!hasSignal) {
-        signalCharacterTrail.length = 0;
-      } else {
-        const latest = signalCharacterTrail[signalCharacterTrail.length - 1];
-        if (!latest || Math.abs(latest.x - px) + Math.abs(latest.y - py) > 1.8) {
-          signalCharacterTrail.push({ x: px, y: py, tonal: signalCharacterState.tonal, noisy: signalCharacterState.noisy, motion: motionAxis });
-          if (signalCharacterTrail.length > 32) signalCharacterTrail.shift();
-        }
-      }
+      const targetColor = [
+        Math.round(120 + signalCharacterState.transient * 135),
+        Math.round(40 + signalCharacterState.lowAnchor * 190),
+        Math.round(110 + signalCharacterState.noisy * 120)
+      ];
+      const physics = updateSignalCharacterPhysics(px, py, hasSignal, targetColor);
 
       ctx.fillStyle = "#050505";
       ctx.fillRect(x, y, w, h);
@@ -4604,34 +4885,26 @@
       ctx.lineTo(x + w, y + h / 2);
       ctx.stroke();
 
-      ctx.save();
-      ctx.lineWidth = 1;
-      for (let i = 1; i < signalCharacterTrail.length; i += 1) {
-        const a = i / Math.max(1, signalCharacterTrail.length - 1);
-        const p0 = signalCharacterTrail[i - 1];
-        const p1 = signalCharacterTrail[i];
-        ctx.strokeStyle = `rgba(245,245,245,${0.04 + a * 0.18})`;
-        ctx.beginPath();
-        ctx.moveTo(p0.x, p0.y);
-        ctx.lineTo(p1.x, p1.y);
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      if (hasSignal) {
-        const red = Math.round(120 + signalCharacterState.transient * 135);
-        const green = Math.round(40 + signalCharacterState.lowAnchor * 190);
-        const blue = Math.round(110 + signalCharacterState.noisy * 120);
-        ctx.fillStyle = `rgb(${red},${green},${blue})`;
-        ctx.beginPath();
-        ctx.arc(px, py, 8.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = "rgba(245,245,245,0.88)";
-        ctx.beginPath();
-        ctx.arc(px, py, 12.5, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.lineWidth = 1;
+      if (physics && physics.headAlpha > 0.01) {
+        ctx.save();
+        const headColor = physics.head.color || targetColor;
+        const tailColor = physics.tailBlob.color || headColor;
+        drawSignalCharacterBlob(
+          physics.tailBlob,
+          tailColor.map((value) => Math.round(value)),
+          physics.headAlpha * 0.46,
+          {
+            angles: physics.tailBlob.angles,
+            frequencies: physics.tailBlob.freq,
+            nodes: physics.tailBlob.nodes,
+            inertiaScale: 10,
+            sizeScale: 0.92,
+            frequencyBase: 0.006,
+            frequencyDivisor: 5200
+          }
+        );
+        drawSignalCharacterBlob(physics.head, headColor.map((value) => Math.round(value)), physics.headAlpha);
+        ctx.restore();
       }
 
       ctx.save();
@@ -4651,24 +4924,30 @@
       ctx.strokeStyle = "#282828";
       ctx.strokeRect(x, y, w, h);
       const pad = 18;
-      const mapW = Math.max(228, Math.floor(w * 0.52));
-      const mapH = Math.max(100, h - 62);
+      const display = signalCharacterDisplaySelect?.value || "both";
+      const showMap = display === "both" || display === "map";
+      const showBars = display === "both" || display === "bars";
+      const mapW = showBars ? Math.max(228, Math.floor(w * 0.52)) : w - pad * 2;
+      const mapH = showBars ? Math.max(100, h - 62) : h - 58;
       const mapX = x + pad;
       const mapY = y + 30;
-      drawMeterText("CHARACTER MAP", mapX, y + 17, 10, "rgba(245,245,245,0.82)");
-      drawSignalCharacterMap(mapX, mapY, mapW, mapH);
+      if (showMap) {
+        drawMeterText("CHARACTER MAP", mapX, y + 17, 10, "rgba(245,245,245,0.82)");
+        drawSignalCharacterMap(mapX, mapY, mapW, mapH);
+      }
 
-      const decisionX = mapX + mapW + 18;
-      const decisionW = Math.max(180, x + w - pad - decisionX);
-      const tunerTrust = clamp(signalCharacterState.lowAnchor * 0.46 + signalCharacterState.tonal * 0.34 + (1 - signalCharacterState.noisy) * 0.2, 0, 1);
-      const patternTrust = clamp(signalCharacterState.transientImpact * 0.5 + signalCharacterState.eventDensity * 0.3 + signalCharacterState.spectralCrest * 0.2, 0, 1);
-      const noiseRisk = signalCharacterState.noisy;
-      drawMeterText("DECISION STRIP", decisionX, y + 17, 10, "rgba(245,245,245,0.82)");
-      drawSignalDecisionBar("Tuner Trust", tunerTrust, decisionX, mapY + 4, decisionW, "#bc30ec");
-      drawSignalDecisionBar("Pattern Trust", patternTrust, decisionX, mapY + 31, decisionW, "#ff3d1f");
-      drawSignalDecisionBar("Low Anchor", signalCharacterState.lowAnchor, decisionX, mapY + 58, decisionW, "#39ff14");
-      drawSignalDecisionBar("Noise Risk", noiseRisk, decisionX, mapY + 85, decisionW, "#529eff");
-      drawSignalDecisionBar("Event Density", signalCharacterState.eventDensity, decisionX, mapY + 112, decisionW, "#ffbe28");
+      if (showBars) {
+        const decisionX = showMap ? mapX + mapW + 18 : x + pad;
+        const decisionY = showMap ? mapY + 4 : mapY;
+        const decisionW = showMap ? Math.max(180, x + w - pad - decisionX) : w - pad * 2;
+        const hints = signalCharacterBackend.hints;
+        drawMeterText("DECISION STRIP", decisionX, y + 17, 10, "rgba(245,245,245,0.82)");
+        drawSignalDecisionBar("Tuner Trust", hints.tunerTrust, decisionX, decisionY, decisionW, "#bc30ec");
+        drawSignalDecisionBar("Pattern Trust", hints.patternTrust, decisionX, decisionY + 27, decisionW, "#ff3d1f");
+        drawSignalDecisionBar("Low Anchor", signalCharacterState.lowAnchor, decisionX, decisionY + 54, decisionW, "#39ff14");
+        drawSignalDecisionBar("Noise Risk", hints.noiseRisk, decisionX, decisionY + 81, decisionW, "#529eff");
+        drawSignalDecisionBar("Event Density", signalCharacterState.eventDensity, decisionX, decisionY + 108, decisionW, "#ffbe28");
+      }
 
       const rawY = y + h - 22;
       const rawX = x + pad;
@@ -4676,6 +4955,7 @@
       ctx.fillStyle = "rgba(245,245,245,0.045)";
       ctx.fillRect(rawX, rawY - 13, rawW, 21);
       const raw = [
+        [signalCharacterBackend.profile.mode === "clinical" ? "Clinical" : "Musical", signalCharacterBackend.profile.fftWeight],
         ["Flat", signalCharacterState.flatness],
         ["Crest", signalCharacterState.spectralCrest],
         ["Peak/RMS", signalCharacterState.crestFactor],
@@ -4736,6 +5016,34 @@
       return `rgba(${Math.round(lerp(red, 245, white))},${Math.round(lerp(green, 245, white))},${Math.round(lerp(blue, 245, white))},${alpha})`;
     }
 
+    function phaseDungeonEnergyWindows(pressure, motion) {
+      const now = audioContext ? audioContext.currentTime : performance.now() / 1000;
+      const energy = clamp(metrics.rms * 0.34 + metrics.peak * 0.28 + pressure * 0.22 + motion * 0.16 + metrics.flux * 0.12, 0, 1.8);
+      phaseDungeonState.energyHistory.push({ time: now, energy });
+      while (phaseDungeonState.energyHistory.length && now - phaseDungeonState.energyHistory[0].time > 6.2) {
+        phaseDungeonState.energyHistory.shift();
+      }
+      function average(seconds) {
+        let sum = 0;
+        let count = 0;
+        for (const item of phaseDungeonState.energyHistory) {
+          if (now - item.time <= seconds) {
+            sum += item.energy;
+            count += 1;
+          }
+        }
+        return count ? sum / count : 0;
+      }
+      const fast = average(0.5);
+      const one = average(1);
+      const three = average(3);
+      const six = average(6);
+      const sustained = clamp(three * 0.62 + six * 0.38, 0, 1.4);
+      const brake = clamp((sustained - fast - 0.12) * 3.4, 0, 1);
+      const acceleration = clamp((fast - one + Math.max(0, fast - sustained) * 0.55 + metrics.flux * 0.28) * 2.8, 0, 1);
+      return { energy, fast, one, three, six, sustained, brake, acceleration };
+    }
+
     function updatePhaseDungeonField(cols, rows, samples, hasSignal) {
       const total = cols * rows;
       const profile = phaseDungeonMemoryProfile();
@@ -4790,12 +5098,56 @@
       const plotY = y + pad;
       const plotW = w - pad * 2;
       const plotH = h - pad * 2;
-      const cellW = plotW / cols;
-      const cellH = plotH / rows;
       const fog = Number(phaseDungeonFog?.value || 0.55);
       const pressure = clamp((smoothed.low * 0.58 + smoothed.bassHit * 0.68 + patternState.hits.kick * 0.42) * Number(phaseDungeonPressure?.value || 1), 0, 1.8);
       const width = clamp(smoothed.side * 0.72 + Math.abs(smoothed.right - smoothed.left) * 0.46, 0, 1);
       const motion = clamp(signalCharacterState.transientImpact * 0.64 + smoothed.flux * 0.58 + patternState.hits.global * 0.34, 0, 1);
+      const recurrence = phaseDungeonState.recurrence;
+      const energyWindows = phaseDungeonEnergyWindows(pressure, motion);
+      const tunnelEnergy = energyWindows.fast;
+      const suddenDrop = energyWindows.brake;
+      const hardAcceleration = energyWindows.acceleration;
+      if (suddenDrop > phaseDungeonState.tunnelDrop) {
+        phaseDungeonState.tunnelDrop = suddenDrop;
+      }
+      phaseDungeonState.previousEnergy = lerp(phaseDungeonState.previousEnergy, tunnelEnergy, tunnelEnergy > phaseDungeonState.previousEnergy ? 0.36 : 0.16);
+      phaseDungeonState.tunnelDrop *= 0.84;
+      phaseDungeonState.sectionPower = lerp(phaseDungeonState.sectionPower, energyWindows.sustained, energyWindows.sustained > phaseDungeonState.sectionPower ? 0.08 : 0.035);
+      phaseDungeonState.brake = lerp(phaseDungeonState.brake, phaseDungeonState.tunnelDrop, 0.36);
+      phaseDungeonState.acceleration = lerp(phaseDungeonState.acceleration, hardAcceleration, hardAcceleration > phaseDungeonState.acceleration ? 0.42 : 0.12);
+      const travelSpeed = 0.004
+        + phaseDungeonState.sectionPower * 0.018
+        + phaseDungeonState.acceleration * 0.07
+        + motion * 0.028
+        + recurrence * 0.012
+        - phaseDungeonState.brake * 0.026;
+      phaseDungeonState.tunnelTravel = (phaseDungeonState.tunnelTravel + Math.max(0.0015, travelSpeed)) % 1;
+      const headingNoise = noise2(smoothed.centroid + energyWindows.three, pressure + energyWindows.six, t * 0.008);
+      const headingTarget = (smoothed.right - smoothed.left) * 0.68
+        + (smoothed.mid - smoothed.high) * 0.32
+        + headingNoise * (0.2 + motion * 0.24 + phaseDungeonState.acceleration * 0.18)
+        + Math.sin(phaseDungeonState.tunnelTravel * Math.PI * 2) * phaseDungeonState.sectionPower * 0.16;
+      phaseDungeonState.tunnelHeading = lerp(phaseDungeonState.tunnelHeading, headingTarget, 0.045 + motion * 0.08 + phaseDungeonState.acceleration * 0.08);
+      const zoomTarget = clamp(
+        0.58
+          + phaseDungeonState.sectionPower * 0.42
+          + phaseDungeonState.acceleration * 0.72
+          + tunnelEnergy * 0.22
+          + recurrence * 0.08
+          - phaseDungeonState.brake * 0.64,
+        0.38,
+        1.82
+      );
+      phaseDungeonState.tunnelZoom = lerp(phaseDungeonState.tunnelZoom, zoomTarget, phaseDungeonState.brake > 0.12 || phaseDungeonState.acceleration > 0.18 ? 0.28 : 0.075);
+      const heading = phaseDungeonState.tunnelHeading;
+      const tension = clamp(phaseDungeonState.sectionPower * 0.5 + phaseDungeonState.acceleration * 0.35 + phaseDungeonState.brake * 0.25 + width * 0.2, 0, 1.4);
+      const centerX = plotX + plotW * (0.5 + Math.sin(heading) * (0.16 + tension * 0.1) + (smoothed.right - smoothed.left) * 0.08);
+      const centerY = plotY + plotH * (0.5 + Math.cos(heading * 0.86) * (0.08 + tension * 0.06) - smoothed.low * 0.05 + smoothed.high * 0.04);
+      const ringCount = Math.round(clamp(12 + recurrence * 8 + pressure * 4 + phaseDungeonState.brake * 7 + phaseDungeonState.acceleration * 4, 10, 28));
+      const segments = Math.round(clamp(28 + cols * 0.8, 28, 64));
+      const maxRadius = Math.min(plotW, plotH) * (0.48 + pressure * 0.11) * phaseDungeonState.tunnelZoom;
+      const tunnelTwist = (smoothed.side - 0.35) * 0.46 + smoothed.centroid * 0.32 + Math.sin(t * 0.009) * (0.18 + tension * 0.28) + heading * (0.74 + tension * 0.35);
+      const ringPoints = [];
 
       ctx.save();
       ctx.beginPath();
@@ -4804,185 +5156,150 @@
       ctx.fillStyle = "#010101";
       ctx.fillRect(plotX, plotY, plotW, plotH);
 
-      for (let yCell = 0; yCell < rows; yCell += 1) {
-        for (let xCell = 0; xCell < cols; xCell += 1) {
-          const idx = yCell * cols + xCell;
-          const value = clampFinite(phaseDungeonState.cells[idx], 0, 1, 0);
-          if (value < 0.08) continue;
-          const alpha = clamp(0.025 + value * 0.28, 0, 0.34);
-          ctx.fillStyle = phaseDungeonCellColor(value, pressure, width, fog, alpha);
-          ctx.fillRect(plotX + xCell * cellW, plotY + yCell * cellH, Math.ceil(cellW), Math.ceil(cellH));
+      const bg = ctx.createRadialGradient(centerX, centerY, 6, centerX, centerY, maxRadius * 1.28);
+      bg.addColorStop(0, `rgba(245,245,245,${0.04 + recurrence * 0.05})`);
+      bg.addColorStop(0.38, `rgba(188,48,236,${0.045 + width * 0.07})`);
+      bg.addColorStop(0.72, `rgba(255,61,31,${0.025 + pressure * 0.08})`);
+      bg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(plotX, plotY, plotW, plotH);
+
+      for (let ring = 0; ring < ringCount; ring += 1) {
+        const baseDepth = ring / Math.max(1, ringCount - 1);
+        const depth = (baseDepth + phaseDungeonState.tunnelTravel) % 1;
+        const perspective = Math.pow(depth, 1.18 + phaseDungeonState.brake * 0.42);
+        const hole = 0.035 + phaseDungeonState.acceleration * 0.24 + phaseDungeonState.sectionPower * 0.08 - phaseDungeonState.brake * 0.025;
+        const radius = maxRadius * (hole + perspective * (1.02 - hole)) * (1 + pressure * (1 - depth) * 0.24 - phaseDungeonState.brake * (1 - depth) * 0.16);
+        const zPush = pressure * (1 - depth) * 0.22 + smoothed.peak * 0.08;
+        const angleOffset = tunnelTwist * (1 - depth) + t * 0.002 * (ring + 1) + phaseDungeonState.tunnelTravel * Math.PI * 2;
+        const ovalX = 1.08 + width * 0.28 - depth * 0.08 + Math.sin(heading + depth * 3.4) * (0.09 + tension * 0.13);
+        const ovalY = 0.54 + pressure * 0.14 + depth * 0.28 + Math.cos(heading * 0.7 + depth * 4.1) * (0.07 + tension * 0.1);
+        const points = [];
+        for (let seg = 0; seg < segments; seg += 1) {
+          const p = seg / segments;
+          const angle = p * Math.PI * 2 + angleOffset;
+          const sample = samples[Math.floor(p * (samples.length - 1))] || 0;
+          const fractal = Math.sin(angle * (3 + Math.round(recurrence * 4)) + depth * 9 + t * 0.028)
+            * Math.sin(angle * (7 + Math.round(width * 5)) - pressure * 2.8)
+            * (0.032 + motion * 0.05 + recurrence * 0.035 + tension * 0.045);
+          const erosion = noise2(seg * 0.19, ring * 0.41, t * 0.035) * (0.045 + fog * 0.06 + smoothed.high * 0.045);
+          const transientDent = (motion * 0.06 + phaseDungeonState.acceleration * 0.08 - phaseDungeonState.brake * 0.035) * Math.sin(angle * 3 + t * 0.045 + ring);
+          const lock = recurrence * 0.035 * Math.sin(angle * 2 - ring * 0.7);
+          const r = radius * (1 + sample * (0.09 + pressure * 0.05) + erosion + transientDent + lock + fractal + zPush * 0.16);
+          const drift = (1 - depth) * maxRadius * (0.18 + motion * 0.08 + tension * 0.08);
+          const curveX = Math.sin(heading + depth * (4.8 + tension * 2.2) + angle * (0.18 + phaseDungeonState.brake * 0.1)) * drift * (width + 0.18);
+          const curveY = Math.cos(heading * 0.7 + depth * (3.6 + tension * 1.8) - angle * (0.12 + phaseDungeonState.acceleration * 0.12)) * drift * (smoothed.high + pressure * 0.18 + 0.08);
+          points.push({
+            x: centerX + Math.cos(angle) * r * ovalX + curveX,
+            y: centerY + Math.sin(angle) * r * ovalY + curveY,
+            depth,
+            energy: clamp(Math.abs(sample) * 0.5 + pressure * 0.22 + motion * 0.18 + recurrence * 0.18, 0, 1)
+          });
         }
+        ringPoints.push(points);
       }
 
       if (hasSignal) {
-        const centerLine = [];
-        const contourCount = 5;
-        for (let layer = 0; layer < contourCount; layer += 1) {
-          const a = layer / Math.max(1, contourCount - 1);
-          const yBias = (a - 0.5) * plotH * (0.46 + pressure * 0.22);
-          const color = layer === 0
-            ? `rgba(245,245,245,${0.5 + phaseDungeonState.recurrence * 0.28})`
-            : layer === 1
-              ? `rgba(188,48,236,${0.34 + width * 0.38})`
-              : layer === 2
-                ? `rgba(255,61,31,${0.32 + pressure * 0.42})`
-                : layer === 3
-                  ? `rgba(57,255,20,${0.22 + motion * 0.42})`
-                  : `rgba(126,214,255,${0.18 + width * 0.28})`;
-          const points = [];
-          for (let i = 0; i <= cols * 2; i += 1) {
-            const p = i / (cols * 2);
-            const sample = samples[Math.floor(p * (samples.length - 1))] || 0;
-            const wobble = noise2(i * 0.11, layer * 0.7, t * 0.05) * (5 + fog * 13);
-            const px = plotX + p * plotW;
-            const py = plotY + plotH * 0.5 + yBias + sample * plotH * (0.2 + pressure * 0.14) + wobble;
-            points.push({ x: px, y: py });
-            if (layer === 2) centerLine.push({ x: px, y: py });
-          }
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
 
-          ctx.save();
-          ctx.globalCompositeOperation = "screen";
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.strokeStyle = color;
-          ctx.lineWidth = layer === 0 ? 5.5 : 3.2 + pressure * 2.4;
+        const perspectiveLines = 11 + Math.round(width * 4 + motion * 3);
+        const lineOffset = Math.floor((phaseDungeonState.tunnelTravel * segments + heading * 7) % segments);
+        for (let line = 0; line < perspectiveLines; line += 1) {
+          const jitter = Math.floor(noise2(line * 0.73, phaseDungeonState.tunnelTravel, t * 0.006) * segments * 0.028);
+          const rawSeg = Math.floor(((line + 0.37) / perspectiveLines) * segments + lineOffset + jitter);
+          const seg = ((rawSeg % segments) + segments) % segments;
+          const lineEnergy = 0.08 + recurrence * 0.12 + pressure * 0.08 + motion * 0.06;
+          ctx.strokeStyle = `rgba(188,218,255,${clamp(lineEnergy, 0.035, 0.22)})`;
+          ctx.lineWidth = 0.55 + pressure * 0.55 + motion * 0.35;
           ctx.beginPath();
-          for (let i = 0; i < points.length; i += 1) {
-            const point = points[i];
-            if (i === 0) ctx.moveTo(point.x, point.y);
+          let hasLinePoint = false;
+          for (let ring = 1; ring < ringPoints.length; ring += 1) {
+            const point = ringPoints[ring]?.[seg];
+            if (!point) continue;
+            if (!hasLinePoint) {
+              ctx.moveTo(point.x, point.y);
+              hasLinePoint = true;
+            }
+            else ctx.lineTo(point.x, point.y);
+          }
+          if (hasLinePoint) ctx.stroke();
+        }
+
+        for (let ring = ringPoints.length - 1; ring >= 0; ring -= 1) {
+          const points = ringPoints[ring];
+          const depth = points[0]?.depth ?? ring / Math.max(1, ringPoints.length - 1);
+          const alpha = 0.16 + depth * 0.44 + recurrence * 0.14;
+          const red = Math.round(80 + pressure * 160 + depth * 26);
+          const green = Math.round(34 + motion * 180 + depth * 36);
+          const blue = Math.round(76 + width * 152 + depth * 64);
+          ctx.strokeStyle = `rgba(${red},${green},${blue},${alpha})`;
+          ctx.lineWidth = 1.1 + (1 - depth) * 2.5 + pressure * 1.5;
+          ctx.beginPath();
+          for (let seg = 0; seg <= segments; seg += 1) {
+            const point = points[seg % segments];
+            if (seg === 0) ctx.moveTo(point.x, point.y);
             else ctx.lineTo(point.x, point.y);
           }
           ctx.stroke();
-          ctx.lineWidth = layer === 0 ? 1.7 : 1.1;
-          ctx.strokeStyle = layer === 0 ? "rgba(245,245,245,0.86)" : color;
-          ctx.stroke();
-          ctx.restore();
+          if (ring % 3 === 0 || ring === 0) {
+            ctx.strokeStyle = `rgba(245,245,245,${0.08 + depth * 0.28 + motion * 0.12})`;
+            ctx.lineWidth = 0.7 + depth * 1.1;
+            ctx.stroke();
+          }
+          if (ring % 4 === 1 && recurrence + motion > 0.28) {
+            ctx.strokeStyle = `rgba(245,245,245,${0.035 + recurrence * 0.1 + motion * 0.06})`;
+            ctx.lineWidth = 0.5 + motion * 0.8;
+            ctx.beginPath();
+            const echoScale = 0.72 + Math.sin(ring + t * 0.02) * 0.06;
+            for (let seg = 0; seg <= segments; seg += 2) {
+              const point = points[seg % segments];
+              const ex = centerX + (point.x - centerX) * echoScale;
+              const ey = centerY + (point.y - centerY) * echoScale;
+              if (seg === 0) ctx.moveTo(ex, ey);
+              else ctx.lineTo(ex, ey);
+            }
+            ctx.stroke();
+          }
         }
-
-        ctx.save();
-        ctx.globalCompositeOperation = "screen";
-        const ribCount = 18;
-        for (let i = 0; i < ribCount; i += 1) {
-          const p = i / Math.max(1, ribCount - 1);
-          const idx = Math.floor(p * Math.max(0, centerLine.length - 1));
-          const base = centerLine[idx] || { x: plotX + p * plotW, y: plotY + plotH * 0.5 };
-          const ribHeight = plotH * (0.12 + pressure * 0.16 + phaseDungeonState.recurrence * 0.08) * (0.65 + 0.35 * Math.sin(i * 1.7 + t * 0.06));
-          ctx.strokeStyle = `rgba(245,245,245,${0.12 + phaseDungeonState.recurrence * 0.2})`;
-          ctx.lineWidth = 1 + pressure * 1.8;
+        if (phaseDungeonState.tunnelDrop > 0.04) {
+          ctx.strokeStyle = `rgba(245,245,245,${phaseDungeonState.tunnelDrop * 0.44})`;
+          ctx.lineWidth = 1 + phaseDungeonState.tunnelDrop * 7;
           ctx.beginPath();
-          ctx.moveTo(base.x, base.y - ribHeight);
-          ctx.lineTo(base.x + noise2(i, 0, t * 0.04) * 12 * width, base.y + ribHeight);
+          ctx.arc(centerX, centerY, maxRadius * (0.08 + phaseDungeonState.tunnelDrop * 0.28), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        if (phaseDungeonState.acceleration > 0.08) {
+          ctx.strokeStyle = `rgba(255,61,31,${phaseDungeonState.acceleration * 0.28})`;
+          ctx.lineWidth = 1 + phaseDungeonState.acceleration * 5;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, maxRadius * (0.28 + phaseDungeonState.acceleration * 0.58), 0, Math.PI * 2);
           ctx.stroke();
         }
         ctx.restore();
-      }
-      ctx.restore();
-      return { width, pressure };
-    }
 
-    function phaseDungeonFlowAngle(px, py, seed, pressure, width, recurrence, motion) {
-      const n = noise2(px * 2.8 + seed * 0.17, py * 2.2 - seed * 0.11, t * 0.025);
-      const pullX = 0.5 - px;
-      const pullY = 0.5 - py;
-      const swirl = Math.atan2(pullY, pullX) + Math.PI * 0.5;
-      const audioCurl = (smoothed.mid - smoothed.high) * 1.8 + motion * 1.4 - pressure * 0.7;
-      const branch = Math.sin(seed * 1.91 + t * 0.012 + recurrence * 3.2) * (0.45 + width * 0.65);
-      return swirl * (0.26 + recurrence * 0.2) + n * Math.PI * (0.68 + width * 0.42) + audioCurl + branch;
-    }
-
-    function drawPhaseDungeonVeins(x, y, w, h, cols, samples, hasSignal) {
-      const pad = 12;
-      const plotX = x + pad;
-      const plotY = y + pad;
-      const plotW = w - pad * 2;
-      const plotH = h - pad * 2;
-      const fog = Number(phaseDungeonFog?.value || 0.55);
-      const pressure = clamp((smoothed.low * 0.62 + smoothed.bassHit * 0.9 + patternState.hits.kick * 0.48) * Number(phaseDungeonPressure?.value || 1), 0, 1.9);
-      const width = clamp(smoothed.side * 0.82 + Math.abs(smoothed.right - smoothed.left) * 0.55, 0, 1);
-      const motion = clamp(signalCharacterState.transientImpact * 0.75 + smoothed.flux * 0.6 + patternState.hits.global * 0.38, 0, 1);
-      const recurrence = phaseDungeonState.recurrence;
-      const density = Math.round(clamp(cols * 0.55 + motion * 10 + recurrence * 8, 12, 34));
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(plotX, plotY, plotW, plotH);
-      ctx.clip();
-      ctx.fillStyle = "#010101";
-      ctx.fillRect(plotX, plotY, plotW, plotH);
-
-      const glow = ctx.createRadialGradient(plotX + plotW * 0.5, plotY + plotH * 0.5, 4, plotX + plotW * 0.5, plotY + plotH * 0.5, Math.max(plotW, plotH) * 0.64);
-      glow.addColorStop(0, `rgba(188,48,236,${0.08 + recurrence * 0.16})`);
-      glow.addColorStop(0.45, `rgba(255,61,31,${0.035 + pressure * 0.08})`);
-      glow.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(plotX, plotY, plotW, plotH);
-
-      for (let i = 0; i < Math.round(160 + fog * 160); i += 1) {
-        const rx = (noise2(i * 0.73, 1.2, t * 0.013) * 0.5 + 0.5) * plotW;
-        const ry = (noise2(i * 0.41, 7.9, t * 0.011) * 0.5 + 0.5) * plotH;
-        const a = clamp(0.015 + fog * 0.05 + motion * 0.025, 0, 0.09);
-        ctx.fillStyle = i % 5 === 0 ? `rgba(57,255,20,${a * 0.55})` : `rgba(188,48,236,${a})`;
-        ctx.fillRect(plotX + rx, plotY + ry, 1, 1);
-      }
-
-      ctx.globalCompositeOperation = "screen";
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      for (let vein = 0; vein < density; vein += 1) {
-        const seed = vein + 1;
-        const rootSide = vein % 4;
-        let px = rootSide === 0 ? 0.08 : rootSide === 1 ? 0.92 : (noise2(seed, 1, 0) * 0.5 + 0.5);
-        let py = rootSide === 2 ? 0.08 : rootSide === 3 ? 0.92 : (noise2(seed, 2, 0) * 0.5 + 0.5);
-        const localSample = samples[(vein * 7) % samples.length] || 0;
-        px = clamp(px + localSample * width * 0.12, 0.02, 0.98);
-        py = clamp(py + localSample * pressure * 0.08, 0.02, 0.98);
-        const steps = Math.round(18 + recurrence * 16 + motion * 10);
-        const stepSize = 0.018 + pressure * 0.006 + width * 0.005;
-        const hueMode = vein % 5;
-        const color = hueMode === 0
-          ? `rgba(245,245,245,${0.38 + recurrence * 0.34})`
-          : hueMode === 1
-            ? `rgba(255,61,31,${0.3 + pressure * 0.42})`
-            : hueMode === 2
-              ? `rgba(57,255,20,${0.18 + motion * 0.44})`
-              : hueMode === 3
-                ? `rgba(126,214,255,${0.18 + width * 0.34})`
-                : `rgba(188,48,236,${0.28 + fog * 0.32})`;
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = hueMode === 0 ? 2.2 + pressure * 2.4 : 1.1 + motion * 1.8;
-        ctx.beginPath();
-        ctx.moveTo(plotX + px * plotW, plotY + py * plotH);
-        for (let step = 0; step < steps; step += 1) {
-          const angle = phaseDungeonFlowAngle(px, py, seed + step * 0.1, pressure, width, recurrence, motion);
-          px = clamp(px + Math.cos(angle) * stepSize, 0.02, 0.98);
-          py = clamp(py + Math.sin(angle) * stepSize * (0.82 + pressure * 0.18), 0.02, 0.98);
-          if (step > 4 && step % 7 === 0 && motion + recurrence > 0.45) {
-            const bx = px;
-            const by = py;
-            const branchAngle = angle + (noise2(seed, step, t * 0.01) > 0 ? 1 : -1) * (0.7 + width * 0.8);
-            ctx.moveTo(plotX + bx * plotW, plotY + by * plotH);
-            for (let b = 0; b < 5; b += 1) {
-              const fade = 1 - b / 5;
-              const bpx = clamp(bx + Math.cos(branchAngle + b * 0.12) * stepSize * b * fade * 1.8, 0.02, 0.98);
-              const bpy = clamp(by + Math.sin(branchAngle + b * 0.12) * stepSize * b * fade * 1.8, 0.02, 0.98);
-              ctx.lineTo(plotX + bpx * plotW, plotY + bpy * plotH);
-            }
-            ctx.moveTo(plotX + px * plotW, plotY + py * plotH);
-          } else {
-            ctx.lineTo(plotX + px * plotW, plotY + py * plotH);
+        const block = Math.max(7, Math.floor(plotW / cols));
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        for (let yy = plotY; yy < plotY + plotH; yy += block) {
+          for (let xx = plotX; xx < plotX + plotW; xx += block) {
+            const dx = (xx + block * 0.5 - centerX) / Math.max(1, maxRadius);
+            const dy = (yy + block * 0.5 - centerY) / Math.max(1, maxRadius);
+            const radial = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            const band = 1 - Math.abs(((radial * ringCount - phaseDungeonState.tunnelTravel * ringCount) % 1 + 1) % 1 - 0.5) * 2;
+            const noise = noise2(xx * 0.013 + Math.cos(angle) * phaseDungeonState.tunnelTravel, yy * 0.017 + Math.sin(angle) * phaseDungeonState.tunnelTravel, t * 0.02) * 0.5 + 0.5;
+            const shade = clamp(band * 0.38 + noise * fog * 0.24 + pressure * 0.08 + recurrence * 0.1, 0, 1);
+            if (shade < 0.08) continue;
+            const alpha = clamp(0.015 + shade * 0.12, 0, 0.18);
+            ctx.fillStyle = phaseDungeonCellColor(shade, pressure, width, fog, alpha);
+            ctx.fillRect(xx, yy, Math.ceil(block * 0.96), Math.ceil(block * 0.96));
           }
         }
-        ctx.stroke();
+        ctx.restore();
       }
-
-      const pulseRadius = Math.min(plotW, plotH) * (0.16 + pressure * 0.22);
-      ctx.strokeStyle = `rgba(255,61,31,${0.08 + pressure * 0.2})`;
-      ctx.lineWidth = 1 + pressure * 3;
-      ctx.beginPath();
-      ctx.arc(plotX + plotW * (0.5 + (smoothed.right - smoothed.left) * 0.16), plotY + plotH * (0.5 + smoothed.high * 0.08 - smoothed.low * 0.08), pulseRadius, 0, Math.PI * 2);
-      ctx.stroke();
       ctx.restore();
       return { width, pressure };
     }
@@ -4997,15 +5314,12 @@
       const rows = Math.max(12, Math.round(cols * 0.48));
       const samples = phaseDungeonWaveSamples(Math.max(cols * 2, 64));
       updatePhaseDungeonField(cols, rows, samples, hasSignal);
-      const mode = phaseDungeonModeSelect?.value || "veins";
-      const result = mode === "ribs"
-        ? drawPhaseDungeonRibs(x, y, w, h, cols, rows, samples, hasSignal)
-        : drawPhaseDungeonVeins(x, y, w, h, cols, samples, hasSignal);
+      const result = drawPhaseDungeonRibs(x, y, w, h, cols, rows, samples, hasSignal);
 
       if (!hasSignal) {
         drawMeterText("waiting for signal", x + 14, y + h - 12, 10, "rgba(166,166,166,0.58)");
       } else {
-        const label = `${mode === "ribs" ? "ribs" : "veins"} · rec ${phaseDungeonState.recurrence.toFixed(2)} · width ${result.width.toFixed(2)} · pressure ${result.pressure.toFixed(2)}`;
+        const label = `kinetic · rec ${phaseDungeonState.recurrence.toFixed(2)} · width ${result.width.toFixed(2)} · pressure ${result.pressure.toFixed(2)}`;
         drawMeterText(label, x + 14, y + h - 12, 10, "rgba(166,188,210,0.78)");
       }
     }
@@ -6856,8 +7170,24 @@
       return {
         available: availableLayoutModules.includes("signalCharacter"),
         active: currentLayoutModules.includes("signalCharacter"),
+        controlsPresent: [
+          signalCharacterModeSelect,
+          signalCharacterWindowSelect,
+          signalCharacterDisplaySelect,
+          signalCharacterFftWeight,
+          signalCharacterNoise,
+          signalCharacterTransient,
+          signalCharacterSmoothing
+        ].every(Boolean),
         rendererPresent: typeof METERING_MODULE_BY_ID.signalCharacter?.renderer === "function",
         valuesFinite: values.every(Number.isFinite),
+        backendContract: {
+          sharedBackend: true,
+          descriptorsPresent: Boolean(signalCharacterBackend.descriptors),
+          hintsPresent: Boolean(signalCharacterBackend.hints),
+          mode: signalCharacterBackend.profile.mode,
+          window: signalCharacterBackend.profile.window
+        },
         displayContract: {
           characterMap: true,
           decisionStrip: true,
@@ -6874,14 +7204,17 @@
           transientDensity: signalCharacterState.transientDensity,
           transientImpact: signalCharacterState.transientImpact,
           eventDensity: signalCharacterState.eventDensity,
-          lowAnchor: signalCharacterState.lowAnchor
+          lowAnchor: signalCharacterState.lowAnchor,
+          tunerTrust: signalCharacterBackend.hints.tunerTrust,
+          patternTrust: signalCharacterBackend.hints.patternTrust,
+          noiseRisk: signalCharacterBackend.hints.noiseRisk,
+          spectralConfidence: signalCharacterBackend.hints.spectralConfidence
         }
       };
     }
 
     function auditPhaseDungeonContract() {
       const controls = [
-        phaseDungeonModeSelect,
         phaseDungeonDetailSelect,
         phaseDungeonMemorySelect,
         phaseDungeonFog,
@@ -6902,7 +7235,7 @@
         },
         metrics: {
           detail: Number(phaseDungeonDetailSelect?.value || 0),
-          mode: phaseDungeonModeSelect?.value || null,
+          mode: "kinetic",
           memory: phaseDungeonMemorySelect?.value || null,
           fog: Number(phaseDungeonFog?.value || 0),
           pressure: Number(phaseDungeonPressure?.value || 0),
@@ -7095,7 +7428,26 @@
     tunerReference.addEventListener("input", () => {
       tunerReferenceValue.textContent = `${Number(tunerReference.value).toFixed(1)}Hz`;
     });
-    phaseDungeonModeSelect.addEventListener("change", resetPhaseDungeonState);
+    signalCharacterModeSelect.addEventListener("change", () => {
+      resetSignalCharacterPhysics();
+    });
+    signalCharacterWindowSelect.addEventListener("change", () => {
+      signalCharacterOnsets.length = 0;
+      signalCharacterOnsetEnvelope = 0;
+    });
+    signalCharacterDisplaySelect.addEventListener("change", markLayoutControlsDirty);
+    signalCharacterFftWeight.addEventListener("input", () => {
+      signalCharacterFftWeightValue.textContent = Number(signalCharacterFftWeight.value).toFixed(2);
+    });
+    signalCharacterNoise.addEventListener("input", () => {
+      signalCharacterNoiseValue.textContent = Number(signalCharacterNoise.value).toFixed(2);
+    });
+    signalCharacterTransient.addEventListener("input", () => {
+      signalCharacterTransientValue.textContent = Number(signalCharacterTransient.value).toFixed(2);
+    });
+    signalCharacterSmoothing.addEventListener("input", () => {
+      signalCharacterSmoothingValue.textContent = Number(signalCharacterSmoothing.value).toFixed(2);
+    });
     phaseDungeonDetailSelect.addEventListener("change", resetPhaseDungeonState);
     phaseDungeonMemorySelect.addEventListener("change", resetPhaseDungeonState);
     phaseDungeonFog.addEventListener("input", () => {

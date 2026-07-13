@@ -33,11 +33,12 @@
         <summary><span class="module-title">Tuner</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Tuner graph"></button></summary>
         <div id="tunerControlsMount" class="control-body"></div>
       </details>
-      <details class="control-group no-params" data-module="signalCharacter">
-        <summary><span class="module-title">Signal Character</span><button class="graph-toggle" type="button" aria-label="Toggle Signal Character graph"></button></summary>
+      <details class="control-group" data-module="signalCharacter">
+        <summary><span class="module-title">Signal Character</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Signal Character graph"></button></summary>
+        <div id="signalCharacterControlsMount" class="control-body"></div>
       </details>
       <details class="control-group" data-module="phaseDungeon">
-        <summary><span class="module-title">Phase Dungeon</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Phase Dungeon graph"></button></summary>
+        <summary><span class="module-title">Kinetic</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Kinetic graph"></button></summary>
         <div id="phaseDungeonControlsMount" class="control-body"></div>
       </details>
       <details class="control-group" data-module="vectorLaser">
@@ -288,6 +289,52 @@
       </label>
 
       <label>
+        Signal Character Mode
+        <select id="signalCharacterModeSelect">
+          <option value="musical" selected>Musical</option>
+          <option value="clinical">Clinical</option>
+        </select>
+      </label>
+
+      <label>
+        Signal Character Window
+        <select id="signalCharacterWindowSelect">
+          <option value="fast">Fast</option>
+          <option value="medium" selected>Medium</option>
+          <option value="slow">Slow</option>
+        </select>
+      </label>
+
+      <label>
+        Signal Character Display
+        <select id="signalCharacterDisplaySelect">
+          <option value="both" selected>Map + Bars</option>
+          <option value="map">Map</option>
+          <option value="bars">Bars</option>
+        </select>
+      </label>
+
+      <label>
+        Signal FFT Weight <span id="signalCharacterFftWeightValue">0.65</span>
+        <input id="signalCharacterFftWeight" type="range" min="0" max="1" step="0.01" value="0.65">
+      </label>
+
+      <label>
+        Signal Noise Sensitivity <span id="signalCharacterNoiseValue">1.00</span>
+        <input id="signalCharacterNoise" type="range" min="0.25" max="2" step="0.01" value="1">
+      </label>
+
+      <label>
+        Signal Transient Sensitivity <span id="signalCharacterTransientValue">1.00</span>
+        <input id="signalCharacterTransient" type="range" min="0.25" max="2" step="0.01" value="1">
+      </label>
+
+      <label>
+        Signal Smoothing <span id="signalCharacterSmoothingValue">0.60</span>
+        <input id="signalCharacterSmoothing" type="range" min="0" max="1" step="0.01" value="0.6">
+      </label>
+
+      <label>
         Oscilloscope Follow Pitch
         <select id="scopeFollowSelect">
           <option value="on" selected>On</option>
@@ -357,15 +404,7 @@
       </div>
 
       <label>
-        Phase Dungeon Mode
-        <select id="phaseDungeonModeSelect">
-          <option value="veins" selected>Vein Labyrinth</option>
-          <option value="ribs">Cave Ribs</option>
-        </select>
-      </label>
-
-      <label>
-        Phase Dungeon Detail
+        Kinetic Detail
         <select id="phaseDungeonDetailSelect">
           <option value="24">Low</option>
           <option value="32" selected>Medium</option>
@@ -374,7 +413,7 @@
       </label>
 
       <label>
-        Phase Dungeon Memory
+        Kinetic Memory
         <select id="phaseDungeonMemorySelect">
           <option value="short">Short</option>
           <option value="medium" selected>Medium</option>
@@ -383,12 +422,12 @@
       </label>
 
       <label>
-        Phase Dungeon Fog <span id="phaseDungeonFogValue">0.55</span>
+        Kinetic Fog <span id="phaseDungeonFogValue">0.55</span>
         <input id="phaseDungeonFog" type="range" min="0" max="1" step="0.01" value="0.55">
       </label>
 
       <label>
-        Phase Dungeon Pressure <span id="phaseDungeonPressureValue">1.00</span>
+        Kinetic Pressure <span id="phaseDungeonPressureValue">1.00</span>
         <input id="phaseDungeonPressure" type="range" min="0" max="2" step="0.01" value="1">
       </label>
 

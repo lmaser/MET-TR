@@ -579,6 +579,9 @@
       const secure = window.isSecureContext || location.hostname === "localhost" || location.hostname === "127.0.0.1";
       const hasMediaDevices = Boolean(navigator.mediaDevices);
       const hasUserMedia = hasMediaDevices && typeof navigator.mediaDevices.getUserMedia === "function";
+      const hasLegacyUserMedia = typeof navigator.getUserMedia === "function"
+        || typeof navigator.webkitGetUserMedia === "function"
+        || typeof navigator.mozGetUserMedia === "function";
       const hasDisplayMedia = hasMediaDevices && typeof navigator.mediaDevices.getDisplayMedia === "function";
       const hasAudioContext = Boolean(getAudioContextConstructor());
       const mobile = isProbablyMobileBrowser();
@@ -586,10 +589,11 @@
         secure,
         hasMediaDevices,
         hasUserMedia,
+        hasLegacyUserMedia,
         hasDisplayMedia,
         hasAudioContext,
         mobile,
-        microphone: secure && hasUserMedia && hasAudioContext,
+        microphone: secure && hasAudioContext && (hasUserMedia || hasLegacyUserMedia),
         systemAudio: secure && hasDisplayMedia && hasAudioContext && !mobile
       };
       systemAudioButton.classList.toggle("is-unavailable", !inputCapabilityStatus.systemAudio);
@@ -599,7 +603,7 @@
           ? "System audio capture is not exposed by mobile browsers. Use Microphone on this device."
           : "System audio capture needs HTTPS and browser screen-share audio support.";
       micButton.classList.toggle("is-unavailable", !inputCapabilityStatus.microphone);
-      micButton.disabled = !inputCapabilityStatus.microphone;
+      micButton.disabled = false;
       micButton.title = inputCapabilityStatus.microphone
         ? "Capture this device microphone."
         : "Microphone capture needs HTTPS and browser media permissions.";
@@ -610,12 +614,35 @@
       if (!inputCapabilityStatus.hasAudioContext) return "web audio unavailable";
       if (kind === "system" && inputCapabilityStatus.mobile) return "system audio unavailable on mobile";
       if (kind === "system" && !inputCapabilityStatus.hasDisplayMedia) return "screen audio capture unsupported";
-      if (kind === "microphone" && !inputCapabilityStatus.hasUserMedia) return "microphone unsupported";
+      if (kind === "microphone" && !inputCapabilityStatus.hasUserMedia && !inputCapabilityStatus.hasLegacyUserMedia) return "microphone unsupported";
       if (error?.name === "NotAllowedError") return kind === "system" ? "capture permission denied" : "microphone permission denied";
       if (error?.name === "NotFoundError") return kind === "system" ? "no shared audio source" : "no microphone found";
       if (error?.name === "NotReadableError") return kind === "system" ? "audio source busy" : "microphone busy";
       if (error?.name === "AbortError") return "capture cancelled";
       return kind === "system" ? "capture unavailable" : "microphone unavailable";
+    }
+
+    async function primeAudioContext() {
+      const AudioContextCtor = getAudioContextConstructor();
+      if (!AudioContextCtor) throw new Error("AudioContext unavailable");
+      audioContext = audioContext || new AudioContextCtor();
+      if (audioContext.state !== "running") {
+        await audioContext.resume();
+      }
+      return audioContext;
+    }
+
+    function getUserMediaCompat(constraints) {
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function") {
+        return navigator.mediaDevices.getUserMedia(constraints);
+      }
+      const legacyGetUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+      if (!legacyGetUserMedia) {
+        return Promise.reject(new Error("getUserMedia unavailable"));
+      }
+      return new Promise((resolve, reject) => {
+        legacyGetUserMedia.call(navigator, constraints, resolve, reject);
+      });
     }
 
     function applyAlgorithmUi() {
@@ -2026,10 +2053,7 @@
         streamRef.getTracks().forEach((track) => track.stop());
       }
       streamRef = stream;
-      const AudioContextCtor = getAudioContextConstructor();
-      if (!AudioContextCtor) throw new Error("AudioContext unavailable");
-      audioContext = audioContext || new AudioContextCtor();
-      await audioContext.resume();
+      await primeAudioContext();
       const source = audioContext.createMediaStreamSource(stream);
       analyser = audioContext.createAnalyser();
       configureSpectrumAnalyser();
@@ -2075,6 +2099,7 @@
         return;
       }
       try {
+        await primeAudioContext();
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: {
@@ -2103,6 +2128,8 @@
         return;
       }
       try {
+        statusEl.textContent = "requesting microphone permission";
+        await primeAudioContext();
         let stream;
         const highFidelityAudio = {
           echoCancellation: false,
@@ -2112,9 +2139,9 @@
           sampleRate: { ideal: 48000 }
         };
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: highFidelityAudio });
+          stream = await getUserMediaCompat({ audio: highFidelityAudio });
         } catch (error) {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream = await getUserMediaCompat({ audio: true });
         }
         await connectStream(stream);
       } catch (error) {

@@ -43,6 +43,20 @@
     const spectrogramLoopSelect = document.getElementById("spectrogramLoopSelect");
     const tunerReference = document.getElementById("tunerReference");
     const tunerReferenceValue = document.getElementById("tunerReferenceValue");
+    const phaseDungeonModeSelect = document.getElementById("phaseDungeonModeSelect");
+    const phaseDungeonDetailSelect = document.getElementById("phaseDungeonDetailSelect");
+    const phaseDungeonMemorySelect = document.getElementById("phaseDungeonMemorySelect");
+    const phaseDungeonFog = document.getElementById("phaseDungeonFog");
+    const phaseDungeonFogValue = document.getElementById("phaseDungeonFogValue");
+    const phaseDungeonPressure = document.getElementById("phaseDungeonPressure");
+    const phaseDungeonPressureValue = document.getElementById("phaseDungeonPressureValue");
+    const vectorLaserModeSelect = document.getElementById("vectorLaserModeSelect");
+    const vectorLaserInputSelect = document.getElementById("vectorLaserInputSelect");
+    const vectorLaserDensitySelect = document.getElementById("vectorLaserDensitySelect");
+    const vectorLaserPersistence = document.getElementById("vectorLaserPersistence");
+    const vectorLaserPersistenceValue = document.getElementById("vectorLaserPersistenceValue");
+    const vectorLaserGlow = document.getElementById("vectorLaserGlow");
+    const vectorLaserGlowValue = document.getElementById("vectorLaserGlowValue");
     const scopeFollowSelect = document.getElementById("scopeFollowSelect");
     const waveformChannelSelect = document.getElementById("waveformChannelSelect");
     const waveformColorSelect = document.getElementById("waveformColorSelect");
@@ -60,6 +74,8 @@
     const spectralDynamicsControlsMount = document.getElementById("spectralDynamicsControlsMount");
     const spectrogramControlsMount = document.getElementById("spectrogramControlsMount");
     const tunerControlsMount = document.getElementById("tunerControlsMount");
+    const phaseDungeonControlsMount = document.getElementById("phaseDungeonControlsMount");
+    const vectorLaserControlsMount = document.getElementById("vectorLaserControlsMount");
     const oscilloscopeControlsMount = document.getElementById("oscilloscopeControlsMount");
     const waveformShortControlsMount = document.getElementById("waveformShortControlsMount");
     const waveformMediumControlsMount = document.getElementById("waveformMediumControlsMount");
@@ -265,6 +281,16 @@
     let signalCharacterPreviousRms = 0;
     let signalCharacterFluxFloor = 0;
     let signalCharacterFluxPeak = 0.001;
+    const phaseDungeonState = {
+      cells: [],
+      lastSignalAt: -99,
+      recurrence: 0
+    };
+    const vectorLaserState = {
+      trails: [],
+      lastSignalAt: -99,
+      pointCount: 0
+    };
     const patternState = {
       previous: { kick: 0, tom: 0, snare: 0, hat: 0, cymbal: 0, global: 0 },
       envelope: { kick: 0, tom: 0, snare: 0, hat: 0, cymbal: 0, global: 0 },
@@ -313,6 +339,8 @@
       drawSpectrogramPanel,
       drawTunerPanel,
       drawSignalCharacterPanel,
+      drawPhaseDungeonPanel,
+      drawVectorLaserPanel,
       drawOscilloscopePanel,
       drawWaveformShortPanel,
       drawWaveformMediumPanel,
@@ -332,6 +360,8 @@
       spectrogram: "Spectrogram",
       tuner: "Tuner",
       signalCharacter: "Signal Character",
+      phaseDungeon: "Phase Dungeon",
+      vectorLaser: "Vector Laser",
       oscilloscope: "Oscilloscope",
       waveformShort: "Waveform Short",
       waveformMedium: "Waveform Medium",
@@ -352,6 +382,8 @@
       spectrogram: true,
       tuner: true,
       signalCharacter: true,
+      phaseDungeon: true,
+      vectorLaser: true,
       oscilloscope: true,
       waveformShort: true,
       waveformMedium: true,
@@ -937,6 +969,16 @@
       moveControlById("spectrogramPianoOverlaySelect", spectrogramControlsMount);
       moveControlById("spectrogramLoopSelect", spectrogramControlsMount);
       moveControlById("tunerReference", tunerControlsMount);
+      moveControlById("phaseDungeonModeSelect", phaseDungeonControlsMount);
+      moveControlById("phaseDungeonDetailSelect", phaseDungeonControlsMount);
+      moveControlById("phaseDungeonMemorySelect", phaseDungeonControlsMount);
+      moveControlById("phaseDungeonFog", phaseDungeonControlsMount);
+      moveControlById("phaseDungeonPressure", phaseDungeonControlsMount);
+      moveControlById("vectorLaserModeSelect", vectorLaserControlsMount);
+      moveControlById("vectorLaserInputSelect", vectorLaserControlsMount);
+      moveControlById("vectorLaserDensitySelect", vectorLaserControlsMount);
+      moveControlById("vectorLaserPersistence", vectorLaserControlsMount);
+      moveControlById("vectorLaserGlow", vectorLaserControlsMount);
       moveControlById("scopeFollowSelect", oscilloscopeControlsMount);
       moveControlById("waveformChannelSelect", waveformShortControlsMount);
       moveControlById("waveformColorSelect", waveformShortControlsMount);
@@ -1282,6 +1324,18 @@
       meterState.spectralDynamics.peak = new Array(bins).fill(0);
       meterState.spectralDynamics.range = new Array(bins).fill(0);
       meterState.spectralDynamics.lastUpdatedAt = 0;
+    }
+
+    function resetPhaseDungeonState() {
+      phaseDungeonState.cells.length = 0;
+      phaseDungeonState.lastSignalAt = -99;
+      phaseDungeonState.recurrence = 0;
+    }
+
+    function resetVectorLaserState() {
+      vectorLaserState.trails.length = 0;
+      vectorLaserState.lastSignalAt = -99;
+      vectorLaserState.pointCount = 0;
     }
 
     function requestedSpectrumFftSize() {
@@ -4636,6 +4690,688 @@
       });
     }
 
+    function phaseDungeonMemoryProfile() {
+      const mode = phaseDungeonMemorySelect?.value || "medium";
+      if (mode === "short") return { attack: 0.78, release: 0.32, delay: 3 };
+      if (mode === "long") return { attack: 0.42, release: 0.08, delay: 9 };
+      return { attack: 0.58, release: 0.16, delay: 6 };
+    }
+
+    function phaseDungeonWaveSamples(count) {
+      const samples = new Array(count).fill(0);
+      if (!timeData.length) return samples;
+      const start = Math.max(0, timeData.length - count * 5);
+      const span = Math.max(1, timeData.length - start - 1);
+      for (let i = 0; i < count; i += 1) {
+        const idx = Math.min(timeData.length - 1, start + Math.floor((i / Math.max(1, count - 1)) * span));
+        samples[i] = clamp((timeData[idx] - 128) / 128, -1, 1);
+      }
+      return samples;
+    }
+
+    function phaseDungeonRecurrence(samples, delay) {
+      if (samples.length < delay + 4) return 0;
+      let sum = 0;
+      let sumA = 0;
+      let sumB = 0;
+      let count = 0;
+      for (let i = delay; i < samples.length; i += 1) {
+        const a = samples[i];
+        const b = samples[i - delay];
+        sum += a * b;
+        sumA += a * a;
+        sumB += b * b;
+        count += 1;
+      }
+      if (!count || sumA <= 0.00001 || sumB <= 0.00001) return 0;
+      return clamp(Math.abs(sum / Math.sqrt(sumA * sumB)), 0, 1);
+    }
+
+    function phaseDungeonCellColor(value, pressure, width, fog, alpha = 1) {
+      const v = clampFinite(value, 0, 1, 0);
+      const red = Math.round(18 + pressure * 132 + v * 86);
+      const green = Math.round(14 + width * 140 + v * 42);
+      const blue = Math.round(18 + fog * 86 + width * 46 + v * 120);
+      const white = clamp((v - 0.78) * 4.2, 0, 1);
+      return `rgba(${Math.round(lerp(red, 245, white))},${Math.round(lerp(green, 245, white))},${Math.round(lerp(blue, 245, white))},${alpha})`;
+    }
+
+    function updatePhaseDungeonField(cols, rows, samples, hasSignal) {
+      const total = cols * rows;
+      const profile = phaseDungeonMemoryProfile();
+      if (phaseDungeonState.cells.length !== total) {
+        phaseDungeonState.cells = new Array(total).fill(0);
+      }
+      if (!hasSignal) {
+        for (let i = 0; i < total; i += 1) {
+          phaseDungeonState.cells[i] = lerp(phaseDungeonState.cells[i] || 0, 0, 0.34);
+        }
+        phaseDungeonState.recurrence = lerp(phaseDungeonState.recurrence, 0, 0.28);
+        return;
+      }
+
+      const width = clamp(smoothed.side * 0.72 + Math.abs(smoothed.right - smoothed.left) * 0.46, 0, 1);
+      const pressure = clamp((smoothed.low * 0.58 + smoothed.bassHit * 0.68 + patternState.hits.kick * 0.42) * Number(phaseDungeonPressure?.value || 1), 0, 1.8);
+      const motion = clamp(signalCharacterState.transientImpact * 0.64 + smoothed.flux * 0.58 + patternState.hits.global * 0.34, 0, 1);
+      const delay = profile.delay + Math.round(pressure * 5 + width * 3);
+      const recurrence = phaseDungeonRecurrence(samples, Math.min(delay, samples.length - 3));
+      phaseDungeonState.recurrence = lerp(phaseDungeonState.recurrence, recurrence, recurrence > phaseDungeonState.recurrence ? 0.42 : 0.12);
+      phaseDungeonState.lastSignalAt = performance.now() / 1000;
+
+      const fog = Number(phaseDungeonFog?.value || 0.55);
+      const centerRow = (rows - 1) * 0.5;
+      const caveHalf = rows * (0.18 + pressure * 0.18 + phaseDungeonState.recurrence * 0.11);
+      for (let yCell = 0; yCell < rows; yCell += 1) {
+        for (let xCell = 0; xCell < cols; xCell += 1) {
+          const idx = yCell * cols + xCell;
+          const wave = samples[xCell % samples.length] || 0;
+          const mirror = samples[(samples.length - 1 - xCell + samples.length) % samples.length] || 0;
+          const delayed = samples[(xCell + delay + yCell * 2) % samples.length] || 0;
+          const recur = 1 - Math.abs(wave - delayed) * 1.35;
+          const sideBend = (xCell / Math.max(1, cols - 1) - 0.5) * width * rows * 0.24;
+          const caveCenter = centerRow
+            + wave * rows * (0.2 + pressure * 0.11)
+            + mirror * rows * width * 0.08
+            + sideBend;
+          const dist = Math.abs(yCell - caveCenter);
+          const wall = smoothstep(caveHalf + 3.4, caveHalf - 0.5, dist);
+          const grain = noise2(xCell * 0.37, yCell * 0.53, t * 0.06);
+          const fracture = smoothstep(0.22, 0.92, recur + grain * fog * 0.44 + motion * 0.18);
+          const target = clamp(wall * (0.42 + fracture * 0.68) + pressure * 0.12 + motion * 0.1, 0, 1);
+          const current = phaseDungeonState.cells[idx] || 0;
+          phaseDungeonState.cells[idx] = lerp(current, target, target > current ? profile.attack : profile.release);
+        }
+      }
+    }
+
+    function drawPhaseDungeonRibs(x, y, w, h, cols, rows, samples, hasSignal) {
+      const pad = 10;
+      const plotX = x + pad;
+      const plotY = y + pad;
+      const plotW = w - pad * 2;
+      const plotH = h - pad * 2;
+      const cellW = plotW / cols;
+      const cellH = plotH / rows;
+      const fog = Number(phaseDungeonFog?.value || 0.55);
+      const pressure = clamp((smoothed.low * 0.58 + smoothed.bassHit * 0.68 + patternState.hits.kick * 0.42) * Number(phaseDungeonPressure?.value || 1), 0, 1.8);
+      const width = clamp(smoothed.side * 0.72 + Math.abs(smoothed.right - smoothed.left) * 0.46, 0, 1);
+      const motion = clamp(signalCharacterState.transientImpact * 0.64 + smoothed.flux * 0.58 + patternState.hits.global * 0.34, 0, 1);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(plotX, plotY, plotW, plotH);
+      ctx.clip();
+      ctx.fillStyle = "#010101";
+      ctx.fillRect(plotX, plotY, plotW, plotH);
+
+      for (let yCell = 0; yCell < rows; yCell += 1) {
+        for (let xCell = 0; xCell < cols; xCell += 1) {
+          const idx = yCell * cols + xCell;
+          const value = clampFinite(phaseDungeonState.cells[idx], 0, 1, 0);
+          if (value < 0.08) continue;
+          const alpha = clamp(0.025 + value * 0.28, 0, 0.34);
+          ctx.fillStyle = phaseDungeonCellColor(value, pressure, width, fog, alpha);
+          ctx.fillRect(plotX + xCell * cellW, plotY + yCell * cellH, Math.ceil(cellW), Math.ceil(cellH));
+        }
+      }
+
+      if (hasSignal) {
+        const centerLine = [];
+        const contourCount = 5;
+        for (let layer = 0; layer < contourCount; layer += 1) {
+          const a = layer / Math.max(1, contourCount - 1);
+          const yBias = (a - 0.5) * plotH * (0.46 + pressure * 0.22);
+          const color = layer === 0
+            ? `rgba(245,245,245,${0.5 + phaseDungeonState.recurrence * 0.28})`
+            : layer === 1
+              ? `rgba(188,48,236,${0.34 + width * 0.38})`
+              : layer === 2
+                ? `rgba(255,61,31,${0.32 + pressure * 0.42})`
+                : layer === 3
+                  ? `rgba(57,255,20,${0.22 + motion * 0.42})`
+                  : `rgba(126,214,255,${0.18 + width * 0.28})`;
+          const points = [];
+          for (let i = 0; i <= cols * 2; i += 1) {
+            const p = i / (cols * 2);
+            const sample = samples[Math.floor(p * (samples.length - 1))] || 0;
+            const wobble = noise2(i * 0.11, layer * 0.7, t * 0.05) * (5 + fog * 13);
+            const px = plotX + p * plotW;
+            const py = plotY + plotH * 0.5 + yBias + sample * plotH * (0.2 + pressure * 0.14) + wobble;
+            points.push({ x: px, y: py });
+            if (layer === 2) centerLine.push({ x: px, y: py });
+          }
+
+          ctx.save();
+          ctx.globalCompositeOperation = "screen";
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.strokeStyle = color;
+          ctx.lineWidth = layer === 0 ? 5.5 : 3.2 + pressure * 2.4;
+          ctx.beginPath();
+          for (let i = 0; i < points.length; i += 1) {
+            const point = points[i];
+            if (i === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+          }
+          ctx.stroke();
+          ctx.lineWidth = layer === 0 ? 1.7 : 1.1;
+          ctx.strokeStyle = layer === 0 ? "rgba(245,245,245,0.86)" : color;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        const ribCount = 18;
+        for (let i = 0; i < ribCount; i += 1) {
+          const p = i / Math.max(1, ribCount - 1);
+          const idx = Math.floor(p * Math.max(0, centerLine.length - 1));
+          const base = centerLine[idx] || { x: plotX + p * plotW, y: plotY + plotH * 0.5 };
+          const ribHeight = plotH * (0.12 + pressure * 0.16 + phaseDungeonState.recurrence * 0.08) * (0.65 + 0.35 * Math.sin(i * 1.7 + t * 0.06));
+          ctx.strokeStyle = `rgba(245,245,245,${0.12 + phaseDungeonState.recurrence * 0.2})`;
+          ctx.lineWidth = 1 + pressure * 1.8;
+          ctx.beginPath();
+          ctx.moveTo(base.x, base.y - ribHeight);
+          ctx.lineTo(base.x + noise2(i, 0, t * 0.04) * 12 * width, base.y + ribHeight);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      ctx.restore();
+      return { width, pressure };
+    }
+
+    function phaseDungeonFlowAngle(px, py, seed, pressure, width, recurrence, motion) {
+      const n = noise2(px * 2.8 + seed * 0.17, py * 2.2 - seed * 0.11, t * 0.025);
+      const pullX = 0.5 - px;
+      const pullY = 0.5 - py;
+      const swirl = Math.atan2(pullY, pullX) + Math.PI * 0.5;
+      const audioCurl = (smoothed.mid - smoothed.high) * 1.8 + motion * 1.4 - pressure * 0.7;
+      const branch = Math.sin(seed * 1.91 + t * 0.012 + recurrence * 3.2) * (0.45 + width * 0.65);
+      return swirl * (0.26 + recurrence * 0.2) + n * Math.PI * (0.68 + width * 0.42) + audioCurl + branch;
+    }
+
+    function drawPhaseDungeonVeins(x, y, w, h, cols, samples, hasSignal) {
+      const pad = 12;
+      const plotX = x + pad;
+      const plotY = y + pad;
+      const plotW = w - pad * 2;
+      const plotH = h - pad * 2;
+      const fog = Number(phaseDungeonFog?.value || 0.55);
+      const pressure = clamp((smoothed.low * 0.62 + smoothed.bassHit * 0.9 + patternState.hits.kick * 0.48) * Number(phaseDungeonPressure?.value || 1), 0, 1.9);
+      const width = clamp(smoothed.side * 0.82 + Math.abs(smoothed.right - smoothed.left) * 0.55, 0, 1);
+      const motion = clamp(signalCharacterState.transientImpact * 0.75 + smoothed.flux * 0.6 + patternState.hits.global * 0.38, 0, 1);
+      const recurrence = phaseDungeonState.recurrence;
+      const density = Math.round(clamp(cols * 0.55 + motion * 10 + recurrence * 8, 12, 34));
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(plotX, plotY, plotW, plotH);
+      ctx.clip();
+      ctx.fillStyle = "#010101";
+      ctx.fillRect(plotX, plotY, plotW, plotH);
+
+      const glow = ctx.createRadialGradient(plotX + plotW * 0.5, plotY + plotH * 0.5, 4, plotX + plotW * 0.5, plotY + plotH * 0.5, Math.max(plotW, plotH) * 0.64);
+      glow.addColorStop(0, `rgba(188,48,236,${0.08 + recurrence * 0.16})`);
+      glow.addColorStop(0.45, `rgba(255,61,31,${0.035 + pressure * 0.08})`);
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(plotX, plotY, plotW, plotH);
+
+      for (let i = 0; i < Math.round(160 + fog * 160); i += 1) {
+        const rx = (noise2(i * 0.73, 1.2, t * 0.013) * 0.5 + 0.5) * plotW;
+        const ry = (noise2(i * 0.41, 7.9, t * 0.011) * 0.5 + 0.5) * plotH;
+        const a = clamp(0.015 + fog * 0.05 + motion * 0.025, 0, 0.09);
+        ctx.fillStyle = i % 5 === 0 ? `rgba(57,255,20,${a * 0.55})` : `rgba(188,48,236,${a})`;
+        ctx.fillRect(plotX + rx, plotY + ry, 1, 1);
+      }
+
+      ctx.globalCompositeOperation = "screen";
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      for (let vein = 0; vein < density; vein += 1) {
+        const seed = vein + 1;
+        const rootSide = vein % 4;
+        let px = rootSide === 0 ? 0.08 : rootSide === 1 ? 0.92 : (noise2(seed, 1, 0) * 0.5 + 0.5);
+        let py = rootSide === 2 ? 0.08 : rootSide === 3 ? 0.92 : (noise2(seed, 2, 0) * 0.5 + 0.5);
+        const localSample = samples[(vein * 7) % samples.length] || 0;
+        px = clamp(px + localSample * width * 0.12, 0.02, 0.98);
+        py = clamp(py + localSample * pressure * 0.08, 0.02, 0.98);
+        const steps = Math.round(18 + recurrence * 16 + motion * 10);
+        const stepSize = 0.018 + pressure * 0.006 + width * 0.005;
+        const hueMode = vein % 5;
+        const color = hueMode === 0
+          ? `rgba(245,245,245,${0.38 + recurrence * 0.34})`
+          : hueMode === 1
+            ? `rgba(255,61,31,${0.3 + pressure * 0.42})`
+            : hueMode === 2
+              ? `rgba(57,255,20,${0.18 + motion * 0.44})`
+              : hueMode === 3
+                ? `rgba(126,214,255,${0.18 + width * 0.34})`
+                : `rgba(188,48,236,${0.28 + fog * 0.32})`;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = hueMode === 0 ? 2.2 + pressure * 2.4 : 1.1 + motion * 1.8;
+        ctx.beginPath();
+        ctx.moveTo(plotX + px * plotW, plotY + py * plotH);
+        for (let step = 0; step < steps; step += 1) {
+          const angle = phaseDungeonFlowAngle(px, py, seed + step * 0.1, pressure, width, recurrence, motion);
+          px = clamp(px + Math.cos(angle) * stepSize, 0.02, 0.98);
+          py = clamp(py + Math.sin(angle) * stepSize * (0.82 + pressure * 0.18), 0.02, 0.98);
+          if (step > 4 && step % 7 === 0 && motion + recurrence > 0.45) {
+            const bx = px;
+            const by = py;
+            const branchAngle = angle + (noise2(seed, step, t * 0.01) > 0 ? 1 : -1) * (0.7 + width * 0.8);
+            ctx.moveTo(plotX + bx * plotW, plotY + by * plotH);
+            for (let b = 0; b < 5; b += 1) {
+              const fade = 1 - b / 5;
+              const bpx = clamp(bx + Math.cos(branchAngle + b * 0.12) * stepSize * b * fade * 1.8, 0.02, 0.98);
+              const bpy = clamp(by + Math.sin(branchAngle + b * 0.12) * stepSize * b * fade * 1.8, 0.02, 0.98);
+              ctx.lineTo(plotX + bpx * plotW, plotY + bpy * plotH);
+            }
+            ctx.moveTo(plotX + px * plotW, plotY + py * plotH);
+          } else {
+            ctx.lineTo(plotX + px * plotW, plotY + py * plotH);
+          }
+        }
+        ctx.stroke();
+      }
+
+      const pulseRadius = Math.min(plotW, plotH) * (0.16 + pressure * 0.22);
+      ctx.strokeStyle = `rgba(255,61,31,${0.08 + pressure * 0.2})`;
+      ctx.lineWidth = 1 + pressure * 3;
+      ctx.beginPath();
+      ctx.arc(plotX + plotW * (0.5 + (smoothed.right - smoothed.left) * 0.16), plotY + plotH * (0.5 + smoothed.high * 0.08 - smoothed.low * 0.08), pulseRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      return { width, pressure };
+    }
+
+    function drawPhaseDungeonPanel(x, y, w, h) {
+      ctx.fillStyle = "#030303";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#282828";
+      ctx.strokeRect(x, y, w, h);
+      const hasSignal = metrics.rms > 0.006 || smoothed.rms > 0.012 || metrics.peak > 0.016;
+      const cols = clampFinite(Number(phaseDungeonDetailSelect?.value || 32), 16, 48, 32);
+      const rows = Math.max(12, Math.round(cols * 0.48));
+      const samples = phaseDungeonWaveSamples(Math.max(cols * 2, 64));
+      updatePhaseDungeonField(cols, rows, samples, hasSignal);
+      const mode = phaseDungeonModeSelect?.value || "veins";
+      const result = mode === "ribs"
+        ? drawPhaseDungeonRibs(x, y, w, h, cols, rows, samples, hasSignal)
+        : drawPhaseDungeonVeins(x, y, w, h, cols, samples, hasSignal);
+
+      if (!hasSignal) {
+        drawMeterText("waiting for signal", x + 14, y + h - 12, 10, "rgba(166,166,166,0.58)");
+      } else {
+        const label = `${mode === "ribs" ? "ribs" : "veins"} · rec ${phaseDungeonState.recurrence.toFixed(2)} · width ${result.width.toFixed(2)} · pressure ${result.pressure.toFixed(2)}`;
+        drawMeterText(label, x + 14, y + h - 12, 10, "rgba(166,188,210,0.78)");
+      }
+    }
+
+    function vectorLaserSamples(count) {
+      const points = [];
+      const stereoReady = Boolean(leftAnalyser && rightAnalyser && leftTime.length && rightTime.length);
+      const sourceLength = stereoReady ? Math.min(leftTime.length, rightTime.length) : timeData.length;
+      if (!sourceLength) return points;
+      const input = vectorLaserInputSelect?.value || "lr";
+      const start = Math.max(0, sourceLength - count * 5);
+      const span = Math.max(1, sourceLength - start - 1);
+      for (let i = 0; i < count; i += 1) {
+        const idx = Math.min(sourceLength - 1, start + Math.floor((i / Math.max(1, count - 1)) * span));
+        const l = stereoReady ? (leftTime[idx] - 128) / 128 : (timeData[idx] - 128) / 128;
+        const r = stereoReady ? (rightTime[idx] - 128) / 128 : l;
+        const mid = (l + r) * 0.5;
+        const side = (l - r) * 0.5;
+        let px = l;
+        let py = r;
+        if (input === "ms") {
+          px = mid;
+          py = side;
+        } else if (input === "mid") {
+          px = mid;
+          py = samplesSin(i, count, 0.72) * mid;
+        } else if (input === "side") {
+          px = side;
+          py = samplesSin(i, count, 1.37) * side;
+        }
+        points.push({ x: clamp(px, -1, 1), y: clamp(py, -1, 1), mid, side, amp: clamp(Math.max(Math.abs(l), Math.abs(r), Math.abs(mid), Math.abs(side)), 0, 1) });
+      }
+      return points;
+    }
+
+    function samplesSin(index, count, phase) {
+      return Math.sin((index / Math.max(1, count - 1)) * Math.PI * 2 + phase);
+    }
+
+    function shapeVectorLaserPath(points) {
+      if (points.length < 2) return points;
+      let meanX = 0;
+      let meanY = 0;
+      for (const point of points) {
+        meanX += point.x;
+        meanY += point.y;
+      }
+      meanX /= points.length;
+      meanY /= points.length;
+      let maxX = 0;
+      let maxY = 0;
+      const centered = points.map((point, index) => {
+        const previous = points[Math.max(0, index - 1)];
+        const next = points[Math.min(points.length - 1, index + 1)];
+        const derivative = (next.mid - previous.mid) * 0.5;
+        const x = point.x - meanX;
+        let y = point.y - meanY;
+        if (Math.abs(point.side) < Math.abs(point.mid) * 0.08) {
+          y += derivative * 0.82 + samplesSin(index, points.length, 0.35) * Math.abs(point.mid) * 0.16;
+        }
+        maxX = Math.max(maxX, Math.abs(x));
+        maxY = Math.max(maxY, Math.abs(y));
+        return { ...point, x, y };
+      });
+      const maxAxis = Math.max(maxX, maxY, 0.001);
+      const target = 0.82 + clamp(smoothed.peak * 0.18 + smoothed.side * 0.12, 0, 0.22);
+      const gain = clamp(target / maxAxis, 1.2, 7.5);
+      return centered.map((point) => ({
+        ...point,
+        x: clamp(point.x * gain, -1.15, 1.15),
+        y: clamp(point.y * gain, -1.15, 1.15)
+      }));
+    }
+
+    function rotateVectorLaserPath(path, angle, scaleX = 1, scaleY = 1) {
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
+      return path.map((point) => ({
+        ...point,
+        x: (point.x * c - point.y * s) * scaleX,
+        y: (point.x * s + point.y * c) * scaleY
+      }));
+    }
+
+    function vectorLaserSpectrumProfile() {
+      const low = clamp(smoothed.low * 0.42 + averageSpectrumRange(0, 44) * 0.58, 0, 1);
+      const mid = clamp(smoothed.mid * 0.36 + averageSpectrumRange(45, 145) * 0.64, 0, 1);
+      const high = clamp(smoothed.high * 0.34 + averageSpectrumRange(146, 239) * 0.66, 0, 1);
+      const total = Math.max(0.001, low + mid + high);
+      return {
+        low: low / total,
+        mid: mid / total,
+        high: high / total,
+        energy: clamp(total / 2.1, 0, 1),
+        transient: clamp(signalCharacterState.transientImpact * 0.52 + patternState.hits.global * 0.32 + smoothed.flux * 0.28, 0, 1)
+      };
+    }
+
+    function averageSpectrumRange(start, end) {
+      if (!meterState.spectrum.length) return 0;
+      const a = clamp(Math.floor(start), 0, meterState.spectrum.length - 1);
+      const b = clamp(Math.floor(end), a, meterState.spectrum.length - 1);
+      let sum = 0;
+      let count = 0;
+      for (let i = a; i <= b; i += 1) {
+        sum += meterState.spectrum[i] || 0;
+        count += 1;
+      }
+      return count ? sum / count : 0;
+    }
+
+    function mixLaserRgb(profile, point, indexRatio = 0) {
+      const amp = clampFinite(point?.amp, 0, 1, 0);
+      const lowAccent = clamp(profile.low * 1.45 + amp * 0.12, 0, 1);
+      const midAccent = clamp(profile.mid * 1.36 + (1 - Math.abs(indexRatio - 0.5) * 2) * 0.1, 0, 1);
+      const highAccent = clamp(profile.high * 1.52 + indexRatio * 0.14, 0, 1);
+      const white = clamp(profile.transient * amp * 1.35 + Math.max(0, amp - 0.82) * 1.7, 0, 1);
+      const r = 28 + lowAccent * 218 + midAccent * 78 + white * 220;
+      const g = 18 + highAccent * 230 + lowAccent * 38 + white * 220;
+      const b = 36 + midAccent * 215 + highAccent * 126 + white * 210;
+      return {
+        r: Math.round(clamp(r, 0, 255)),
+        g: Math.round(clamp(g, 0, 255)),
+        b: Math.round(clamp(b, 0, 255)),
+        white
+      };
+    }
+
+    function vectorLaserColor(point, alpha, indexRatio = 0, profile = vectorLaserSpectrumProfile()) {
+      const rgb = mixLaserRgb(profile, point, indexRatio);
+      return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+    }
+
+    function drawVectorLaserGrid(cx, cy, radius) {
+      ctx.strokeStyle = "rgba(245,245,245,0.09)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(245,245,245,0.06)";
+      ctx.beginPath();
+      ctx.moveTo(cx - radius, cy);
+      ctx.lineTo(cx + radius, cy);
+      ctx.moveTo(cx, cy - radius);
+      ctx.lineTo(cx, cy + radius);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(245,245,245,0.11)";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - radius);
+      ctx.lineTo(cx + radius, cy);
+      ctx.lineTo(cx, cy + radius);
+      ctx.lineTo(cx - radius, cy);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    function drawVectorLaserScope(path, cx, cy, radius, alpha, glow, profile = vectorLaserSpectrumProfile()) {
+      if (path.length < 2) return;
+      ctx.save();
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      if (glow > 0.01) {
+        ctx.globalCompositeOperation = "screen";
+        ctx.lineWidth = 5 + glow * 9;
+        const glowColor = mixLaserRgb(profile, { amp: profile.energy }, 0.5);
+        ctx.strokeStyle = `rgba(${glowColor.r},${glowColor.g},${glowColor.b},${alpha * 0.18 * glow})`;
+        ctx.beginPath();
+        for (let i = 0; i < path.length; i += 1) {
+          const point = path[i];
+          const px = cx + point.x * radius;
+          const py = cy - point.y * radius;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.globalCompositeOperation = "source-over";
+      }
+      ctx.lineWidth = 1.1 + glow * 0.7;
+      for (let i = 1; i < path.length; i += 1) {
+        const p0 = path[i - 1];
+        const p1 = path[i];
+        const a = i / Math.max(1, path.length - 1);
+        ctx.strokeStyle = vectorLaserColor(p1, alpha * (0.45 + a * 0.55), a, profile);
+        ctx.beginPath();
+        ctx.moveTo(cx + p0.x * radius, cy - p0.y * radius);
+        ctx.lineTo(cx + p1.x * radius, cy - p1.y * radius);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawVectorLaserCircuit(path, cx, cy, radius, alpha, glow, profile = vectorLaserSpectrumProfile()) {
+      if (path.length < 4) return;
+      const nodeCount = 18;
+      const nodes = [];
+      const width = clamp(smoothed.side * 0.6 + Math.abs(smoothed.right - smoothed.left) * 0.5, 0, 1);
+      const snap = clamp(signalCharacterState.spectralCrest * 0.55 + signalCharacterState.tonal * 0.35, 0, 1);
+      for (let i = 0; i < nodeCount; i += 1) {
+        const source = path[Math.floor((i / nodeCount) * path.length)] || path[0];
+        const angle = (i / nodeCount) * Math.PI * 2 + snap * 0.18;
+        const orbit = radius * (0.24 + source.amp * 0.52 + smoothed.low * 0.12);
+        const px = cx + source.x * radius * (0.36 + width * 0.28) + Math.cos(angle) * orbit * 0.26;
+        const py = cy - source.y * radius * 0.42 + Math.sin(angle * 1.7) * orbit * 0.18;
+        nodes.push({ x: px, y: py, amp: source.amp });
+      }
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.globalCompositeOperation = glow > 0.01 ? "screen" : "source-over";
+      for (let i = 0; i < nodes.length; i += 1) {
+        const node = nodes[i];
+        const next = nodes[(i + 1) % nodes.length];
+        const jump = nodes[(i + 5) % nodes.length];
+        const localAlpha = alpha * clamp(0.24 + node.amp * 0.9, 0.18, 1);
+        ctx.lineWidth = 0.8 + node.amp * 1.5;
+        ctx.strokeStyle = vectorLaserColor(node, localAlpha, i / nodes.length, profile);
+        ctx.beginPath();
+        ctx.moveTo(node.x, node.y);
+        ctx.lineTo(next.x, next.y);
+        if (i % 3 === 0) {
+          ctx.moveTo(node.x, node.y);
+          ctx.lineTo(jump.x, jump.y);
+        }
+        ctx.stroke();
+      }
+      for (let i = 0; i < nodes.length; i += 1) {
+        const node = nodes[i];
+        const r = 1.6 + node.amp * 3.2;
+        ctx.fillStyle = vectorLaserColor(node, alpha * clamp(0.42 + node.amp, 0.3, 1), i / nodes.length, profile);
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawVectorLaserOrbital(path, cx, cy, radius, alpha, glow, profile = vectorLaserSpectrumProfile()) {
+      const spin = t * 0.012 + smoothed.centroid * 0.8;
+      const orbitSpread = 0.18 + smoothed.side * 0.22 + smoothed.high * 0.12;
+      const copies = [
+        { angle: spin, scaleX: 1, scaleY: 0.72 + smoothed.low * 0.18, alpha: 1 },
+        { angle: spin + Math.PI * (0.36 + orbitSpread), scaleX: 0.82, scaleY: 1.06, alpha: 0.58 },
+        { angle: spin - Math.PI * (0.42 + orbitSpread * 0.7), scaleX: 1.08, scaleY: 0.58, alpha: 0.44 }
+      ];
+      for (const copy of copies) {
+        drawVectorLaserScope(
+          rotateVectorLaserPath(path, copy.angle, copy.scaleX, copy.scaleY),
+          cx,
+          cy,
+          radius,
+          alpha * copy.alpha,
+          glow,
+          profile
+        );
+      }
+    }
+
+    function drawVectorLaserTunnel(path, cx, cy, radius, alpha, glow, profile = vectorLaserSpectrumProfile()) {
+      const depth = 5;
+      const twist = t * 0.01 + smoothed.side * 0.6;
+      for (let i = depth - 1; i >= 0; i -= 1) {
+        const z = i / Math.max(1, depth - 1);
+        const scale = 0.42 + z * 0.72;
+        const shift = (1 - z) * radius * (0.18 + smoothed.low * 0.12);
+        const layer = rotateVectorLaserPath(path, twist + z * 0.9, scale, scale * (0.78 + z * 0.24));
+        drawVectorLaserScope(layer, cx + shift * Math.sin(t * 0.015 + i), cy - shift * Math.cos(t * 0.011 + i), radius, alpha * (0.28 + z * 0.72), glow, profile);
+      }
+    }
+
+    function drawVectorLaserBandLayer(path, cx, cy, radius, alpha, profile) {
+      const layers = [
+        { key: "low", angle: t * 0.004, scaleX: 1.14, scaleY: 0.72, color: [255, 61, 31] },
+        { key: "mid", angle: -t * 0.006 + 1.1, scaleX: 0.84, scaleY: 1.08, color: [188, 48, 236] },
+        { key: "high", angle: t * 0.011 - 0.8, scaleX: 1.02, scaleY: 0.92, color: [57, 255, 20] }
+      ];
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      for (const layer of layers) {
+        const amount = clamp(profile[layer.key] * 1.75, 0, 1);
+        if (amount < 0.08) continue;
+        const transformed = rotateVectorLaserPath(path, layer.angle, layer.scaleX, layer.scaleY);
+        ctx.lineWidth = layer.key === "low" ? 2.2 + amount * 3.4 : 1 + amount * 1.9;
+        ctx.strokeStyle = `rgba(${layer.color[0]},${layer.color[1]},${layer.color[2]},${alpha * amount * 0.42})`;
+        ctx.beginPath();
+        const skip = layer.key === "high" ? 3 : 1;
+        for (let i = 0; i < transformed.length; i += skip) {
+          const point = transformed[i];
+          const spread = layer.key === "high" ? 1.18 : layer.key === "low" ? 0.9 : 1;
+          const px = cx + point.x * radius * spread;
+          const py = cy - point.y * radius * spread;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      if (profile.transient > 0.12) {
+        ctx.strokeStyle = `rgba(245,245,245,${alpha * profile.transient * 0.72})`;
+        ctx.lineWidth = 1.2 + profile.transient * 4;
+        for (let i = 4; i < path.length; i += 19) {
+          const point = path[i];
+          const length = radius * (0.08 + profile.transient * 0.16);
+          const angle = Math.atan2(point.y, point.x);
+          ctx.beginPath();
+          ctx.moveTo(cx + point.x * radius, cy - point.y * radius);
+          ctx.lineTo(cx + point.x * radius + Math.cos(angle) * length, cy - point.y * radius - Math.sin(angle) * length);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawVectorLaserPanel(x, y, w, h) {
+      ctx.fillStyle = "#030303";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#282828";
+      ctx.strokeRect(x, y, w, h);
+      const hasSignal = metrics.rms > 0.006 || smoothed.rms > 0.012 || metrics.peak > 0.016;
+      if (!hasSignal) {
+        resetVectorLaserState();
+        const cx = x + w * 0.5;
+        const cy = y + h * 0.5;
+        drawVectorLaserGrid(cx, cy, Math.min(w, h) * 0.34);
+        drawMeterText("waiting for signal", x + 14, y + h - 12, 10, "rgba(166,166,166,0.58)");
+        return;
+      }
+
+      const density = clampFinite(Number(vectorLaserDensitySelect?.value || 160), 48, 280, 160);
+      const points = shapeVectorLaserPath(vectorLaserSamples(density));
+      vectorLaserState.pointCount = points.length;
+      vectorLaserState.lastSignalAt = performance.now() / 1000;
+      if (points.length > 1) {
+        vectorLaserState.trails.push(points);
+      }
+      const persistence = clampFinite(Number(vectorLaserPersistence?.value || 0.62), 0, 1, 0.62);
+      const maxTrails = Math.max(1, Math.round(2 + persistence * 18));
+      while (vectorLaserState.trails.length > maxTrails) {
+        vectorLaserState.trails.shift();
+      }
+
+      const cx = x + w * 0.5;
+      const cy = y + h * 0.5;
+      const radius = Math.min(w - 40, h - 34) * (0.45 + smoothed.low * 0.1 + smoothed.side * 0.08);
+      const glow = clampFinite(Number(vectorLaserGlow?.value || 0.7), 0, 1, 0.7);
+      const spectrumProfile = vectorLaserSpectrumProfile();
+      drawVectorLaserGrid(cx, cy, radius);
+      const mode = vectorLaserModeSelect?.value || "orbital";
+      for (let i = 0; i < vectorLaserState.trails.length; i += 1) {
+        const age = (i + 1) / Math.max(1, vectorLaserState.trails.length);
+        const alpha = Math.pow(age, 1.65) * (0.12 + persistence * 0.46);
+        if (mode === "orbital") {
+          drawVectorLaserOrbital(vectorLaserState.trails[i], cx, cy, radius, alpha, glow, spectrumProfile);
+          drawVectorLaserBandLayer(vectorLaserState.trails[i], cx, cy, radius, alpha, spectrumProfile);
+        } else if (mode === "tunnel") {
+          drawVectorLaserTunnel(vectorLaserState.trails[i], cx, cy, radius, alpha, glow, spectrumProfile);
+          drawVectorLaserBandLayer(vectorLaserState.trails[i], cx, cy, radius, alpha * 0.68, spectrumProfile);
+        } else if (mode === "circuit") {
+          drawVectorLaserCircuit(vectorLaserState.trails[i], cx, cy, radius, alpha, glow, spectrumProfile);
+        } else {
+          drawVectorLaserScope(vectorLaserState.trails[i], cx, cy, radius, alpha, glow, spectrumProfile);
+          drawVectorLaserBandLayer(vectorLaserState.trails[i], cx, cy, radius, alpha * 0.42, spectrumProfile);
+        }
+      }
+      const label = `${mode} · ${vectorLaserInputSelect?.value || "lr"} · points ${points.length}`;
+      drawMeterText(label, x + 14, y + h - 12, 10, "rgba(166,188,210,0.78)");
+    }
+
     function drawSpectrumPanel(x, y, w, h) {
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
@@ -6143,6 +6879,79 @@
       };
     }
 
+    function auditPhaseDungeonContract() {
+      const controls = [
+        phaseDungeonModeSelect,
+        phaseDungeonDetailSelect,
+        phaseDungeonMemorySelect,
+        phaseDungeonFog,
+        phaseDungeonPressure
+      ];
+      const values = phaseDungeonState.cells.slice(0, 48);
+      const hasSignal = metrics.rms > 0.006 || smoothed.rms > 0.012 || metrics.peak > 0.016;
+      return {
+        available: availableLayoutModules.includes("phaseDungeon"),
+        active: currentLayoutModules.includes("phaseDungeon"),
+        controlsPresent: controls.every(Boolean),
+        rendererPresent: typeof METERING_MODULE_BY_ID.phaseDungeon?.renderer === "function",
+        valuesFinite: values.every((value) => Number.isFinite(value)),
+        displayContract: {
+          hidesWithoutSignal: true,
+          usesExistingAudioAnalysis: true,
+          caveModeOnly: true
+        },
+        metrics: {
+          detail: Number(phaseDungeonDetailSelect?.value || 0),
+          mode: phaseDungeonModeSelect?.value || null,
+          memory: phaseDungeonMemorySelect?.value || null,
+          fog: Number(phaseDungeonFog?.value || 0),
+          pressure: Number(phaseDungeonPressure?.value || 0),
+          recurrence: phaseDungeonState.recurrence,
+          visibleCells: phaseDungeonState.cells.filter((value) => value > 0.05).length,
+          hasSignal
+        }
+      };
+    }
+
+    function auditVectorLaserContract() {
+      const controls = [
+        vectorLaserModeSelect,
+        vectorLaserInputSelect,
+        vectorLaserDensitySelect,
+        vectorLaserPersistence,
+        vectorLaserGlow
+      ];
+      const hasSignal = metrics.rms > 0.006 || smoothed.rms > 0.012 || metrics.peak > 0.016;
+      return {
+        available: availableLayoutModules.includes("vectorLaser"),
+        active: currentLayoutModules.includes("vectorLaser"),
+        controlsPresent: controls.every(Boolean),
+        rendererPresent: typeof METERING_MODULE_BY_ID.vectorLaser?.renderer === "function",
+        valuesFinite: [
+          vectorLaserState.lastSignalAt,
+          vectorLaserState.pointCount,
+          Number(vectorLaserPersistence?.value || 0),
+          Number(vectorLaserGlow?.value || 0)
+        ].every(Number.isFinite),
+        displayContract: {
+          hidesWithoutSignal: true,
+          usesExistingStereoBuffers: true,
+          modes: ["scope", "orbital", "tunnel", "circuit"],
+          fftColorLayers: true
+        },
+        metrics: {
+          mode: vectorLaserModeSelect?.value || null,
+          input: vectorLaserInputSelect?.value || null,
+          density: Number(vectorLaserDensitySelect?.value || 0),
+          persistence: Number(vectorLaserPersistence?.value || 0),
+          glow: Number(vectorLaserGlow?.value || 0),
+          trails: vectorLaserState.trails.length,
+          points: vectorLaserState.pointCount,
+          hasSignal
+        }
+      };
+    }
+
     function drawFrame() {
       const frameStart = performance.now();
       t += 1;
@@ -6286,6 +7095,24 @@
     tunerReference.addEventListener("input", () => {
       tunerReferenceValue.textContent = `${Number(tunerReference.value).toFixed(1)}Hz`;
     });
+    phaseDungeonModeSelect.addEventListener("change", resetPhaseDungeonState);
+    phaseDungeonDetailSelect.addEventListener("change", resetPhaseDungeonState);
+    phaseDungeonMemorySelect.addEventListener("change", resetPhaseDungeonState);
+    phaseDungeonFog.addEventListener("input", () => {
+      phaseDungeonFogValue.textContent = Number(phaseDungeonFog.value).toFixed(2);
+    });
+    phaseDungeonPressure.addEventListener("input", () => {
+      phaseDungeonPressureValue.textContent = Number(phaseDungeonPressure.value).toFixed(2);
+    });
+    vectorLaserModeSelect.addEventListener("change", resetVectorLaserState);
+    vectorLaserInputSelect.addEventListener("change", resetVectorLaserState);
+    vectorLaserDensitySelect.addEventListener("change", resetVectorLaserState);
+    vectorLaserPersistence.addEventListener("input", () => {
+      vectorLaserPersistenceValue.textContent = Number(vectorLaserPersistence.value).toFixed(2);
+    });
+    vectorLaserGlow.addEventListener("input", () => {
+      vectorLaserGlowValue.textContent = Number(vectorLaserGlow.value).toFixed(2);
+    });
     algorithmSelect.addEventListener("change", applyAlgorithmUi);
     floatingInspectorClose.addEventListener("click", closeFloatingInspector);
     inspectorBackdrop.addEventListener("click", closeFloatingInspector);
@@ -6308,7 +7135,9 @@
       stereoLayers: auditStereoLayerContract,
       spectrogram: auditSpectrogramContract,
       tuner: auditTunerContract,
-      signalCharacter: auditSignalCharacterContract
+      signalCharacter: auditSignalCharacterContract,
+      phaseDungeon: auditPhaseDungeonContract,
+      vectorLaser: auditVectorLaserContract
     };
     window.addEventListener("resize", () => {
       updateGraphControlScale();

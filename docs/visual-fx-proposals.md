@@ -16,7 +16,7 @@ Inputs:
 - `transientImpact` / `eventDensity`: punches gates, doors, cuts.
 - `low`: kick/sub expands walls and room mass.
 
-### Proposal A: Dungeon Map
+### Archived Direction: Dungeon Map
 
 Frame: [phase-dungeon-map.svg](./visual-fx/phase-dungeon-map.svg)
 
@@ -43,7 +43,7 @@ Parameters:
 - `Wall Reactivity`
 - `Stereo Spread`
 
-### Proposal B: Cave / Recurrence Fog
+### Selected Direction: Cave / Recurrence Fog
 
 Frame: [phase-dungeon-cave.svg](./visual-fx/phase-dungeon-cave.svg)
 
@@ -155,9 +155,9 @@ Implementation Notes:
 
 ## Recommendation
 
-Implement `Phase Dungeon` first as a separate visual module because it does not duplicate existing meters and gives MET-TR a unique identity. Start with `Map` mode and keep `Cave` as a second display option.
+Implement `Phase Dungeon` first as a separate visual module because it does not duplicate existing meters and gives MET-TR a unique identity. The selected first version is `Cave / Recurrence Fog`; `Map` is archived as a reference sketch only because it is less illustrative for the current direction.
 
-Then implement `Vector Laser` as a more immediate live visual. `Scope` mode should be first because it can reuse stereometer/time-domain logic. `Circuit` can come later once the graph abstraction is stable.
+`Vector Laser` is the second implemented visual module. It starts with `Scope` as the default mode because it reuses stereometer/time-domain logic, and includes `Circuit` as an alternate visual mode for a more graphic glyph display.
 
 ## Default Contract For New Visual Modules
 

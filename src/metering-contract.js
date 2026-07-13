@@ -23,6 +23,8 @@ window.METTR_CONTRACT = {
     spectrogram: { height: 292, advance: 328 },
     tuner: { height: 178, advance: 212 },
     signalCharacter: { height: 190, advance: 224 },
+    phaseDungeon: { height: 228, advance: 264 },
+    vectorLaser: { height: 228, advance: 264 },
     oscilloscope: { height: 70, advance: 100 },
     waveformShort: { height: 70, advance: 100 },
     waveformMedium: { height: 70, advance: 100 },
@@ -45,6 +47,8 @@ window.METTR_CONTRACT = {
       spectrogram: { compactScale: 1.75 },
       tuner: { compactScale: 2.1 },
       signalCharacter: { compactScale: 2.35 },
+      phaseDungeon: { compactScale: 2.05 },
+      vectorLaser: { compactScale: 2.05 },
       oscilloscope: { compactScale: 3.05 },
       waveformShort: { compactScale: 2.75 },
       waveformMedium: { compactScale: 2.55 },
@@ -95,6 +99,8 @@ window.METTR_CONTRACT = {
       "spectrogram",
       "tuner",
       "signalCharacter",
+      "phaseDungeon",
+      "vectorLaser",
       "oscilloscope",
       "waveformShort",
       "waveformMedium",
@@ -105,7 +111,7 @@ window.METTR_CONTRACT = {
     ]
   },
   layouts: {
-    maxModules: 12,
+    maxModules: 14,
     default: {
       id: "Default",
       modules: [
@@ -118,19 +124,28 @@ window.METTR_CONTRACT = {
         "spectrogram",
         "tuner",
         "signalCharacter",
+        "phaseDungeon",
         "stereo",
         "loudness",
         "pattern"
       ]
     },
     min: {
-      id: "Min",
+      id: "Default Min",
       modules: [
         "spectrum",
         "oscilloscope",
         "waveformMedium",
         "stereo",
         "loudness"
+      ]
+    },
+    gfx: {
+      id: "GFX",
+      modules: [
+        "pattern",
+        "phaseDungeon",
+        "vectorLaser"
       ]
     },
     spectral: {
@@ -154,6 +169,8 @@ window.METTR_CONTRACT = {
     { id: "spectrogram", renderer: "drawSpectrogramPanel", rect: "spectrogram", flow: "full" },
     { id: "tuner", renderer: "drawTunerPanel", rect: "tuner", flow: "full" },
     { id: "signalCharacter", renderer: "drawSignalCharacterPanel", rect: "signalCharacter", flow: "full" },
+    { id: "phaseDungeon", renderer: "drawPhaseDungeonPanel", rect: "phaseDungeon", flow: "full" },
+    { id: "vectorLaser", renderer: "drawVectorLaserPanel", rect: "vectorLaser", flow: "full" },
     { id: "oscilloscope", renderer: "drawOscilloscopePanel", rect: "oscilloscope", flow: "full" },
     { id: "waveformShort", renderer: "drawWaveformShortPanel", rect: "waveformShort", flow: "full", beforeGap: true },
     { id: "waveformMedium", renderer: "drawWaveformMediumPanel", rect: "waveformMedium", flow: "full", beforeGap: true },
@@ -172,6 +189,8 @@ window.METTR_CONTRACT = {
     { type: "module", id: "spectrogram" },
     { type: "module", id: "tuner" },
     { type: "module", id: "signalCharacter" },
+    { type: "module", id: "phaseDungeon" },
+    { type: "module", id: "vectorLaser" },
     { type: "dual", ids: ["stereo", "loudness"] },
     { type: "module", id: "pattern" }
   ]

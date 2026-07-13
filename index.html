@@ -36,6 +36,14 @@
       <details class="control-group no-params" data-module="signalCharacter">
         <summary><span class="module-title">Signal Character</span><button class="graph-toggle" type="button" aria-label="Toggle Signal Character graph"></button></summary>
       </details>
+      <details class="control-group" data-module="phaseDungeon">
+        <summary><span class="module-title">Phase Dungeon</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Phase Dungeon graph"></button></summary>
+        <div id="phaseDungeonControlsMount" class="control-body"></div>
+      </details>
+      <details class="control-group" data-module="vectorLaser">
+        <summary><span class="module-title">Vector Laser</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Vector Laser graph"></button></summary>
+        <div id="vectorLaserControlsMount" class="control-body"></div>
+      </details>
       <details class="control-group" data-module="oscilloscope">
         <summary><span class="module-title">Oscilloscope</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Oscilloscope graph"></button></summary>
         <div id="oscilloscopeControlsMount" class="control-body"></div>
@@ -87,8 +95,9 @@
         <div class="header-select">
           <select id="algorithmSelect" aria-label="Layout">
             <option value="default" selected>Default</option>
+            <option value="min">Default Min</option>
             <option value="spectral">Spectral</option>
-            <option value="min">Min</option>
+            <option value="gfx">GFX</option>
             <option value="blank">Blank</option>
           </select>
           <span id="algorithmSelectLabel" class="select-display" aria-hidden="true">Default</span>
@@ -346,6 +355,81 @@
         <label><input id="stereoMidToggle" type="checkbox" checked> Mid</label>
         <label><input id="stereoHighToggle" type="checkbox" checked> High</label>
       </div>
+
+      <label>
+        Phase Dungeon Mode
+        <select id="phaseDungeonModeSelect">
+          <option value="veins" selected>Vein Labyrinth</option>
+          <option value="ribs">Cave Ribs</option>
+        </select>
+      </label>
+
+      <label>
+        Phase Dungeon Detail
+        <select id="phaseDungeonDetailSelect">
+          <option value="24">Low</option>
+          <option value="32" selected>Medium</option>
+          <option value="40">High</option>
+        </select>
+      </label>
+
+      <label>
+        Phase Dungeon Memory
+        <select id="phaseDungeonMemorySelect">
+          <option value="short">Short</option>
+          <option value="medium" selected>Medium</option>
+          <option value="long">Long</option>
+        </select>
+      </label>
+
+      <label>
+        Phase Dungeon Fog <span id="phaseDungeonFogValue">0.55</span>
+        <input id="phaseDungeonFog" type="range" min="0" max="1" step="0.01" value="0.55">
+      </label>
+
+      <label>
+        Phase Dungeon Pressure <span id="phaseDungeonPressureValue">1.00</span>
+        <input id="phaseDungeonPressure" type="range" min="0" max="2" step="0.01" value="1">
+      </label>
+
+      <label>
+        Vector Laser Mode
+        <select id="vectorLaserModeSelect">
+          <option value="scope">Scope</option>
+          <option value="orbital" selected>Orbital</option>
+          <option value="tunnel">Tunnel</option>
+          <option value="circuit">Circuit</option>
+        </select>
+      </label>
+
+      <label>
+        Vector Laser Input
+        <select id="vectorLaserInputSelect">
+          <option value="lr">L/R</option>
+          <option value="ms" selected>M/S</option>
+          <option value="mid">Mid</option>
+          <option value="side">Side</option>
+        </select>
+      </label>
+
+      <label>
+        Vector Laser Density
+        <select id="vectorLaserDensitySelect">
+          <option value="96">Low</option>
+          <option value="160" selected>Medium</option>
+          <option value="240">High</option>
+        </select>
+      </label>
+
+      <label>
+        Vector Laser Persistence <span id="vectorLaserPersistenceValue">0.62</span>
+        <input id="vectorLaserPersistence" type="range" min="0" max="1" step="0.01" value="0.62">
+      </label>
+
+      <label>
+        Vector Laser Glow <span id="vectorLaserGlowValue">0.70</span>
+        <input id="vectorLaserGlow" type="range" min="0" max="1" step="0.01" value="0.70">
+      </label>
 
       <section class="algorithm-local" aria-label="Pattern detector parameters">
         <h1>Pattern Detector</h1>

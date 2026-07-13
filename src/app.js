@@ -3677,14 +3677,39 @@
       drawDbBar("LUFS-S approx 3.0s", meterState.shortDb, barX, top + step * 4, barW, 10, "#f3f3d8");
     }
 
+    function getMeteringRenderRange() {
+      if (!useCompactGraphLayout()) {
+        return { top: 0, bottom: activeStageHeight, cull: false };
+      }
+      const rect = canvas.getBoundingClientRect();
+      const scale = rect.height / Math.max(1, activeStageHeight);
+      if (!Number.isFinite(scale) || scale <= 0) {
+        return { top: 0, bottom: activeStageHeight, cull: false };
+      }
+      const margin = 220;
+      return {
+        top: clamp((0 - rect.top) / scale - margin, 0, activeStageHeight),
+        bottom: clamp((window.innerHeight - rect.top) / scale + margin, 0, activeStageHeight),
+        cull: true
+      };
+    }
+
+    function rectIntersectsRenderRange(y, h, range) {
+      return !range.cull || (y + h >= range.top && y <= range.bottom);
+    }
+
     function drawMetering() {
       const algorithm = getCurrentAlgorithm();
       setStageHeight(calculateMeteringHeight());
+      const renderRange = getMeteringRenderRange();
+      const renderTop = Math.floor(renderRange.top);
+      const renderBottom = Math.ceil(renderRange.bottom);
       ctx.imageSmoothingEnabled = false;
       ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, W, activeStageHeight);
+      ctx.fillRect(0, renderTop, W, Math.max(1, renderBottom - renderTop));
       ctx.strokeStyle = "rgba(255,255,255,0.06)";
-      for (let y = 40; y < activeStageHeight; y += 28) {
+      const gridStart = Math.max(40, Math.floor(renderTop / 28) * 28);
+      for (let y = gridStart; y < renderBottom; y += 28) {
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(W, y);
@@ -3705,8 +3730,11 @@
       const moduleIds = getAlgorithmModuleIds(algorithm);
       const drawFullModule = (module) => {
         positionModuleControl(module.id, y);
+        const moduleHeight = getModuleHeight(module);
         if (graphOpenState[module.id]) {
-          module.renderer(layout.left, y, layout.fullWidth, getModuleHeight(module));
+          if (rectIntersectsRenderRange(y, moduleHeight, renderRange)) {
+            module.renderer(layout.left, y, layout.fullWidth, moduleHeight);
+          }
           y += getModuleAdvance(module);
         } else {
           y += getModuleAdvance(module);
@@ -3714,8 +3742,11 @@
       };
       const drawStackedModule = (module) => {
         positionModuleControl(module.id, y);
+        const moduleHeight = getModuleHeight(module);
         if (graphOpenState[module.id]) {
-          module.renderer(layout.left, y, layout.fullWidth, getModuleHeight(module));
+          if (rectIntersectsRenderRange(y, moduleHeight, renderRange)) {
+            module.renderer(layout.left, y, layout.fullWidth, moduleHeight);
+          }
           y += getModuleAdvance(module, true);
         } else {
           y += getModuleAdvance(module, true);
@@ -3741,7 +3772,9 @@
               if (!graphOpenState[module.id]) continue;
               const rect = getModuleRect(module);
               const x = module.column === "right" ? layout.rightColumnX : layout.left;
-              module.renderer(x, y, layout.halfWidth, rect.height);
+              if (rectIntersectsRenderRange(y, rect.height, renderRange)) {
+                module.renderer(x, y, layout.halfWidth, rect.height);
+              }
             }
             y += modules.some((module) => graphOpenState[module.id])
               ? layout.dualMetersAdvance

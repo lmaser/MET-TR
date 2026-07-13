@@ -11,8 +11,10 @@ window.METTR_DISPLAY_OUTPUT = (() => {
     const elementR = (kick * 255 + tom * 255 + cymbal * 160) * colorWeight;
     const elementG = (snare * 255 + tom * 130 + hat * 210) * colorWeight;
     const elementB = (hat * 255 + cymbal * 255) * colorWeight;
-    const brightness = clamp(0.08 + general * 0.74 + Math.min(1, elementPower) * 0.18, 0, 1);
-    const saturation = clamp(0.72 - general * 0.28 + Math.min(1, elementPower) * 0.24, 0.46, 0.9);
+    const onsetBrightness = Math.pow(general, 0.58);
+    const elementLift = Math.pow(clamp(elementPower, 0, 1), 0.72);
+    const brightness = clamp(0.035 + onsetBrightness * 0.84 + elementLift * 0.12, 0, 1);
+    const saturation = clamp(0.82 - onsetBrightness * 0.16 + elementLift * 0.16, 0.58, 0.94);
     const base = 255 * brightness * (1 - saturation);
     const colorScale = brightness * saturation;
     const r = clamp(base + elementR * colorScale, 0, 255);
@@ -51,7 +53,7 @@ window.METTR_DISPLAY_OUTPUT = (() => {
 
   function computeSpectralOutColor(input, api) {
     const { clamp, lerp, interpolateFloatSpectrum } = api;
-    const { audioContext, floatFreqData, smoothed, spectralOutState, spectralTiltDb = 0 } = input;
+    const { audioContext, floatFreqData, smoothed, spectralOutState, spectralTiltDb = 0, spectralFlash = 0 } = input;
     const nyquist = audioContext ? audioContext.sampleRate / 2 : 24000;
     const minHz = 20;
     const maxHz = Math.min(20000, nyquist);
@@ -96,7 +98,9 @@ window.METTR_DISPLAY_OUTPUT = (() => {
     const dominantPosition = hasSpectrum ? weightedPosition / Math.max(relativePowerSum, 1e-12) : clamp(smoothed.centroid, 0, 1);
     const dominantHz = hasSpectrum ? weightedFreq / Math.max(relativePowerSum, 1e-12) : 0;
     const hue = spectralHueColor(dominantPosition, api);
-    const brightness = clamp(Math.pow(smoothed.peak * 0.72 + smoothed.rms * 0.42 + Math.sqrt(maxPower) * 1.8, 0.62), 0, 1);
+    const transientBrightness = Math.pow(clamp(spectralFlash, 0, 1), 0.56);
+    const sustainedFloor = clamp(smoothed.rms * 0.16 + smoothed.peak * 0.07 + Math.sqrt(maxPower) * 0.24, 0, 0.28);
+    const brightness = clamp(transientBrightness * 0.88 + sustainedFloor, 0, 1);
     const flatness = clamp(smoothed.density, 0, 1);
     const tonalFocus = hasSpectrum ? clamp(Math.max(0, relativePowerSum / Math.max(1, samples.length) - 0.82) * 0.55, 0, 1) : 0;
     const saturation = hasSpectrum && brightness > 0.015

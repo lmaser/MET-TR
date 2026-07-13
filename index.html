@@ -37,8 +37,9 @@
         <summary><span class="module-title">Waveform Long</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Long graph"></button></summary>
         <div id="waveformLongControlsMount" class="control-body"></div>
       </details>
-      <details class="control-group no-params" data-module="stereo">
-        <summary><span class="module-title">Stereometer</span><button class="graph-toggle" type="button" aria-label="Toggle Stereometer graph"></button></summary>
+      <details class="control-group" data-module="stereo">
+        <summary><span class="module-title">Stereometer</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Stereometer graph"></button></summary>
+        <div id="stereoControlsMount" class="control-body"></div>
       </details>
       <details class="control-group no-params" data-module="loudness">
         <summary><span class="module-title">Loudness</span><button class="graph-toggle" type="button" aria-label="Toggle Loudness graph"></button></summary>
@@ -70,11 +71,11 @@
 
         <div class="header-select">
           <select id="algorithmSelect" aria-label="Layout">
-            <option value="default" selected>Default Min</option>
-            <option value="full">Default Full</option>
+            <option value="default" selected>Default</option>
+            <option value="min">Min</option>
             <option value="blank">Blank</option>
           </select>
-          <span id="algorithmSelectLabel" class="select-display" aria-hidden="true">Default Min</span>
+          <span id="algorithmSelectLabel" class="select-display" aria-hidden="true">Default</span>
         </div>
 
         <details class="control-group" data-module="readout">
@@ -166,6 +167,21 @@
           <option value="static">Static</option>
         </select>
       </label>
+
+      <label>
+        Stereometer Mode
+        <select id="stereoModeSelect">
+          <option value="classic" selected>Classic</option>
+          <option value="tangle">Tangle</option>
+        </select>
+      </label>
+
+      <div id="stereoLayerToggles" class="checkbox-grid" aria-label="Stereometer layers">
+        <label><input id="stereoCorrToggle" type="checkbox" checked> Corr</label>
+        <label><input id="stereoLowToggle" type="checkbox" checked> Low</label>
+        <label><input id="stereoMidToggle" type="checkbox" checked> Mid</label>
+        <label><input id="stereoHighToggle" type="checkbox" checked> High</label>
+      </div>
 
       <section class="algorithm-local" aria-label="Pattern detector parameters">
         <h1>Pattern Detector</h1>
@@ -265,6 +281,16 @@
         <label>
           Spectral Tilt <span id="spectralTiltValue">0.0dB</span>
           <input id="spectralTilt" type="range" min="-12" max="12" step="0.5" value="0">
+        </label>
+
+        <label>
+          Spectral Flash Amount <span id="spectralFlashAmountValue">1.00</span>
+          <input id="spectralFlashAmount" type="range" min="0" max="4" step="0.01" value="1">
+        </label>
+
+        <label>
+          Spectral Flash Smooth <span id="spectralFlashSmoothValue">0.02s</span>
+          <input id="spectralFlashSmooth" type="range" min="0.005" max="0.5" step="0.005" value="0.02">
         </label>
       </section>
 

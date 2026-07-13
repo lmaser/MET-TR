@@ -27,12 +27,19 @@
     const waveformPeakSelect = document.getElementById("waveformPeakSelect");
     const waveformSpeedSelect = document.getElementById("waveformSpeedSelect");
     const waveformLoopSelect = document.getElementById("waveformLoopSelect");
+    const stereoModeSelect = document.getElementById("stereoModeSelect");
+    const stereoLayerToggles = document.getElementById("stereoLayerToggles");
+    const stereoCorrToggle = document.getElementById("stereoCorrToggle");
+    const stereoLowToggle = document.getElementById("stereoLowToggle");
+    const stereoMidToggle = document.getElementById("stereoMidToggle");
+    const stereoHighToggle = document.getElementById("stereoHighToggle");
     const graphControls = document.querySelector(".graph-controls");
     const spectrumControlsMount = document.getElementById("spectrumControlsMount");
     const oscilloscopeControlsMount = document.getElementById("oscilloscopeControlsMount");
     const waveformShortControlsMount = document.getElementById("waveformShortControlsMount");
     const waveformMediumControlsMount = document.getElementById("waveformMediumControlsMount");
     const waveformLongControlsMount = document.getElementById("waveformLongControlsMount");
+    const stereoControlsMount = document.getElementById("stereoControlsMount");
     const patternControlsMount = document.getElementById("patternControlsMount");
     const readoutControlsMount = document.getElementById("readoutControlsMount");
     const displayRenderControlsMount = document.getElementById("displayRenderControlsMount");
@@ -73,6 +80,10 @@
     const cymbalFlashSmoothValue = document.getElementById("cymbalFlashSmoothValue");
     const spectralTilt = document.getElementById("spectralTilt");
     const spectralTiltValue = document.getElementById("spectralTiltValue");
+    const spectralFlashAmount = document.getElementById("spectralFlashAmount");
+    const spectralFlashSmooth = document.getElementById("spectralFlashSmooth");
+    const spectralFlashAmountValue = document.getElementById("spectralFlashAmountValue");
+    const spectralFlashSmoothValue = document.getElementById("spectralFlashSmoothValue");
     const sensitivity = document.getElementById("sensitivity");
     const glitch = document.getElementById("glitch");
     const pixel = document.getElementById("pixel");
@@ -164,7 +175,8 @@
       tomFlash: 0,
       snareFlash: 0,
       hatFlash: 0,
-      cymbalFlash: 0
+      cymbalFlash: 0,
+      spectralFlash: 0
     };
     const PATTERN_DETECTOR_PROFILE = {
       kick: { sensitivity: 1.1, threshold: 0.92, gain: 3.05, envAttack: 0.04, envRelease: 0.16, hold: 0.68 },
@@ -447,6 +459,11 @@
       const control = document.getElementById(id);
       const wrapper = control ? control.closest("label") : null;
       if (wrapper && mount) mount.appendChild(wrapper);
+    }
+
+    function moveElementById(id, mount) {
+      const element = document.getElementById(id);
+      if (element && mount) mount.appendChild(element);
     }
 
     function openFloatingInspector(title, mount, anchorRect = null) {
@@ -777,6 +794,8 @@
       moveControlById("waveformPeakSelect", waveformMediumControlsMount);
       moveControlById("waveformSpeedSelect", waveformMediumControlsMount);
       moveControlById("waveformLoopSelect", waveformLongControlsMount);
+      moveControlById("stereoModeSelect", stereoControlsMount);
+      moveElementById("stereoLayerToggles", stereoControlsMount);
 
       const patternSection = document.querySelector("aside .algorithm-local");
       if (patternSection && patternControlsMount) {
@@ -802,6 +821,8 @@
         displayRenderControlsMount.appendChild(spectralOutTitle);
       }
       moveControlById("spectralTilt", displayRenderControlsMount);
+      moveControlById("spectralFlashAmount", displayRenderControlsMount);
+      moveControlById("spectralFlashSmooth", displayRenderControlsMount);
 
       const meterWrapper = rmsMeter.closest(".meter")?.parentElement;
       const readout = document.querySelector("aside .readout");
@@ -818,15 +839,28 @@
       return Math.max(summary.getBoundingClientRect().height || 0, minHeight, 20);
     }
 
+    function getControlBlockHeight(group) {
+      if (!group) return 24;
+      const summary = group.querySelector("summary");
+      if (summary) return getModuleControlHeight(group);
+      const style = getComputedStyle(group);
+      const minHeight = parseFloat(style.minHeight) || 0;
+      return Math.max(group.getBoundingClientRect().height || 0, minHeight, 20);
+    }
+
+    function getControlLaneTop(group, graphTop) {
+      const compact = useCompactGraphLayout();
+      const scale = graphControlScale;
+      const controlGap = compact ? 5 : 3;
+      return Math.max(2, graphTop * scale - getControlBlockHeight(group) - controlGap);
+    }
+
     function positionModuleControl(key, graphTop) {
       const group = graphControls?.querySelector(`[data-module="${key}"]`);
       if (!group) return;
       const layout = METER_LAYOUT;
-      const compact = useCompactGraphLayout();
       const scale = graphControlScale;
-      const controlGap = compact ? 5 : 3;
-      const controlTop = graphTop * scale - getModuleControlHeight(group) - controlGap;
-      group.style.top = `${Math.max(2, controlTop)}px`;
+      group.style.top = `${getControlLaneTop(group, graphTop)}px`;
       group.style.left = `${layout.left * scale}px`;
       group.style.width = `${layout.fullWidth * scale}px`;
     }
@@ -844,7 +878,7 @@
       if (!slot || slot.hidden) return;
       const layout = METER_LAYOUT;
       const scale = graphControlScale;
-      slot.style.top = `${Math.max(2, graphTop * scale)}px`;
+      slot.style.top = `${getControlLaneTop(slot, graphTop)}px`;
       slot.style.left = `${layout.left * scale}px`;
       slot.style.width = `${layout.fullWidth * scale}px`;
     }
@@ -995,20 +1029,24 @@
         hat: patternState.hatFlash,
         cymbal: patternState.cymbalFlash
       };
-      const intensity = Math.max(...Object.values(levels));
       ctx.fillStyle = "#050505";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "rgba(255,255,255,0.1)";
       ctx.strokeRect(x, y, w, h);
       ctx.fillStyle = getPatternFlashColor(levels);
-      ctx.globalAlpha = clamp(0.16 + intensity * 0.84, 0, 1);
       ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
-      ctx.globalAlpha = 1;
     }
 
     function computeSpectralOutColor() {
       return window.METTR_DISPLAY_OUTPUT.computeSpectralOutColor(
-        { audioContext, floatFreqData, smoothed, spectralOutState, spectralTiltDb: Number(spectralTilt.value) },
+        {
+          audioContext,
+          floatFreqData,
+          smoothed,
+          spectralOutState,
+          spectralTiltDb: Number(spectralTilt.value),
+          spectralFlash: patternState.spectralFlash
+        },
         { clamp, lerp, smoothstep, interpolateFloatSpectrum }
       );
     }
@@ -1861,6 +1899,7 @@
       patternState.snareFlash = 0;
       patternState.hatFlash = 0;
       patternState.cymbalFlash = 0;
+      patternState.spectralFlash = 0;
       previousPatternFreqData = new Uint8Array(freqData.length);
     }
 
@@ -1882,12 +1921,15 @@
       const hatSmooth = Number(hatFlashSmooth.value);
       const cymbalAmount = Number(cymbalFlashAmount.value);
       const cymbalSmooth = Number(cymbalFlashSmooth.value);
+      const spectralAmount = Number(spectralFlashAmount.value);
+      const spectralSmooth = Number(spectralFlashSmooth.value);
       const generalRise = 1 - Math.exp(-1 / Math.max(1, generalSmooth * 60));
       const kickRise = 1 - Math.exp(-1 / Math.max(1, kickSmooth * 60));
       const snareRise = 1 - Math.exp(-1 / Math.max(1, snareSmooth * 60));
       const tomRise = 1 - Math.exp(-1 / Math.max(1, tomSmooth * 60));
       const hatRise = 1 - Math.exp(-1 / Math.max(1, hatSmooth * 60));
       const cymbalRise = 1 - Math.exp(-1 / Math.max(1, cymbalSmooth * 60));
+      const spectralRise = 1 - Math.exp(-1 / Math.max(1, spectralSmooth * 60));
       const flashFall = 1 - Math.exp(-1 / 7);
       if (!hasLiveAudio) {
         for (const key of Object.keys(patternState.hits)) {
@@ -1900,6 +1942,7 @@
         patternState.snareFlash = lerp(patternState.snareFlash, 0, flashFall);
         patternState.hatFlash = lerp(patternState.hatFlash, 0, flashFall);
         patternState.cymbalFlash = lerp(patternState.cymbalFlash, 0, flashFall);
+        patternState.spectralFlash = lerp(patternState.spectralFlash, 0, flashFall);
         patternState.events = patternState.events.filter((event) => now - event.time < rhythmWindow);
         patternState.onsetRate = lerp(patternState.onsetRate, 0, 0.08);
         patternState.confidence = lerp(patternState.confidence, 0, 0.08);
@@ -1931,6 +1974,26 @@
       const snareFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 900, 7600, 0.45);
       const hatFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 3600, 9200, 1.05);
       const cymbalFlux = bandPositiveFluxHz(freqData, previousPatternFreqData, 5200, 18000, 1.1);
+      const onsetFlux = clamp(
+        kickFlux * 8.4
+          + tomFlux * 6.8
+          + snareFlux * 5.6
+          + hatFlux * 4.8
+          + cymbalFlux * 4.2
+          + metrics.flux * 0.72,
+        0,
+        1
+      );
+      const spectralFluxFlash = clamp(
+        kickFlux * 3.2
+          + tomFlux * 3.5
+          + snareFlux * 5.2
+          + hatFlux * 6.2
+          + cymbalFlux * 5.8
+          + metrics.flux * 0.88,
+        0,
+        1
+      );
       const globalEnergy = metrics.rms * 0.4 + metrics.flux * 0.45 + metrics.peak * 0.15;
       const kickLowMass = kickFundamental * 0.9 + deepSub * 0.46 + kickPunch * 0.24;
       const snareNoiseMass = snareCrack * 0.5 + clapNoise * 0.3 + snareShell * 0.3;
@@ -2016,7 +2079,21 @@
         patternState.confidence = lerp(patternState.confidence, 0, 0.06);
       }
       const enabled = currentLayoutModules.includes("pattern");
-      const generalTarget = enabled ? clamp((metrics.peak * 0.72 + metrics.rms * 0.42) * generalAmount, 0, 1) : 0;
+      const elementHitPower = clamp(
+        patternState.hits.kick * 0.34
+          + patternState.hits.tom * 0.22
+          + patternState.hits.snare * 0.3
+          + patternState.hits.hat * 0.18
+          + patternState.hits.cymbal * 0.2,
+        0,
+        1
+      );
+      const visualOnset = clamp(Math.pow(onsetFlux * 0.76 + elementHitPower * 0.46, 0.62), 0, 1);
+      const energyFloor = clamp(Math.sqrt(metrics.peak) * 0.12 + metrics.rms * 0.06, 0, 0.18);
+      const spectralOnset = clamp(Math.pow(spectralFluxFlash * 0.82 + elementHitPower * 0.16, 0.58), 0, 1);
+      const spectralEnergyFloor = clamp(Math.sqrt(metrics.peak) * 0.08 + metrics.rms * 0.05, 0, 0.14);
+      const generalTarget = enabled ? clamp((visualOnset + energyFloor) * generalAmount, 0, 1) : 0;
+      const spectralTarget = enabled ? clamp((spectralOnset + spectralEnergyFloor) * spectralAmount, 0, 1) : 0;
       const kickTarget = enabled ? patternState.hits.kick * kickAmount : 0;
       const tomTarget = enabled ? patternState.hits.tom * tomAmount : 0;
       const snareTarget = enabled ? patternState.hits.snare * snareAmount : 0;
@@ -2051,6 +2128,11 @@
         patternState.cymbalFlash,
         cymbalTarget,
         cymbalTarget > patternState.cymbalFlash ? cymbalRise : flashFall
+      );
+      patternState.spectralFlash = lerp(
+        patternState.spectralFlash,
+        spectralTarget,
+        spectralTarget > patternState.spectralFlash ? spectralRise : flashFall
       );
     }
 
@@ -3136,26 +3218,33 @@
       drawMeterText(`${db <= -119 ? "-inf" : db.toFixed(1)} dB`, x + w - 68, y - 6, 11, "rgba(166,166,166,0.95)");
     }
 
-    function drawCorrelationBar(label, value, x, y, w, h, color) {
+    function drawCorrelationBar(label, value, x, y, w, h, color, enabled = true) {
+      const labelColor = enabled ? "rgba(245,245,245,0.82)" : "rgba(120,120,120,0.62)";
+      const valueColor = enabled ? "rgba(166,166,166,0.95)" : "rgba(95,95,95,0.58)";
       ctx.fillStyle = "#050505";
       ctx.fillRect(x, y, w, h);
-      ctx.strokeStyle = "#2b2b2b";
+      ctx.strokeStyle = enabled ? "#2b2b2b" : "rgba(43,43,43,0.55)";
       ctx.strokeRect(x, y, w, h);
       const mid = x + w * 0.5;
-      ctx.strokeStyle = "rgba(245,245,245,0.35)";
+      ctx.strokeStyle = enabled ? "rgba(245,245,245,0.35)" : "rgba(245,245,245,0.14)";
       ctx.beginPath();
       ctx.moveTo(mid, y);
       ctx.lineTo(mid, y + h);
       ctx.stroke();
-      const amount = clamp(value, -1, 1);
-      ctx.fillStyle = color;
-      if (amount >= 0) {
-        ctx.fillRect(mid, y, w * 0.5 * amount, h);
+      if (enabled) {
+        const amount = clamp(value, -1, 1);
+        ctx.fillStyle = color;
+        if (amount >= 0) {
+          ctx.fillRect(mid, y, w * 0.5 * amount, h);
+        } else {
+          ctx.fillRect(mid + w * 0.5 * amount, y, -w * 0.5 * amount, h);
+        }
       } else {
-        ctx.fillRect(mid + w * 0.5 * amount, y, -w * 0.5 * amount, h);
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(x, y, w, h);
       }
-      drawMeterText(label, x, y - 6, 11, "rgba(245,245,245,0.82)");
-      drawMeterText(value.toFixed(2), x + w - 34, y - 6, 11, "rgba(166,166,166,0.95)");
+      drawMeterText(label, x, y - 6, 11, labelColor);
+      drawMeterText(enabled ? value.toFixed(2) : "--", x + w - 34, y - 6, 11, valueColor);
     }
 
     function spectrumColor(value, alpha = 1) {
@@ -3324,67 +3413,200 @@
       }
     }
 
-    function drawStereoRadialField(cx, cy, r, compact) {
-      const balance = clamp((smoothed.right - smoothed.left) / Math.max(0.02, smoothed.left + smoothed.right), -1, 1);
-      const baseAngle = -Math.PI / 2 + balance * 1.18;
-      const globalWidth = clamp(smoothed.side * 0.9 + (1 - clamp(meterState.correlation, -1, 1)) * 0.22, 0, 1);
-      const bandSpecs = [
-        { value: smoothed.low, corr: meterState.lowCorrelation, color: [255, 58, 24], angle: -0.22 },
-        { value: smoothed.mid, corr: meterState.midCorrelation, color: [188, 48, 236], angle: 0 },
-        { value: smoothed.high, corr: meterState.highCorrelation, color: [97, 242, 138], angle: 0.22 }
-      ];
+    function drawStereoScopeGrid(cx, cy, r, compact) {
+      const drawDiamond = (radius, alpha) => {
+        ctx.strokeStyle = `rgba(142,150,166,${alpha})`;
+        ctx.lineWidth = compact ? 0.9 : 1;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - radius);
+        ctx.lineTo(cx + radius, cy);
+        ctx.lineTo(cx, cy + radius);
+        ctx.lineTo(cx - radius, cy);
+        ctx.closePath();
+        ctx.stroke();
+      };
+      drawDiamond(r, 0.42);
+      drawDiamond(r * 0.52, 0.26);
+      ctx.strokeStyle = "rgba(142,150,166,0.22)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - r, cy);
+      ctx.lineTo(cx + r, cy);
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx, cy + r);
+      ctx.moveTo(cx - r * 0.72, cy - r * 0.72);
+      ctx.lineTo(cx + r * 0.72, cy + r * 0.72);
+      ctx.moveTo(cx + r * 0.72, cy - r * 0.72);
+      ctx.lineTo(cx - r * 0.72, cy + r * 0.72);
+      ctx.stroke();
+    }
+
+    function drawStereoCorrelationOverlay(cx, cy, r, compact) {
+      const corr = clamp(meterState.correlation, -1, 1);
+      const width = clamp(1 - (corr + 1) * 0.5 + smoothed.side * 0.45, 0, 1);
+      const alpha = clamp(0.04 + width * 0.16 + smoothed.rms * 0.05, 0.03, 0.24);
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      const grad = ctx.createRadialGradient(cx, cy, r * 0.12, cx, cy, r * (0.82 + width * 0.2));
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(0.55, `rgba(126,214,255,${alpha * 0.34})`);
+      grad.addColorStop(1, `rgba(188,48,236,${alpha})`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r * (0.22 + width * 0.88), r * (0.72 - width * 0.18), Math.PI / 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      if (corr < 0) {
+        ctx.save();
+        ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = `rgba(255,58,24,${clamp(-corr * 0.5, 0, 0.5)})`;
+        ctx.lineWidth = compact ? 1 : 1.2;
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.88, cy + r * 0.88);
+        ctx.lineTo(cx + r * 0.88, cy - r * 0.88);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function rmsFloat(values) {
+      let sum = 0;
+      for (let i = 0; i < values.length; i += 1) sum += values[i] * values[i];
+      return Math.sqrt(sum / Math.max(1, values.length));
+    }
+
+    function stereoPointFromSample(l, rr, cx, cy, r, midGain, sideGain, offsetX = 0, offsetY = 0) {
+      let dx = Math.tanh((l - rr) * 0.5 * sideGain);
+      let dy = Math.tanh((l + rr) * 0.5 * midGain);
+      const mag = Math.hypot(dx, dy);
+      if (mag > 1) {
+        dx /= mag;
+        dy /= mag;
+      }
+      return {
+        x: cx + dx * r + offsetX,
+        y: cy - dy * r + offsetY
+      };
+    }
+
+    function drawStereoClassicCloud(left, right, cx, cy, r, compact, spec) {
+      const n = Math.min(left.length, right.length);
+      if (!n) return;
+      const bandRms = Math.max(rmsFloat(left), rmsFloat(right));
+      const gain = clamp(spec.target / Math.max(0.004, bandRms), 1, spec.maxGain);
+      const step = Math.max(1, Math.floor(n / spec.points));
+      const midGain = (compact ? 2.15 : 2.42) * spec.midGain * gain;
+      const sideGain = (compact ? 2.0 : 2.22) * spec.sideGain * gain;
+      const alpha = clamp(spec.alphaBase + Math.pow(bandRms * gain, 0.5) * spec.alphaLift, spec.alphaBase, spec.alphaMax);
+      const radius = compact ? spec.classicDot * 0.86 : spec.classicDot;
+      ctx.fillStyle = `rgba(${spec.color[0]},${spec.color[1]},${spec.color[2]},${alpha})`;
+      for (let i = 0; i < n; i += step) {
+        const p = stereoPointFromSample(left[i], right[i], cx, cy, r, midGain, sideGain, spec.offsetX || 0, spec.offsetY || 0);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawStereoCorrelationCloud(left, right, cx, cy, r, compact, mode) {
+      const n = Math.min(left.length, right.length);
+      if (!n) return;
+      const bandRms = Math.max(rmsFloat(left), rmsFloat(right));
+      const classic = mode !== "tangle";
+      const gain = clamp(0.24 / Math.max(0.004, bandRms), 1, classic ? 4.4 : 3.8);
+      const visualWindow = classic ? Math.min(n, compact ? 2048 : 3072) : n;
+      const start = classic ? Math.max(0, n - visualWindow) : 0;
+      const targetPoints = classic ? (compact ? 1500 : 2200) : 420;
+      const step = Math.max(1, Math.floor(visualWindow / targetPoints));
+      const midGain = (compact ? 2.15 : 2.45) * gain;
+      const sideGain = (compact ? 2.0 : 2.25) * gain;
+      const corr = clamp(meterState.correlation, -1, 1);
+      const alpha = classic
+        ? clamp(0.08 + Math.pow(bandRms * gain, 0.48) * 0.3, 0.08, 0.42)
+        : clamp(0.18 + Math.pow(bandRms * gain, 0.52) * 0.46, 0.18, 0.72);
+      const color = corr < 0 ? [255, 86, 48] : [235, 238, 225];
+      const points = [];
+      for (let i = start; i < n; i += step) {
+        points.push(stereoPointFromSample(left[i], right[i], cx, cy, r, midGain, sideGain));
+      }
+      if (!points.length) return;
 
       ctx.save();
       ctx.globalCompositeOperation = "screen";
-      for (const spec of bandSpecs) {
-        const corrWidth = Math.sqrt(clamp(1 - (spec.corr + 1) * 0.5, 0, 1));
-        const width = clamp(corrWidth * 0.72 + globalWidth * 0.42, 0, 1);
-        const level = clamp(Math.pow(spec.value, 0.68) + smoothed.peak * 0.08, 0, 1);
-        const outer = r * (0.34 + width * 0.72 + level * 0.06);
-        const inner = r * (0.18 + level * 0.08);
-        const span = 0.16 + width * (compact ? 0.72 : 0.88);
-        const angle = baseAngle + spec.angle + Math.sin(t * 0.025 + spec.angle * 7) * 0.035 * level;
-        const [red, green, blue] = spec.color;
-        const alpha = clamp(0.08 + level * 0.34 + width * 0.08, 0.06, 0.48);
-        const grad = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
-        grad.addColorStop(0, `rgba(${red},${green},${blue},0)`);
-        grad.addColorStop(0.48, `rgba(${red},${green},${blue},${alpha * 0.58})`);
-        grad.addColorStop(1, `rgba(${red},${green},${blue},${alpha})`);
-        ctx.fillStyle = grad;
+      if (points.length > 1) {
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = classic
+          ? `rgba(${color[0]},${color[1]},${color[2]},${clamp(alpha * 0.68, 0.08, 0.34)})`
+          : `rgba(${color[0]},${color[1]},${color[2]},${alpha * 0.42})`;
+        ctx.lineWidth = classic ? (compact ? 0.72 : 0.82) : (compact ? 0.8 : 0.9);
         ctx.beginPath();
-        ctx.arc(cx, cy, outer, angle - span, angle + span);
-        ctx.arc(cx, cy, inner, angle + span * 0.58, angle - span * 0.58, true);
-        ctx.closePath();
+        for (let i = 0; i < points.length; i += 1) {
+          const p = points[i];
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+      }
+      ctx.fillStyle = classic
+        ? `rgba(${color[0]},${color[1]},${color[2]},${clamp(alpha * 1.05, 0.13, 0.44)})`
+        : `rgba(${color[0]},${color[1]},${color[2]},${alpha})`;
+      const stride = classic ? (compact ? 4 : 3) : 2;
+      for (let i = 0; i < points.length; i += stride) {
+        const p = points[i];
+        const radius = classic ? (compact ? 0.45 : 0.52) : (compact ? 1.0 : 1.15);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
         ctx.fill();
       }
-
-      const corr = clamp(meterState.correlation, -1, 1);
-      const corrPositive = clamp((corr + 1) * 0.5, 0, 1);
-      const ringR = r * (0.92 + globalWidth * 0.08);
-      const ringSpan = 0.28 + corrPositive * Math.PI * 0.94;
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = `rgba(245,245,245,${0.16 + corrPositive * 0.42})`;
-      ctx.lineWidth = compact ? 1.2 : 1.4;
-      ctx.beginPath();
-      ctx.arc(cx, cy, ringR, -Math.PI / 2 - ringSpan, -Math.PI / 2 + ringSpan);
-      ctx.stroke();
-      if (corr < 0) {
-        ctx.setLineDash([3, 4]);
-        ctx.strokeStyle = `rgba(255,58,24,${clamp(-corr * 0.45, 0, 0.45)})`;
-        ctx.beginPath();
-        ctx.arc(cx, cy, ringR * 0.96, Math.PI * 0.15, Math.PI * 0.85);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-
-      const needleLen = r * (0.36 + globalWidth * 0.44 + smoothed.rms * 0.08);
-      ctx.strokeStyle = `rgba(245,245,245,${0.12 + smoothed.rms * 0.18})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(baseAngle) * needleLen, cy + Math.sin(baseAngle) * needleLen);
-      ctx.stroke();
       ctx.restore();
+    }
+
+    function drawStereoTangleCloud(left, right, cx, cy, r, compact, spec) {
+      const n = Math.min(left.length, right.length);
+      if (!n) return;
+      const bandRms = Math.max(rmsFloat(left), rmsFloat(right));
+      const gain = clamp(spec.target / Math.max(0.004, bandRms), 1, spec.maxGain);
+      const step = Math.max(1, Math.floor(n / spec.points));
+      const midGain = (compact ? 2.3 : 2.68) * spec.midGain * gain;
+      const sideGain = (compact ? 2.08 : 2.38) * spec.sideGain * gain;
+      const alpha = clamp(spec.alphaBase + Math.pow(bandRms * gain, 0.55) * spec.alphaLift, spec.alphaBase, spec.alphaMax);
+      const dotRadius = compact ? spec.dot * 0.42 : spec.dot * 0.5;
+      const glowRadius = dotRadius * spec.glowScale;
+      const glowAlpha = alpha * spec.glowAlpha;
+      const points = [];
+      for (let i = 0; i < n; i += step) {
+        points.push(stereoPointFromSample(left[i], right[i], cx, cy, r, midGain, sideGain, spec.offsetX || 0, spec.offsetY || 0));
+      }
+      if (points.length < 2) return;
+
+      ctx.lineWidth = compact ? spec.lineWidth * 0.85 : spec.lineWidth;
+      ctx.strokeStyle = `rgba(${spec.color[0]},${spec.color[1]},${spec.color[2]},${alpha * spec.lineAlpha})`;
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i += 1) {
+        const p = points[i];
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+
+      for (let i = 0; i < points.length; i += spec.dotStride) {
+        const p = points[i];
+        if (glowAlpha > 0.001) {
+          const grad = ctx.createRadialGradient(p.x, p.y, dotRadius * 0.35, p.x, p.y, glowRadius);
+          grad.addColorStop(0, `rgba(${spec.color[0]},${spec.color[1]},${spec.color[2]},${glowAlpha})`);
+          grad.addColorStop(1, `rgba(${spec.color[0]},${spec.color[1]},${spec.color[2]},0)`);
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = `rgba(${spec.color[0]},${spec.color[1]},${spec.color[2]},${alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     function drawStereoPanel(x, y, w, h) {
@@ -3393,51 +3615,119 @@
       ctx.strokeStyle = "#282828";
       ctx.strokeRect(x, y, w, h);
       const compact = h < 120;
-      const cx = x + (compact ? w * 0.25 : w * 0.32);
+      const mode = stereoModeSelect.value;
+      const showCorr = stereoCorrToggle.checked;
+      const showLow = stereoLowToggle.checked;
+      const showMid = stereoMidToggle.checked;
+      const showHigh = stereoHighToggle.checked;
+      const cx = x + (compact ? w * 0.27 : w * 0.34);
       const cy = y + h * 0.48;
-      const r = Math.min(w * (compact ? 0.42 : 0.48), h) * 0.38;
-      ctx.strokeStyle = "rgba(255,255,255,0.16)";
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.moveTo(cx - r, cy);
-      ctx.lineTo(cx + r, cy);
-      ctx.moveTo(cx, cy - r);
-      ctx.lineTo(cx, cy + r);
-      ctx.stroke();
-
-      drawStereoRadialField(cx, cy, r, compact);
+      const r = Math.min(w * (compact ? 0.5 : 0.57), h) * 0.43;
+      drawStereoScopeGrid(cx, cy, r, compact);
+      if (showCorr && mode === "tangle") drawStereoCorrelationOverlay(cx, cy, r, compact);
 
       if (leftAnalyser && rightAnalyser) {
         leftAnalyser.getByteTimeDomainData(leftTime);
         rightAnalyser.getByteTimeDomainData(rightTime);
       }
-      ctx.fillStyle = "rgba(245,245,245,0.65)";
-      const step = Math.max(1, Math.floor(leftTime.length / 420));
-      const midGain = compact ? 2.35 : 2.75;
-      const sideGain = compact ? 2.15 : 2.45;
-      for (let i = 0; i < leftTime.length; i += step) {
-        const l = (leftTime[i] - 128) / 128;
-        const rr = (rightTime[i] - 128) / 128;
-        let dx = Math.tanh((l - rr) * 0.5 * sideGain);
-        let dy = Math.tanh((l + rr) * 0.5 * midGain);
-        const mag = Math.hypot(dx, dy);
-        if (mag > 1) {
-          dx /= mag;
-          dy /= mag;
-        }
-        const sx = cx + dx * r;
-        const sy = cy - dy * r;
-        ctx.fillRect(sx, sy, 1.6, 1.6);
+      const n = Math.min(leftTime.length, rightTime.length);
+      const left = new Float32Array(n);
+      const right = new Float32Array(n);
+      for (let i = 0; i < n; i += 1) {
+        left[i] = (leftTime[i] - 128) / 128;
+        right[i] = (rightTime[i] - 128) / 128;
       }
+      const leftBands = splitBandsForCorrelation(left);
+      const rightBands = splitBandsForCorrelation(right);
+      const bandClouds = [
+        {
+          id: "low",
+          left: leftBands.low,
+          right: rightBands.low,
+          color: [255, 58, 24],
+          target: 0.22,
+          maxGain: 3.1,
+          midGain: 0.92,
+          sideGain: 0.92,
+          points: 320,
+          dot: 1.8,
+          classicDot: 1.35,
+          alphaBase: 0.16,
+          alphaLift: 0.34,
+          alphaMax: 0.58,
+          glowScale: 2.05,
+          glowAlpha: 0.05,
+          lineAlpha: 0.36,
+          lineWidth: 0.7,
+          dotStride: 3,
+          offsetX: 0,
+          offsetY: 0
+        },
+        {
+          id: "mid",
+          left: leftBands.mid,
+          right: rightBands.mid,
+          color: [57, 255, 20],
+          target: 0.27,
+          maxGain: 4.8,
+          midGain: 1.05,
+          sideGain: 1.04,
+          points: 360,
+          dot: 1.9,
+          classicDot: 1.3,
+          alphaBase: 0.18,
+          alphaLift: 0.48,
+          alphaMax: 0.76,
+          glowScale: 2.15,
+          glowAlpha: 0.07,
+          lineAlpha: 0.42,
+          lineWidth: 0.72,
+          dotStride: 3,
+          offsetX: compact ? 0.5 : 0.8,
+          offsetY: compact ? -0.5 : -0.8
+        },
+        {
+          id: "high",
+          left: leftBands.high,
+          right: rightBands.high,
+          color: [82, 158, 255],
+          target: 0.31,
+          maxGain: 6.2,
+          midGain: 1.16,
+          sideGain: 1.12,
+          points: 390,
+          dot: 2.05,
+          classicDot: 1.24,
+          alphaBase: 0.2,
+          alphaLift: 0.54,
+          alphaMax: 0.82,
+          glowScale: 2.25,
+          glowAlpha: 0.08,
+          lineAlpha: 0.46,
+          lineWidth: 0.68,
+          dotStride: 3,
+          offsetX: compact ? -0.5 : -0.8,
+          offsetY: compact ? 0.5 : 0.8
+        }
+      ];
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      for (const spec of bandClouds) {
+        if ((spec.id === "low" && !showLow) || (spec.id === "mid" && !showMid) || (spec.id === "high" && !showHigh)) continue;
+        if (mode === "tangle") drawStereoTangleCloud(spec.left, spec.right, cx, cy, r, compact, spec);
+        else drawStereoClassicCloud(spec.left, spec.right, cx, cy, r, compact, spec);
+      }
+      ctx.restore();
+      if (showCorr) drawStereoCorrelationCloud(left, right, cx, cy, r, compact, mode);
 
       const bx = x + (compact ? w * 0.58 : w * 0.58);
       const bw = w * 0.36;
       const by = y + (compact ? 30 : 34);
       const bs = compact ? 23 : Math.max(26, (h - 52) / 3.4);
-      drawCorrelationBar("Corr", meterState.correlation, bx, by, bw, compact ? 7 : 9, "#f5f5f5");
-      drawCorrelationBar("Low", meterState.lowCorrelation, bx, by + bs, bw, 7, "#ff3d1f");
-      drawCorrelationBar("Mid", meterState.midCorrelation, bx, by + bs * 2, bw, 7, "#8f46ff");
-      drawCorrelationBar("High", meterState.highCorrelation, bx, by + bs * 3, bw, 7, "#61f28a");
+      drawCorrelationBar("Corr", meterState.correlation, bx, by, bw, compact ? 7 : 9, "#f5f5f5", showCorr);
+      drawCorrelationBar("Low", meterState.lowCorrelation, bx, by + bs, bw, 7, "#ff3d1f", showLow);
+      drawCorrelationBar("Mid", meterState.midCorrelation, bx, by + bs * 2, bw, 7, "#39ff14", showMid);
+      drawCorrelationBar("High", meterState.highCorrelation, bx, by + bs * 3, bw, 7, "#529eff", showHigh);
       drawMeterText("L/R", x + 12, y + h - 8, 9, "rgba(166,166,166,0.7)");
       drawMeterText("M/S rotated", x + 38, y + h - 8, 9, "rgba(166,166,166,0.7)");
     }
@@ -4226,6 +4516,59 @@
       });
     }
 
+    function auditLayoutAddSlotSpacing() {
+      const slot = graphControls?.querySelector('[data-module="layoutAdd"]');
+      if (!slot || slot.hidden) {
+        return { visible: false, positionOk: true, metrics: {} };
+      }
+      const rows = getLayoutRows();
+      const spec = contract.ui?.moduleHeader || {};
+      const tolerance = spec.addSlotGapTolerancePx ?? 3;
+      const slotRect = slot.getBoundingClientRect();
+      const stageRect = stageEl.getBoundingClientRect();
+      const expectedTop = stageRect.top + getControlLaneTop(slot, rows.addY);
+      const lastRow = rows.rows[rows.rows.length - 1];
+      const lastGraphBottom = lastRow
+        ? stageRect.top + (lastRow.y + getModuleHeight(lastRow.module)) * graphControlScale
+        : null;
+      const gapFromLastGraph = lastGraphBottom == null ? null : slotRect.top - lastGraphBottom;
+      const expectedGraphGap = useCompactGraphLayout() ? 5 : 3;
+      return {
+        visible: true,
+        positionOk: Math.abs(slotRect.top - expectedTop) <= tolerance,
+        noLastGraphOverlap: gapFromLastGraph == null || gapFromLastGraph >= -tolerance,
+        graphGapOk: gapFromLastGraph == null || Math.abs(gapFromLastGraph - expectedGraphGap) <= tolerance,
+        metrics: {
+          slotTop: Math.round(slotRect.top),
+          expectedTop: Math.round(expectedTop),
+          delta: Number((slotRect.top - expectedTop).toFixed(2)),
+          gapFromLastGraph: gapFromLastGraph == null ? null : Math.round(gapFromLastGraph),
+          expectedGraphGap,
+          tolerance,
+          compact: useCompactGraphLayout()
+        }
+      };
+    }
+
+    function auditStereoLayerContract() {
+      const layers = {
+        corr: Boolean(stereoCorrToggle?.checked),
+        low: Boolean(stereoLowToggle?.checked),
+        mid: Boolean(stereoMidToggle?.checked),
+        high: Boolean(stereoHighToggle?.checked)
+      };
+      const visibleCount = Object.values(layers).filter(Boolean).length;
+      return {
+        layers,
+        hasRenderableLayer: visibleCount > 0,
+        corrOnlyRenderable: layers.corr && !layers.low && !layers.mid && !layers.high,
+        metrics: {
+          mode: stereoModeSelect?.value || "classic",
+          visibleCount
+        }
+      };
+    }
+
     function drawFrame() {
       const frameStart = performance.now();
       t += 1;
@@ -4324,6 +4667,15 @@
     spectralTilt.addEventListener("input", () => {
       spectralTiltValue.textContent = `${Number(spectralTilt.value).toFixed(1)}dB`;
     });
+    spectralFlashAmount.addEventListener("input", () => {
+      spectralFlashAmountValue.textContent = Number(spectralFlashAmount.value).toFixed(2);
+    });
+    spectralFlashSmooth.addEventListener("input", () => {
+      spectralFlashSmoothValue.textContent = `${Number(spectralFlashSmooth.value).toFixed(2)}s`;
+    });
+    stereoModeSelect.addEventListener("change", () => {
+      closeFloatingInspector();
+    });
     spectrumFftSelect.addEventListener("change", () => {
       configureSpectrumAnalyser();
     });
@@ -4344,7 +4696,9 @@
       ...(window.METTR_AUDIT || {}),
       moduleHeaders: auditModuleHeaders,
       displayRenderSpacing: auditDisplayRenderSpacing,
-      waveformDisplay: auditWaveformDisplayContract
+      waveformDisplay: auditWaveformDisplayContract,
+      layoutAddSlotSpacing: auditLayoutAddSlotSpacing,
+      stereoLayers: auditStereoLayerContract
     };
     window.addEventListener("resize", () => {
       updateGraphControlScale();

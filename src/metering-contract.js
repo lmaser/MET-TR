@@ -23,10 +23,10 @@ window.METTR_CONTRACT = {
     waveformShort: { height: 70, advance: 100 },
     waveformMedium: { height: 70, advance: 100 },
     waveformLong: { height: 70, advance: 114 },
-    stereo: { height: 202, compactHeight: 150 },
+    stereo: { height: 292, compactHeight: 206 },
     loudness: { height: 202, compactHeight: 150 },
-    dualMetersAdvance: 238,
-    compactMeterAdvance: 186,
+    dualMetersAdvance: 328,
+    compactMeterAdvance: 238,
     pattern: { height: 560, advance: 596 },
     compactBreakpoint: 640
   },
@@ -67,7 +67,8 @@ window.METTR_CONTRACT = {
       iconColor: "#f5f5f5",
       iconCenterTolerancePx: 2,
       maxRightSlackPx: 10,
-      nestedBodyGapPx: 18
+      nestedBodyGapPx: 18,
+      addSlotGapTolerancePx: 3
     },
     waveformDisplay: {
       labelReservePx: 12,
@@ -94,17 +95,7 @@ window.METTR_CONTRACT = {
   layouts: {
     maxModules: 10,
     default: {
-      id: "Default Min",
-      modules: [
-        "spectrum",
-        "oscilloscope",
-        "waveformMedium",
-        "stereo",
-        "loudness"
-      ]
-    },
-    full: {
-      id: "Default Full",
+      id: "Default",
       modules: [
         "spectrum",
         "oscilloscope",
@@ -114,6 +105,16 @@ window.METTR_CONTRACT = {
         "stereo",
         "loudness",
         "pattern"
+      ]
+    },
+    min: {
+      id: "Min",
+      modules: [
+        "spectrum",
+        "oscilloscope",
+        "waveformMedium",
+        "stereo",
+        "loudness"
       ]
     },
     blank: {

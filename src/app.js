@@ -21,6 +21,18 @@
     const algorithmSelectLabel = document.getElementById("algorithmSelectLabel");
     const spectrumFftSelect = document.getElementById("spectrumFftSelect");
     const spectrumBarsSelect = document.getElementById("spectrumBarsSelect");
+    const spectrogramFftSelect = document.getElementById("spectrogramFftSelect");
+    const spectrogramDetailSelect = document.getElementById("spectrogramDetailSelect");
+    const spectrogramScaleSelect = document.getElementById("spectrogramScaleSelect");
+    const spectrogramOrientationSelect = document.getElementById("spectrogramOrientationSelect");
+    const spectrogramModeSelect = document.getElementById("spectrogramModeSelect");
+    const spectrogramSpeedSelect = document.getElementById("spectrogramSpeedSelect");
+    const spectrogramWindowSelect = document.getElementById("spectrogramWindowSelect");
+    const spectrogramTilt = document.getElementById("spectrogramTilt");
+    const spectrogramTiltValue = document.getElementById("spectrogramTiltValue");
+    const spectrogramFreqOverlaySelect = document.getElementById("spectrogramFreqOverlaySelect");
+    const spectrogramPianoOverlaySelect = document.getElementById("spectrogramPianoOverlaySelect");
+    const spectrogramLoopSelect = document.getElementById("spectrogramLoopSelect");
     const scopeFollowSelect = document.getElementById("scopeFollowSelect");
     const waveformChannelSelect = document.getElementById("waveformChannelSelect");
     const waveformColorSelect = document.getElementById("waveformColorSelect");
@@ -35,6 +47,7 @@
     const stereoHighToggle = document.getElementById("stereoHighToggle");
     const graphControls = document.querySelector(".graph-controls");
     const spectrumControlsMount = document.getElementById("spectrumControlsMount");
+    const spectrogramControlsMount = document.getElementById("spectrogramControlsMount");
     const oscilloscopeControlsMount = document.getElementById("oscilloscopeControlsMount");
     const waveformShortControlsMount = document.getElementById("waveformShortControlsMount");
     const waveformMediumControlsMount = document.getElementById("waveformMediumControlsMount");
@@ -123,6 +136,10 @@
 
     let audioContext;
     let analyser;
+    let spectrogramAnalyser;
+    let spectrogramLowAnalyser;
+    let spectrogramMidAnalyser;
+    let spectrogramHighAnalyser;
     let scopeAnalyser;
     let splitter;
     let leftAnalyser;
@@ -135,6 +152,12 @@
     let leftFreq = new Uint8Array(512);
     let rightFreq = new Uint8Array(512);
     let floatFreqData = new Float32Array(1024);
+    let spectrogramFreqData = new Float32Array(2048);
+    let spectrogramLowData = new Float32Array(16384);
+    let spectrogramMidData = new Float32Array(4096);
+    let spectrogramHighData = new Float32Array(2048);
+    let spectrogramAdaptiveFloor = new Float32Array(0);
+    let spectrogramLastColumnDb = new Float32Array(0);
     let previousFreqData = new Uint8Array(1024);
     let previousPatternFreqData = new Uint8Array(1024);
     let inputSource = "system";
@@ -159,6 +182,26 @@
     const waveformState = {
       columns: [],
       writePhase: 0
+    };
+    const spectrogramCanvas = document.createElement("canvas");
+    const spectrogramCtx = spectrogramCanvas.getContext("2d", { alpha: false });
+    spectrogramCanvas.width = 620;
+    spectrogramCanvas.height = 180;
+    const spectrogramState = {
+      write: 0,
+      subPixel: 0,
+      frame: 0,
+      fftSize: 8192,
+      detail: "standard",
+      orientation: "horizontal",
+      window: "tiny"
+    };
+    const spectrogramHover = {
+      active: false,
+      x: 0,
+      y: 0,
+      note: null,
+      plot: null
     };
     const patternState = {
       previous: { kick: 0, tom: 0, snare: 0, hat: 0, cymbal: 0, global: 0 },
@@ -204,6 +247,7 @@
     const MAX_LAYOUT_MODULES = meteringLayouts.maxModules || 10;
     const METERING_RENDERERS = {
       drawSpectrumPanel,
+      drawSpectrogramPanel,
       drawOscilloscopePanel,
       drawWaveformShortPanel,
       drawWaveformMediumPanel,
@@ -219,6 +263,7 @@
     const METERING_MODULE_BY_ID = Object.fromEntries(METERING_MODULES.map((module) => [module.id, module]));
     const METERING_MODULE_LABELS = {
       spectrum: "Spectrum",
+      spectrogram: "Spectrogram",
       oscilloscope: "Oscilloscope",
       waveformShort: "Waveform Short",
       waveformMedium: "Waveform Medium",
@@ -235,6 +280,7 @@
     let layoutControlsDirty = true;
     const graphOpenState = {
       spectrum: true,
+      spectrogram: true,
       oscilloscope: true,
       waveformShort: true,
       waveformMedium: true,
@@ -788,6 +834,17 @@
       ensurePatternNestedAddSlot();
       moveControlById("spectrumFftSelect", spectrumControlsMount);
       moveControlById("spectrumBarsSelect", spectrumControlsMount);
+      moveControlById("spectrogramFftSelect", spectrogramControlsMount);
+      moveControlById("spectrogramDetailSelect", spectrogramControlsMount);
+      moveControlById("spectrogramScaleSelect", spectrogramControlsMount);
+      moveControlById("spectrogramOrientationSelect", spectrogramControlsMount);
+      moveControlById("spectrogramModeSelect", spectrogramControlsMount);
+      moveControlById("spectrogramSpeedSelect", spectrogramControlsMount);
+      moveControlById("spectrogramWindowSelect", spectrogramControlsMount);
+      moveControlById("spectrogramTilt", spectrogramControlsMount);
+      moveControlById("spectrogramFreqOverlaySelect", spectrogramControlsMount);
+      moveControlById("spectrogramPianoOverlaySelect", spectrogramControlsMount);
+      moveControlById("spectrogramLoopSelect", spectrogramControlsMount);
       moveControlById("scopeFollowSelect", oscilloscopeControlsMount);
       moveControlById("waveformChannelSelect", waveformShortControlsMount);
       moveControlById("waveformColorSelect", waveformShortControlsMount);
@@ -1128,6 +1185,67 @@
       previousPatternFreqData = new Uint8Array(analyser.frequencyBinCount);
       timeData = new Uint8Array(analyser.fftSize);
       resetSpectrumState();
+    }
+
+    function resetSpectrogramState(clear = true) {
+      spectrogramState.write = 0;
+      spectrogramState.frame = 0;
+      spectrogramState.subPixel = 0;
+      spectrogramState.fftSize = Number(spectrogramFftSelect.value);
+      spectrogramState.orientation = spectrogramOrientationSelect.value;
+      spectrogramState.window = spectrogramWindowSelect.value;
+      spectrogramState.detail = spectrogramDetailSelect.value;
+      const historySize = {
+        tiny: 180,
+        short: 360,
+        medium: 620,
+        long: 980
+      }[spectrogramWindowSelect.value] || 180;
+      const freqSize = 340;
+      if (spectrogramOrientationSelect.value === "horizontal") {
+        spectrogramCanvas.width = historySize;
+        spectrogramCanvas.height = freqSize;
+      } else {
+        spectrogramCanvas.width = freqSize;
+        spectrogramCanvas.height = historySize;
+      }
+      const rows = spectrogramOrientationSelect.value === "horizontal" ? spectrogramCanvas.height : spectrogramCanvas.width;
+      spectrogramAdaptiveFloor = new Float32Array(rows);
+      spectrogramAdaptiveFloor.fill(-112);
+      spectrogramLastColumnDb = new Float32Array(rows);
+      spectrogramLastColumnDb.fill(-140);
+      if (clear) {
+        spectrogramCtx.fillStyle = "#000";
+        spectrogramCtx.fillRect(0, 0, spectrogramCanvas.width, spectrogramCanvas.height);
+      }
+    }
+
+    function configureSpectrogramAnalyser() {
+      if (!spectrogramAnalyser) return;
+      spectrogramAnalyser.fftSize = Number(spectrogramFftSelect.value);
+      spectrogramAnalyser.minDecibels = -104;
+      spectrogramAnalyser.maxDecibels = -10;
+      spectrogramAnalyser.smoothingTimeConstant = 0.02;
+      spectrogramFreqData = new Float32Array(spectrogramAnalyser.frequencyBinCount);
+      resetSpectrogramState();
+    }
+
+    function configureSpectrogramDetailAnalysers() {
+      const configs = [
+        { node: spectrogramLowAnalyser, fftSize: 32768, smoothing: 0.012 },
+        { node: spectrogramMidAnalyser, fftSize: 8192, smoothing: 0.018 },
+        { node: spectrogramHighAnalyser, fftSize: 4096, smoothing: 0.024 }
+      ];
+      configs.forEach((config) => {
+        if (!config.node) return;
+        config.node.fftSize = config.fftSize;
+        config.node.minDecibels = -108;
+        config.node.maxDecibels = -10;
+        config.node.smoothingTimeConstant = config.smoothing;
+      });
+      if (spectrogramLowAnalyser) spectrogramLowData = new Float32Array(spectrogramLowAnalyser.frequencyBinCount);
+      if (spectrogramMidAnalyser) spectrogramMidData = new Float32Array(spectrogramMidAnalyser.frequencyBinCount);
+      if (spectrogramHighAnalyser) spectrogramHighData = new Float32Array(spectrogramHighAnalyser.frequencyBinCount);
     }
 
     function noise2(x, y, time) {
@@ -2471,6 +2589,18 @@
       configureSpectrumAnalyser();
       source.connect(analyser);
 
+      spectrogramAnalyser = audioContext.createAnalyser();
+      configureSpectrogramAnalyser();
+      source.connect(spectrogramAnalyser);
+
+      spectrogramLowAnalyser = audioContext.createAnalyser();
+      spectrogramMidAnalyser = audioContext.createAnalyser();
+      spectrogramHighAnalyser = audioContext.createAnalyser();
+      configureSpectrogramDetailAnalysers();
+      source.connect(spectrogramLowAnalyser);
+      source.connect(spectrogramMidAnalyser);
+      source.connect(spectrogramHighAnalyser);
+
       scopeAnalyser = audioContext.createAnalyser();
       scopeAnalyser.fftSize = 32768;
       scopeAnalyser.smoothingTimeConstant = 0;
@@ -3278,6 +3408,389 @@
       return x + w * Math.pow(normalized, 1 / 1.34);
     }
 
+    function hzToMel(freq) {
+      return 2595 * Math.log10(1 + freq / 700);
+    }
+
+    function melToHz(mel) {
+      return 700 * (10 ** (mel / 2595) - 1);
+    }
+
+    function spectrogramFrequencyForPosition(position) {
+      const v = clamp(position, 0, 1);
+      const scale = spectrogramScaleSelect.value;
+      if (scale === "linear") return lerp(20, 20000, v);
+      if (scale === "log") return 10 ** lerp(Math.log10(20), Math.log10(20000), v);
+      return melToHz(lerp(hzToMel(20), hzToMel(20000), v));
+    }
+
+    function spectrogramPositionForFrequency(freq) {
+      const f = clamp(freq, 20, 20000);
+      const scale = spectrogramScaleSelect.value;
+      if (scale === "linear") return clamp((f - 20) / (20000 - 20), 0, 1);
+      if (scale === "log") return clamp((Math.log10(f) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20)), 0, 1);
+      return clamp((hzToMel(f) - hzToMel(20)) / (hzToMel(20000) - hzToMel(20)), 0, 1);
+    }
+
+    function spectrogramColor(value) {
+      const v = clamp(value, 0, 1);
+      if (v < 0.22) {
+        const k = v / 0.22;
+        return [Math.round(2 + k * 44), Math.round(k * 5), Math.round(10 + k * 78)];
+      }
+      if (v < 0.52) {
+        const k = (v - 0.22) / 0.3;
+        return [Math.round(46 + k * 142), Math.round(5 + k * 18), Math.round(88 + k * 94)];
+      }
+      if (v < 0.78) {
+        const k = (v - 0.52) / 0.26;
+        return [Math.round(188 + k * 67), Math.round(23 + k * 35), Math.round(182 - k * 158)];
+      }
+      const k = (v - 0.78) / 0.22;
+      return [255, Math.round(58 + k * 142), Math.round(24 + k * 38)];
+    }
+
+    function spectrogramDbFromData(data, freq) {
+      if (!data.length || !audioContext) return -140;
+      const nyquist = audioContext.sampleRate * 0.5;
+      const index = (clamp(freq, 0, nyquist) / nyquist) * (data.length - 1);
+      const i0 = clamp(Math.floor(index), 0, data.length - 1);
+      const i1 = clamp(i0 + 1, 0, data.length - 1);
+      const frac = clamp(index - i0, 0, 1);
+      const a = Number.isFinite(data[i0]) ? data[i0] : -140;
+      const b = Number.isFinite(data[i1]) ? data[i1] : -140;
+      return lerp(a, b, frac);
+    }
+
+    function spectrogramBinDb(freq) {
+      if (spectrogramDetailSelect.value !== "musical") {
+        return spectrogramDbFromData(spectrogramFreqData, freq);
+      }
+      if (freq < 340) return spectrogramDbFromData(spectrogramLowData, freq);
+      if (freq < 2600) return spectrogramDbFromData(spectrogramMidData, freq);
+      return spectrogramDbFromData(spectrogramHighData, freq);
+    }
+
+    function midiToFrequency(midi) {
+      return 440 * (2 ** ((midi - 69) / 12));
+    }
+
+    function midiNoteName(midi) {
+      const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      return `${names[midi % 12]}${Math.floor(midi / 12) - 1}`;
+    }
+
+    function isBlackMidiKey(midi) {
+      return [1, 3, 6, 8, 10].includes(midi % 12);
+    }
+
+    function spectrogramNotes() {
+      const notes = [];
+      for (let midi = 24; midi <= 120; midi += 1) {
+        const freq = midiToFrequency(midi);
+        if (freq >= 20 && freq <= 20000) {
+          notes.push({
+            midi,
+            freq,
+            name: midiNoteName(midi),
+            black: isBlackMidiKey(midi)
+          });
+        }
+      }
+      return notes;
+    }
+
+    function spectrogramYForFrequency(freq, y, h) {
+      return y + h - spectrogramPositionForFrequency(freq) * h;
+    }
+
+    function spectrogramFrequencyForY(mouseY, y, h) {
+      return spectrogramFrequencyForPosition(clamp((y + h - mouseY) / Math.max(1, h), 0, 1));
+    }
+
+    function nearestSpectrogramNote(freq) {
+      let best = null;
+      let bestCents = Infinity;
+      for (const note of spectrogramNotes()) {
+        const cents = Math.abs(1200 * Math.log2(freq / note.freq));
+        if (cents < bestCents) {
+          best = note;
+          bestCents = cents;
+        }
+      }
+      return best && bestCents <= 80 ? { ...best, cents: bestCents } : null;
+    }
+
+    function spectrogramBaseIntensity(freq, rowIndex = -1, adaptFloor = true) {
+      const tiltDb = Number(spectrogramTilt.value) * (spectrogramPositionForFrequency(freq) - 0.5);
+      const db = spectrogramBinDb(freq) + tiltDb;
+      let value = clamp((db + 102) / 92, 0, 1);
+      if (spectrogramDetailSelect.value === "musical" && rowIndex >= 0 && rowIndex < spectrogramAdaptiveFloor.length) {
+        const previousFloor = Number.isFinite(spectrogramAdaptiveFloor[rowIndex]) ? spectrogramAdaptiveFloor[rowIndex] : -112;
+        const floorTarget = clamp(db - 8, -118, -18);
+        const attack = floorTarget < previousFloor ? 0.085 : 0.012;
+        const floor = adaptFloor ? lerp(previousFloor, floorTarget, attack) : previousFloor;
+        if (adaptFloor) spectrogramAdaptiveFloor[rowIndex] = floor;
+        const localContrast = clamp((db - floor - 5) / 30, 0, 1);
+        const absoluteEnergy = clamp((db + 96) / 82, 0, 1);
+        value = clamp(Math.max(absoluteEnergy * 0.38, localContrast), 0, 1);
+      }
+      return { db, value };
+    }
+
+    function shapeSpectrogramValue(value) {
+      const floor = spectrogramModeSelect.value === "classic" ? 0.045 : 0.065;
+      let shaped = value <= floor ? 0 : (value - floor) / (1 - floor);
+      if (spectrogramModeSelect.value === "classic") shaped = clamp(Math.pow(shaped, 0.9) * 1.02, 0, 1);
+      if (spectrogramModeSelect.value === "sharp") shaped = clamp(Math.pow(shaped, 0.66) * 1.14, 0, 1);
+      if (spectrogramModeSelect.value === "sharper") shaped = clamp(Math.pow(shaped, 0.52) * 1.22 + smoothed.flux * 0.1, 0, 1);
+      return shaped;
+    }
+
+    function spectrogramIntensity(freq, rowIndex = -1) {
+      return shapeSpectrogramValue(spectrogramBaseIntensity(freq, rowIndex, false).value);
+    }
+
+    function updateSpectrogramHistory() {
+      if (!spectrogramAnalyser) return;
+      if (!currentLayoutModules.includes("spectrogram") || !graphOpenState.spectrogram) return;
+      spectrogramAnalyser.getFloatFrequencyData(spectrogramFreqData);
+      if (spectrogramDetailSelect.value === "musical") {
+        if (spectrogramLowAnalyser) spectrogramLowAnalyser.getFloatFrequencyData(spectrogramLowData);
+        if (spectrogramMidAnalyser) spectrogramMidAnalyser.getFloatFrequencyData(spectrogramMidData);
+        if (spectrogramHighAnalyser) spectrogramHighAnalyser.getFloatFrequencyData(spectrogramHighData);
+      }
+      const orientation = spectrogramOrientationSelect.value;
+      if (
+        spectrogramState.fftSize !== Number(spectrogramFftSelect.value)
+        || spectrogramState.orientation !== orientation
+        || spectrogramState.window !== spectrogramWindowSelect.value
+        || spectrogramState.detail !== spectrogramDetailSelect.value
+      ) {
+        resetSpectrogramState();
+      }
+      const cw = spectrogramCanvas.width;
+      const ch = spectrogramCanvas.height;
+      const horizontal = orientation === "horizontal";
+      const count = horizontal ? ch : cw;
+      const imageData = horizontal ? spectrogramCtx.createImageData(1, ch) : spectrogramCtx.createImageData(cw, 1);
+      const pixels = imageData.data;
+      const rowDb = new Float32Array(count);
+      const rowValue = new Float32Array(count);
+      let broadbandActivity = 0;
+      spectrogramState.subPixel += Number(spectrogramSpeedSelect.value);
+      const advances = clamp(Math.floor(spectrogramState.subPixel), 0, 6);
+      if (advances < 1) return;
+      spectrogramState.subPixel -= advances;
+      for (let i = 0; i < count; i += 1) {
+        const pos = count <= 1 ? 0 : i / (count - 1);
+        const freq = spectrogramFrequencyForPosition(horizontal ? 1 - pos : pos);
+        const cell = spectrogramBaseIntensity(freq, i, true);
+        rowDb[i] = cell.db;
+        rowValue[i] = cell.value;
+        if (cell.value > 0.18) broadbandActivity += 1;
+      }
+      const broadbandRatio = broadbandActivity / Math.max(1, count);
+      for (let i = 0; i < count; i += 1) {
+        const nearA = rowDb[clamp(i - 2, 0, count - 1)];
+        const nearB = rowDb[clamp(i + 2, 0, count - 1)];
+        const farA = rowDb[clamp(i - 7, 0, count - 1)];
+        const farB = rowDb[clamp(i + 7, 0, count - 1)];
+        const localShelf = (nearA + nearB + farA + farB) * 0.25;
+        const freqRidge = smoothstep(1.5, 11.5, rowDb[i] - localShelf);
+        const previousDb = Number.isFinite(spectrogramLastColumnDb[i]) ? spectrogramLastColumnDb[i] : -140;
+        const temporalRidge = smoothstep(16, 3, Math.abs(rowDb[i] - previousDb)) * smoothstep(0.06, 0.5, rowValue[i]);
+        const percussivePenalty = smoothstep(0.24, 0.62, broadbandRatio) * (1 - freqRidge * 0.68);
+        let finalValue = rowValue[i];
+        if (spectrogramDetailSelect.value === "musical") {
+          finalValue = clamp(finalValue * (0.78 + freqRidge * 0.64 + temporalRidge * 0.34) - percussivePenalty * 0.2, 0, 1);
+        }
+        spectrogramLastColumnDb[i] = rowDb[i];
+        const color = spectrogramColor(shapeSpectrogramValue(finalValue));
+        const offset = i * 4;
+        pixels[offset] = color[0];
+        pixels[offset + 1] = color[1];
+        pixels[offset + 2] = color[2];
+        pixels[offset + 3] = 255;
+      }
+      for (let step = 0; step < advances; step += 1) {
+        if (horizontal) {
+          if (spectrogramLoopSelect.value === "scroll") {
+            spectrogramCtx.drawImage(spectrogramCanvas, 1, 0, cw - 1, ch, 0, 0, cw - 1, ch);
+            spectrogramCtx.putImageData(imageData, cw - 1, 0);
+          } else {
+            spectrogramCtx.putImageData(imageData, spectrogramState.write, 0);
+            spectrogramState.write = (spectrogramState.write + 1) % cw;
+          }
+        } else if (spectrogramLoopSelect.value === "scroll") {
+          spectrogramCtx.drawImage(spectrogramCanvas, 0, 1, cw, ch - 1, 0, 0, cw, ch - 1);
+          spectrogramCtx.putImageData(imageData, 0, ch - 1);
+        } else {
+          spectrogramCtx.putImageData(imageData, 0, spectrogramState.write);
+          spectrogramState.write = (spectrogramState.write + 1) % ch;
+        }
+      }
+      spectrogramState.frame += 1;
+    }
+
+    function drawSpectrogramFrequencyOverlay(x, y, w, h) {
+      if (spectrogramFreqOverlaySelect.value !== "on") return;
+      const marks = [20, 100, 500, 1000, 5000, 10000, 20000];
+      ctx.save();
+      ctx.font = "10px Inter, ui-sans-serif, system-ui, sans-serif";
+      ctx.textBaseline = "top";
+      for (const freq of marks) {
+        const p = spectrogramPositionForFrequency(freq);
+        ctx.strokeStyle = freq === 1000 || freq === 10000 ? "rgba(180,200,230,0.22)" : "rgba(180,200,230,0.12)";
+        ctx.fillStyle = "rgba(188,218,255,0.74)";
+        if (spectrogramOrientationSelect.value === "horizontal") {
+          const yy = y + h - p * h;
+          ctx.beginPath();
+          ctx.moveTo(x, yy);
+          ctx.lineTo(x + w, yy);
+          ctx.stroke();
+          ctx.fillText(freq >= 1000 ? `${freq / 1000}k` : `${freq}`, x + 6, yy + 2);
+        } else {
+          const xx = x + p * w;
+          ctx.beginPath();
+          ctx.moveTo(xx, y);
+          ctx.lineTo(xx, y + h);
+          ctx.stroke();
+          ctx.fillText(freq >= 1000 ? `${freq / 1000}k` : `${freq}`, xx + 3, y + 4);
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawSpectrogramPianoOverlay(x, y, w, h) {
+      if (spectrogramPianoOverlaySelect.value !== "on" || spectrogramOrientationSelect.value !== "horizontal") {
+        spectrogramHover.note = null;
+        return;
+      }
+      const keyW = 42;
+      const labelW = 16;
+      const keyX = x + labelW;
+      const keyAreaW = keyW - labelW;
+      const notes = spectrogramNotes();
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.9)";
+      ctx.fillRect(x, y, keyW, h);
+      ctx.strokeStyle = "rgba(188,218,255,0.15)";
+      ctx.strokeRect(x, y, keyW, h);
+      let hoverNote = null;
+      if (spectrogramHover.active && spectrogramHover.plot) {
+        hoverNote = nearestSpectrogramNote(spectrogramFrequencyForY(spectrogramHover.y, spectrogramHover.plot.y, spectrogramHover.plot.h));
+      }
+      spectrogramHover.note = hoverNote;
+      const octaveLabels = [];
+      for (const note of notes) {
+        const yy = spectrogramYForFrequency(note.freq, y, h);
+        const nextFreq = midiToFrequency(note.midi + 1);
+        const prevFreq = midiToFrequency(note.midi - 1);
+        const yNext = spectrogramYForFrequency(nextFreq, y, h);
+        const yPrev = spectrogramYForFrequency(prevFreq, y, h);
+        const keyH = clamp(Math.abs(yNext - yPrev) * 0.48, 1.2, 9);
+        const isHover = hoverNote?.midi === note.midi;
+        ctx.fillStyle = note.black
+          ? isHover ? "rgba(188,48,236,0.9)" : "rgba(12,12,15,0.98)"
+          : isHover ? "rgba(255,96,36,0.9)" : "rgba(215,218,212,0.9)";
+        const kw = note.black ? keyAreaW * 0.56 : keyAreaW;
+        ctx.fillRect(keyX, yy - keyH * 0.5, kw, Math.max(1, keyH));
+        if (note.black) {
+          ctx.fillStyle = "rgba(255,255,255,0.07)";
+          ctx.fillRect(keyX + kw - 1, yy - keyH * 0.5, 1, Math.max(1, keyH));
+        }
+        if (!note.black && note.midi % 12 === 0) {
+          octaveLabels.push({ y: yy, name: note.name });
+          ctx.strokeStyle = "rgba(188,218,255,0.2)";
+          ctx.beginPath();
+          ctx.moveTo(x, yy);
+          ctx.lineTo(x + keyW, yy);
+          ctx.stroke();
+        }
+      }
+      ctx.font = "8px Inter, ui-sans-serif, system-ui, sans-serif";
+      ctx.textBaseline = "middle";
+      let lastLabelY = -999;
+      for (const label of octaveLabels) {
+        if (label.y < y + 8 || label.y > y + h - 8) continue;
+        if (Math.abs(label.y - lastLabelY) < 18) continue;
+        ctx.fillStyle = "rgba(188,218,255,0.7)";
+        ctx.fillText(label.name, x + 2, label.y);
+        lastLabelY = label.y;
+      }
+      if (hoverNote) {
+        const lineY = spectrogramYForFrequency(hoverNote.freq, y, h);
+        const energy = spectrogramIntensity(hoverNote.freq);
+        ctx.globalCompositeOperation = "screen";
+        ctx.strokeStyle = `rgba(255,96,36,${0.38 + energy * 0.5})`;
+        ctx.lineWidth = 1.25 + energy * 2.2;
+        ctx.beginPath();
+        ctx.moveTo(x + keyW, lineY);
+        ctx.lineTo(x + w, lineY);
+        ctx.stroke();
+        if (energy > 0.08) {
+          ctx.strokeStyle = `rgba(255,190,90,${clamp(energy * 0.52, 0, 0.62)})`;
+          ctx.lineWidth = 7 + energy * 10;
+          ctx.beginPath();
+          ctx.moveTo(x + keyW, lineY);
+          ctx.lineTo(x + w, lineY);
+          ctx.stroke();
+        }
+        ctx.globalCompositeOperation = "source-over";
+        const label = `${hoverNote.name} · ${hoverNote.freq.toFixed(1)}Hz`;
+        ctx.font = "10px Inter, ui-sans-serif, system-ui, sans-serif";
+        const hoverLabelW = Math.ceil(ctx.measureText(label).width) + 12;
+        ctx.fillStyle = "rgba(0,0,0,0.82)";
+        ctx.fillRect(x + keyW + 6, clamp(lineY - 10, y + 4, y + h - 18), hoverLabelW, 17);
+        ctx.fillStyle = "rgba(245,245,245,0.9)";
+        ctx.fillText(label, x + keyW + 12, clamp(lineY + 2, y + 16, y + h - 6));
+      }
+      ctx.restore();
+    }
+
+    function drawSpectrogramPanel(x, y, w, h) {
+      updateSpectrogramHistory();
+      ctx.fillStyle = "#030303";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#282828";
+      ctx.strokeRect(x, y, w, h);
+      const pianoW = spectrogramPianoOverlaySelect.value === "on" && spectrogramOrientationSelect.value === "horizontal" ? 44 : 0;
+      const plotX = x + 1 + pianoW;
+      const plotY = y + 1;
+      const plotW = w - 2 - pianoW;
+      const plotH = h - 2;
+      spectrogramHover.plot = { x: plotX, y: plotY, w: plotW, h: plotH };
+      ctx.save();
+      ctx.imageSmoothingEnabled = spectrogramModeSelect.value === "classic";
+      ctx.drawImage(spectrogramCanvas, plotX, plotY, plotW, plotH);
+      if (spectrogramModeSelect.value === "sharper") {
+        ctx.globalCompositeOperation = "screen";
+        ctx.globalAlpha = 0.18;
+        ctx.filter = "contrast(155%) saturate(118%)";
+        ctx.drawImage(spectrogramCanvas, plotX, plotY, plotW, plotH);
+      }
+      ctx.restore();
+      drawSpectrogramFrequencyOverlay(plotX, plotY, plotW, plotH);
+      drawSpectrogramPianoOverlay(x + 1, plotY, w - 2, plotH);
+      const detailLabel = spectrogramDetailSelect.value === "musical" ? "multi" : `${spectrogramFftSelect.value} FFT`;
+      const label = `${spectrogramScaleSelect.value} · ${detailLabel} · ${spectrogramOrientationSelect.value}`;
+      ctx.save();
+      ctx.font = "9px Inter, ui-sans-serif, system-ui, sans-serif";
+      const labelW = Math.ceil(ctx.measureText(label).width);
+      const badgeW = Math.min(w - 16, labelW + 14);
+      const badgeX = x + w - badgeW - 7;
+      const badgeY = y + 7;
+      ctx.fillStyle = "rgba(0,0,0,0.72)";
+      ctx.fillRect(badgeX, badgeY, badgeW, 17);
+      ctx.strokeStyle = "rgba(188,218,255,0.16)";
+      ctx.strokeRect(badgeX, badgeY, badgeW, 17);
+      ctx.fillStyle = "rgba(188,218,255,0.78)";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, badgeX + 7, badgeY + 9);
+      ctx.restore();
+    }
+
     function drawSpectrumPanel(x, y, w, h) {
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
@@ -3633,10 +4146,13 @@
       const n = Math.min(leftTime.length, rightTime.length);
       const left = new Float32Array(n);
       const right = new Float32Array(n);
+      let stereoEnergy = 0;
       for (let i = 0; i < n; i += 1) {
         left[i] = (leftTime[i] - 128) / 128;
         right[i] = (rightTime[i] - 128) / 128;
+        stereoEnergy += left[i] * left[i] + right[i] * right[i];
       }
+      const hasStereoSignal = Boolean(leftAnalyser && rightAnalyser) && Math.sqrt(stereoEnergy / Math.max(1, n * 2)) > 0.0025;
       const leftBands = splitBandsForCorrelation(left);
       const rightBands = splitBandsForCorrelation(right);
       const bandClouds = [
@@ -3712,13 +4228,15 @@
       ];
       ctx.save();
       ctx.globalCompositeOperation = "screen";
-      for (const spec of bandClouds) {
-        if ((spec.id === "low" && !showLow) || (spec.id === "mid" && !showMid) || (spec.id === "high" && !showHigh)) continue;
-        if (mode === "tangle") drawStereoTangleCloud(spec.left, spec.right, cx, cy, r, compact, spec);
-        else drawStereoClassicCloud(spec.left, spec.right, cx, cy, r, compact, spec);
+      if (hasStereoSignal) {
+        for (const spec of bandClouds) {
+          if ((spec.id === "low" && !showLow) || (spec.id === "mid" && !showMid) || (spec.id === "high" && !showHigh)) continue;
+          if (mode === "tangle") drawStereoTangleCloud(spec.left, spec.right, cx, cy, r, compact, spec);
+          else drawStereoClassicCloud(spec.left, spec.right, cx, cy, r, compact, spec);
+        }
       }
       ctx.restore();
-      if (showCorr) drawStereoCorrelationCloud(left, right, cx, cy, r, compact, mode);
+      if (showCorr && hasStereoSignal) drawStereoCorrelationCloud(left, right, cx, cy, r, compact, mode);
 
       const bx = x + (compact ? w * 0.58 : w * 0.58);
       const bw = w * 0.36;
@@ -4569,6 +5087,39 @@
       };
     }
 
+    function auditSpectrogramContract() {
+      const available = availableLayoutModules.includes("spectrogram");
+      const controls = [
+        spectrogramFftSelect,
+        spectrogramDetailSelect,
+        spectrogramScaleSelect,
+        spectrogramOrientationSelect,
+        spectrogramModeSelect,
+        spectrogramSpeedSelect,
+        spectrogramWindowSelect,
+        spectrogramTilt,
+        spectrogramFreqOverlaySelect,
+        spectrogramPianoOverlaySelect,
+        spectrogramLoopSelect
+      ];
+      return {
+        available,
+        active: currentLayoutModules.includes("spectrogram"),
+        controlsPresent: controls.every(Boolean),
+        rendererPresent: typeof METERING_MODULE_BY_ID.spectrogram?.renderer === "function",
+        metrics: {
+          fft: spectrogramFftSelect?.value || null,
+          detail: spectrogramDetailSelect?.value || null,
+          scale: spectrogramScaleSelect?.value || null,
+          orientation: spectrogramOrientationSelect?.value || null,
+          mode: spectrogramModeSelect?.value || null,
+          speed: spectrogramSpeedSelect?.value || null,
+          window: spectrogramWindowSelect?.value || null,
+          piano: spectrogramPianoOverlaySelect?.value || null
+        }
+      };
+    }
+
     function drawFrame() {
       const frameStart = performance.now();
       t += 1;
@@ -4679,6 +5230,23 @@
     spectrumFftSelect.addEventListener("change", () => {
       configureSpectrumAnalyser();
     });
+    spectrogramFftSelect.addEventListener("change", () => {
+      configureSpectrogramAnalyser();
+    });
+    spectrogramDetailSelect.addEventListener("change", () => resetSpectrogramState());
+    spectrogramScaleSelect.addEventListener("change", () => resetSpectrogramState());
+    spectrogramOrientationSelect.addEventListener("change", () => resetSpectrogramState());
+    spectrogramModeSelect.addEventListener("change", () => resetSpectrogramState(false));
+    spectrogramSpeedSelect.addEventListener("change", () => {
+      spectrogramState.subPixel = 0;
+    });
+    spectrogramWindowSelect.addEventListener("change", () => resetSpectrogramState());
+    spectrogramTilt.addEventListener("input", () => {
+      spectrogramTiltValue.textContent = `${Number(spectrogramTilt.value).toFixed(1)}dB`;
+    });
+    spectrogramFreqOverlaySelect.addEventListener("change", () => resetSpectrogramState(false));
+    spectrogramPianoOverlaySelect.addEventListener("change", () => resetSpectrogramState(false));
+    spectrogramLoopSelect.addEventListener("change", () => resetSpectrogramState());
     algorithmSelect.addEventListener("change", applyAlgorithmUi);
     floatingInspectorClose.addEventListener("click", closeFloatingInspector);
     inspectorBackdrop.addEventListener("click", closeFloatingInspector);
@@ -4698,7 +5266,8 @@
       displayRenderSpacing: auditDisplayRenderSpacing,
       waveformDisplay: auditWaveformDisplayContract,
       layoutAddSlotSpacing: auditLayoutAddSlotSpacing,
-      stereoLayers: auditStereoLayerContract
+      stereoLayers: auditStereoLayerContract,
+      spectrogram: auditSpectrogramContract
     };
     window.addEventListener("resize", () => {
       updateGraphControlScale();
@@ -4706,6 +5275,16 @@
       setStageHeight(calculateMeteringHeight());
       syncGraphControlsForLayout();
       refreshInputCapabilities();
+    });
+    canvas.addEventListener("mousemove", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      spectrogramHover.active = true;
+      spectrogramHover.x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * W;
+      spectrogramHover.y = ((event.clientY - rect.top) / Math.max(1, rect.height)) * activeStageHeight;
+    });
+    canvas.addEventListener("mouseleave", () => {
+      spectrogramHover.active = false;
+      spectrogramHover.note = null;
     });
 
     organizeGraphControls();

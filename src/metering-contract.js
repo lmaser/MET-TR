@@ -19,6 +19,7 @@ window.METTR_CONTRACT = {
     halfWidth: 314,
     rightColumnX: 358,
     spectrum: { height: 118, advance: 150 },
+    spectrogram: { height: 292, advance: 328 },
     oscilloscope: { height: 70, advance: 100 },
     waveformShort: { height: 70, advance: 100 },
     waveformMedium: { height: 70, advance: 100 },
@@ -37,6 +38,7 @@ window.METTR_CONTRACT = {
     maxHeightBoost: 2.4,
     modules: {
       spectrum: { compactScale: 3.2 },
+      spectrogram: { compactScale: 1.75 },
       oscilloscope: { compactScale: 3.05 },
       waveformShort: { compactScale: 2.75 },
       waveformMedium: { compactScale: 2.55 },
@@ -83,6 +85,7 @@ window.METTR_CONTRACT = {
     label: "Metering with pattern detector",
     modules: [
       "spectrum",
+      "spectrogram",
       "oscilloscope",
       "waveformShort",
       "waveformMedium",
@@ -102,6 +105,7 @@ window.METTR_CONTRACT = {
         "waveformShort",
         "waveformMedium",
         "waveformLong",
+        "spectrogram",
         "stereo",
         "loudness",
         "pattern"
@@ -124,6 +128,7 @@ window.METTR_CONTRACT = {
   },
   modules: [
     { id: "spectrum", renderer: "drawSpectrumPanel", rect: "spectrum", flow: "full" },
+    { id: "spectrogram", renderer: "drawSpectrogramPanel", rect: "spectrogram", flow: "full" },
     { id: "oscilloscope", renderer: "drawOscilloscopePanel", rect: "oscilloscope", flow: "full" },
     { id: "waveformShort", renderer: "drawWaveformShortPanel", rect: "waveformShort", flow: "full", beforeGap: true },
     { id: "waveformMedium", renderer: "drawWaveformMediumPanel", rect: "waveformMedium", flow: "full", beforeGap: true },
@@ -134,6 +139,7 @@ window.METTR_CONTRACT = {
   ],
   flow: [
     { type: "module", id: "spectrum" },
+    { type: "module", id: "spectrogram" },
     { type: "module", id: "oscilloscope" },
     { type: "module", id: "waveformShort", beforeGap: true },
     { type: "module", id: "waveformMedium", beforeGap: true },

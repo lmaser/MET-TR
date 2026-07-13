@@ -21,6 +21,10 @@
         <summary><span class="module-title">Spectrum</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Spectrum graph"></button></summary>
         <div id="spectrumControlsMount" class="control-body"></div>
       </details>
+      <details class="control-group" data-module="spectrogram">
+        <summary><span class="module-title">Spectrogram</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Spectrogram graph"></button></summary>
+        <div id="spectrogramControlsMount" class="control-body"></div>
+      </details>
       <details class="control-group" data-module="oscilloscope">
         <summary><span class="module-title">Oscilloscope</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Oscilloscope graph"></button></summary>
         <div id="oscilloscopeControlsMount" class="control-body"></div>
@@ -111,6 +115,100 @@
         <select id="spectrumBarsSelect">
           <option value="on" selected>On</option>
           <option value="off">Off</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram FFT
+        <select id="spectrogramFftSelect">
+          <option value="1024">1024</option>
+          <option value="2048">2048</option>
+          <option value="4096">4096</option>
+          <option value="8192" selected>8192</option>
+          <option value="16384">16384</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram Detail
+        <select id="spectrogramDetailSelect">
+          <option value="musical">Musical</option>
+          <option value="standard" selected>Standard</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram Scale
+        <select id="spectrogramScaleSelect">
+          <option value="log" selected>Logarithmic</option>
+          <option value="mel">Mel</option>
+          <option value="linear">Linear</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram Orientation
+        <select id="spectrogramOrientationSelect">
+          <option value="horizontal" selected>Horizontal</option>
+          <option value="vertical">Vertical</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram Mode
+        <select id="spectrogramModeSelect">
+          <option value="classic">Classic</option>
+          <option value="sharp" selected>Sharp</option>
+          <option value="sharper">Sharper</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram Speed
+        <select id="spectrogramSpeedSelect">
+          <option value="0.5" selected>Slow</option>
+          <option value="1">Normal</option>
+          <option value="2">Fast</option>
+          <option value="4">Very Fast</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram History Window
+        <select id="spectrogramWindowSelect">
+          <option value="tiny" selected>Tiny</option>
+          <option value="short">Short</option>
+          <option value="medium">Medium</option>
+          <option value="long">Long</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram Tilt <span id="spectrogramTiltValue">0.0dB</span>
+        <input id="spectrogramTilt" type="range" min="-12" max="12" step="0.5" value="0">
+      </label>
+
+      <label>
+        Spectrogram Frequency Overlay
+        <select id="spectrogramFreqOverlaySelect">
+          <option value="on" selected>On</option>
+          <option value="off">Off</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram Piano Overlay
+        <select id="spectrogramPianoOverlaySelect">
+          <option value="on" selected>On</option>
+          <option value="off">Off</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram Loop
+        <select id="spectrogramLoopSelect">
+          <option value="scroll" selected>Scroll</option>
+          <option value="static">Static</option>
         </select>
       </label>
 

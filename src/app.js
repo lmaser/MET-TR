@@ -622,12 +622,15 @@
       return kind === "system" ? "capture unavailable" : "microphone unavailable";
     }
 
-    async function primeAudioContext() {
+    async function primeAudioContext(waitMs = 700) {
       const AudioContextCtor = getAudioContextConstructor();
       if (!AudioContextCtor) throw new Error("AudioContext unavailable");
       audioContext = audioContext || new AudioContextCtor();
       if (audioContext.state !== "running") {
-        await audioContext.resume();
+        await Promise.race([
+          audioContext.resume(),
+          new Promise((resolve) => setTimeout(resolve, waitMs))
+        ]);
       }
       return audioContext;
     }
@@ -2088,7 +2091,10 @@
       resetPatternState();
       meterState.loudnessFrames = [];
       const track = stream.getAudioTracks()[0];
-      statusEl.textContent = track?.label ? `input: ${track.label}` : "";
+      const inputLabel = track?.label ? `input: ${track.label}` : "input connected";
+      statusEl.textContent = audioContext.state === "running"
+        ? inputLabel
+        : `${inputLabel} · tap microphone again if meters stay still`;
     }
 
     systemAudioButton.addEventListener("click", async () => {
@@ -2099,7 +2105,6 @@
         return;
       }
       try {
-        await primeAudioContext();
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: {
@@ -2129,7 +2134,6 @@
       }
       try {
         statusEl.textContent = "requesting microphone permission";
-        await primeAudioContext();
         let stream;
         const highFidelityAudio = {
           echoCancellation: false,
@@ -2143,6 +2147,7 @@
         } catch (error) {
           stream = await getUserMediaCompat({ audio: true });
         }
+        statusEl.textContent = "microphone permission granted";
         await connectStream(stream);
       } catch (error) {
         setInputSource("microphone", inputErrorMessage("microphone", error));

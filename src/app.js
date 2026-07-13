@@ -236,6 +236,7 @@
     let rmsEnvelope = 0;
     let beatFlash = 0;
     let streamRef = null;
+    let inputCapabilityStatus = {};
     let t = 0;
 
     function clamp(value, min, max) {
@@ -561,6 +562,60 @@
       micButton.classList.toggle("is-active", !systemActive);
       micButton.setAttribute("aria-pressed", systemActive ? "false" : "true");
       statusEl.textContent = message;
+    }
+
+    function getAudioContextConstructor() {
+      return window.AudioContext || window.webkitAudioContext;
+    }
+
+    function isProbablyMobileBrowser() {
+      const ua = navigator.userAgent || "";
+      const platform = navigator.platform || "";
+      const touchMac = platform === "MacIntel" && navigator.maxTouchPoints > 1;
+      return touchMac || /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(ua);
+    }
+
+    function refreshInputCapabilities() {
+      const secure = window.isSecureContext || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+      const hasMediaDevices = Boolean(navigator.mediaDevices);
+      const hasUserMedia = hasMediaDevices && typeof navigator.mediaDevices.getUserMedia === "function";
+      const hasDisplayMedia = hasMediaDevices && typeof navigator.mediaDevices.getDisplayMedia === "function";
+      const hasAudioContext = Boolean(getAudioContextConstructor());
+      const mobile = isProbablyMobileBrowser();
+      inputCapabilityStatus = {
+        secure,
+        hasMediaDevices,
+        hasUserMedia,
+        hasDisplayMedia,
+        hasAudioContext,
+        mobile,
+        microphone: secure && hasUserMedia && hasAudioContext,
+        systemAudio: secure && hasDisplayMedia && hasAudioContext && !mobile
+      };
+      systemAudioButton.classList.toggle("is-unavailable", !inputCapabilityStatus.systemAudio);
+      systemAudioButton.title = inputCapabilityStatus.systemAudio
+        ? "Capture shared tab/system audio when the browser exposes an audio track."
+        : mobile
+          ? "System audio capture is not exposed by mobile browsers. Use Microphone on this device."
+          : "System audio capture needs HTTPS and browser screen-share audio support.";
+      micButton.classList.toggle("is-unavailable", !inputCapabilityStatus.microphone);
+      micButton.disabled = !inputCapabilityStatus.microphone;
+      micButton.title = inputCapabilityStatus.microphone
+        ? "Capture this device microphone."
+        : "Microphone capture needs HTTPS and browser media permissions.";
+    }
+
+    function inputErrorMessage(kind, error) {
+      if (!inputCapabilityStatus.secure) return "HTTPS required";
+      if (!inputCapabilityStatus.hasAudioContext) return "web audio unavailable";
+      if (kind === "system" && inputCapabilityStatus.mobile) return "system audio unavailable on mobile";
+      if (kind === "system" && !inputCapabilityStatus.hasDisplayMedia) return "screen audio capture unsupported";
+      if (kind === "microphone" && !inputCapabilityStatus.hasUserMedia) return "microphone unsupported";
+      if (error?.name === "NotAllowedError") return kind === "system" ? "capture permission denied" : "microphone permission denied";
+      if (error?.name === "NotFoundError") return kind === "system" ? "no shared audio source" : "no microphone found";
+      if (error?.name === "NotReadableError") return kind === "system" ? "audio source busy" : "microphone busy";
+      if (error?.name === "AbortError") return "capture cancelled";
+      return kind === "system" ? "capture unavailable" : "microphone unavailable";
     }
 
     function applyAlgorithmUi() {
@@ -1971,7 +2026,9 @@
         streamRef.getTracks().forEach((track) => track.stop());
       }
       streamRef = stream;
-      audioContext = audioContext || new AudioContext();
+      const AudioContextCtor = getAudioContextConstructor();
+      if (!AudioContextCtor) throw new Error("AudioContext unavailable");
+      audioContext = audioContext || new AudioContextCtor();
       await audioContext.resume();
       const source = audioContext.createMediaStreamSource(stream);
       analyser = audioContext.createAnalyser();
@@ -1993,7 +2050,11 @@
       rightAnalyser.smoothingTimeConstant = 0;
       source.connect(splitter);
       splitter.connect(leftAnalyser, 0);
-      splitter.connect(rightAnalyser, 1);
+      try {
+        splitter.connect(rightAnalyser, 1);
+      } catch (error) {
+        splitter.connect(rightAnalyser, 0);
+      }
 
       leftTime = new Uint8Array(leftAnalyser.fftSize);
       rightTime = new Uint8Array(rightAnalyser.fftSize);
@@ -2002,15 +2063,22 @@
       resetSpectrumState();
       resetPatternState();
       meterState.loudnessFrames = [];
-      statusEl.textContent = "";
+      const track = stream.getAudioTracks()[0];
+      statusEl.textContent = track?.label ? `input: ${track.label}` : "";
     }
 
     systemAudioButton.addEventListener("click", async () => {
+      refreshInputCapabilities();
       setInputSource("system");
+      if (!inputCapabilityStatus.systemAudio) {
+        setInputSource("system", inputErrorMessage("system"));
+        return;
+      }
       try {
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: {
+            systemAudio: "include",
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false
@@ -2023,23 +2091,34 @@
         stream.getVideoTracks().forEach((track) => track.stop());
         await connectStream(stream);
       } catch (error) {
-        setInputSource("system", "capture cancelled");
+        setInputSource("system", inputErrorMessage("system", error));
       }
     });
 
     micButton.addEventListener("click", async () => {
+      refreshInputCapabilities();
       setInputSource("microphone");
+      if (!inputCapabilityStatus.microphone) {
+        setInputSource("microphone", inputErrorMessage("microphone"));
+        return;
+      }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          }
-        });
+        let stream;
+        const highFidelityAudio = {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: { ideal: 2 },
+          sampleRate: { ideal: 48000 }
+        };
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: highFidelityAudio });
+        } catch (error) {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
         await connectStream(stream);
       } catch (error) {
-        setInputSource("microphone", "microphone unavailable");
+        setInputSource("microphone", inputErrorMessage("microphone", error));
       }
     });
 
@@ -3794,9 +3873,13 @@
       if (event.target === canvas) return;
       closeFloatingInspector();
     });
-    window.addEventListener("resize", updateGraphControlScale);
+    window.addEventListener("resize", () => {
+      updateGraphControlScale();
+      refreshInputCapabilities();
+    });
 
     organizeGraphControls();
+    refreshInputCapabilities();
     setInputSource("system");
     applyAlgorithmUi();
     drawFrame();

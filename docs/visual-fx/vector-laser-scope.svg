@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="260" viewBox="0 0 700 260">
+  <rect width="700" height="260" fill="#030303"/>
+  <g stroke="#202020" stroke-width="1">
+    <path d="M350 18V224M80 126H620"/>
+    <ellipse cx="350" cy="126" rx="210" ry="86" fill="none"/>
+  </g>
+  <path d="M146 130C174 72 238 58 294 102C344 140 364 190 424 178C492 164 560 92 586 130C606 160 552 200 474 194C386 186 342 92 270 80C214 70 158 92 146 130Z" fill="none" stroke="#f5f5f5" stroke-width="2.5"/>
+  <path d="M164 132C218 110 254 128 302 156C358 188 414 162 470 118C516 84 558 88 584 126" fill="none" stroke="#bc30ec" stroke-width="1.5"/>
+  <path d="M292 100L318 122M454 164L494 132M560 120L594 130" stroke="#ff3a18" stroke-width="4" stroke-linecap="round"/>
+  <g fill="#39ff14">
+    <circle cx="302" cy="156" r="3"/>
+    <circle cx="470" cy="118" r="3"/>
+    <circle cx="584" cy="126" r="3"/>
+  </g>
+  <text x="20" y="236" fill="#a6bcd2" font-family="Inter, Arial, sans-serif" font-size="12">VECTOR LASER / SCOPE: L/R or M/S vector trace, transient cuts, stereo width opening</text>
+</svg>

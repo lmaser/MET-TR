@@ -1,6 +1,8 @@
 ﻿const canvas = document.getElementById("blobCanvas");
     const stageEl = canvas.closest(".stage");
     const ctx = canvas.getContext("2d", { alpha: false });
+    const characterOverlayCanvas = document.getElementById("characterOverlayCanvas");
+    const characterOverlayCtx = characterOverlayCanvas?.getContext("2d", { alpha: true });
     const statusEl = document.getElementById("status");
     const modeLabel = document.getElementById("modeLabel");
     const rmsMeter = document.getElementById("rmsMeter");
@@ -46,6 +48,7 @@
     const signalCharacterModeSelect = document.getElementById("signalCharacterModeSelect");
     const signalCharacterWindowSelect = document.getElementById("signalCharacterWindowSelect");
     const signalCharacterDisplaySelect = document.getElementById("signalCharacterDisplaySelect");
+    const signalCharacterBoundarySelect = document.getElementById("signalCharacterBoundarySelect");
     const signalCharacterFftWeight = document.getElementById("signalCharacterFftWeight");
     const signalCharacterFftWeightValue = document.getElementById("signalCharacterFftWeightValue");
     const signalCharacterNoise = document.getElementById("signalCharacterNoise");
@@ -1016,6 +1019,7 @@
       moveControlById("signalCharacterModeSelect", signalCharacterControlsMount);
       moveControlById("signalCharacterWindowSelect", signalCharacterControlsMount);
       moveControlById("signalCharacterDisplaySelect", signalCharacterControlsMount);
+      moveControlById("signalCharacterBoundarySelect", signalCharacterControlsMount);
       moveControlById("signalCharacterFftWeight", signalCharacterControlsMount);
       moveControlById("signalCharacterNoise", signalCharacterControlsMount);
       moveControlById("signalCharacterTransient", signalCharacterControlsMount);
@@ -1130,6 +1134,10 @@
       graphControls.style.width = `${stageEl.clientWidth}px`;
       graphControls.style.height = `${activeStageHeight * graphControlScale}px`;
       graphControls.style.transform = "none";
+      if (characterOverlayCanvas) {
+        characterOverlayCanvas.style.width = `${stageEl.clientWidth}px`;
+        characterOverlayCanvas.style.height = `${activeStageHeight * graphControlScale}px`;
+      }
     }
 
     function useCompactGraphLayout() {
@@ -1155,6 +1163,7 @@
       if (activeStageHeight === nextHeight && canvas.height === nextHeight) return;
       activeStageHeight = nextHeight;
       canvas.height = nextHeight;
+      if (characterOverlayCanvas) characterOverlayCanvas.height = nextHeight;
       stageEl.style.aspectRatio = `${W} / ${nextHeight}`;
       updateGraphControlScale();
     }
@@ -4713,7 +4722,124 @@
       mass.y += mass.vy;
     }
 
-    function updateSignalCharacterPhysics(targetX, targetY, hasSignal, targetColor) {
+    function signalCharacterBlobRadius() {
+      return 28 + signalCharacterState.dynamic * 9 + signalCharacterState.noisy * 8 + signalCharacterState.transientImpact * 8;
+    }
+
+    function applySignalCharacterWall(body, bounds, radius, strength = 1) {
+      if (!bounds) return false;
+      let hit = false;
+      const restitution = 0.48 * strength;
+      const friction = 0.78;
+      const left = bounds.x + radius;
+      const right = bounds.x + bounds.w - radius;
+      const top = bounds.y + radius;
+      const bottom = bounds.y + bounds.h - radius;
+      if (body.x < left) {
+        body.x = left;
+        body.vx = Math.abs(body.vx) * restitution;
+        body.vy *= friction;
+        hit = true;
+      } else if (body.x > right) {
+        body.x = right;
+        body.vx = -Math.abs(body.vx) * restitution;
+        body.vy *= friction;
+        hit = true;
+      }
+      if (body.y < top) {
+        body.y = top;
+        body.vy = Math.abs(body.vy) * restitution;
+        body.vx *= friction;
+        hit = true;
+      } else if (body.y > bottom) {
+        body.y = bottom;
+        body.vy = -Math.abs(body.vy) * restitution;
+        body.vx *= friction;
+        hit = true;
+      }
+      return hit;
+    }
+
+    function clampSignalCharacterTarget(targetX, targetY, bounds, radius) {
+      if (!bounds) return { x: targetX, y: targetY };
+      return {
+        x: clamp(targetX, bounds.x + radius, bounds.x + bounds.w - radius),
+        y: clamp(targetY, bounds.y + radius, bounds.y + bounds.h - radius)
+      };
+    }
+
+    function applySignalCharacterNodeWall(node, bounds, restitution = 0.42, friction = 0.72) {
+      if (!bounds) return false;
+      let hit = false;
+      if (node.x < bounds.x) {
+        node.x = bounds.x;
+        node.vx = Math.abs(node.vx) * restitution;
+        node.vy *= friction;
+        hit = true;
+      } else if (node.x > bounds.x + bounds.w) {
+        node.x = bounds.x + bounds.w;
+        node.vx = -Math.abs(node.vx) * restitution;
+        node.vy *= friction;
+        hit = true;
+      }
+      if (node.y < bounds.y) {
+        node.y = bounds.y;
+        node.vy = Math.abs(node.vy) * restitution;
+        node.vx *= friction;
+        hit = true;
+      } else if (node.y > bounds.y + bounds.h) {
+        node.y = bounds.y + bounds.h;
+        node.vy = -Math.abs(node.vy) * restitution;
+        node.vx *= friction;
+        hit = true;
+      }
+      return hit;
+    }
+
+    function applySignalCharacterTailImpact(head, tail, strength = 1) {
+      const dx = tail.x - head.x;
+      const dy = tail.y - head.y;
+      const distance = Math.max(0.0001, Math.hypot(dx, dy));
+      const impactRadius = signalCharacterBlobRadius() * 3.25;
+      if (distance > impactRadius || !tail.nodes.length) return;
+      const overlap = 1 - distance / impactRadius;
+      const speed = Math.hypot(head.vx - tail.vx, head.vy - tail.vy);
+      const impulse = clamp((overlap * 13 + speed * 0.12 + signalCharacterState.transientImpact * 10) * strength, 0, 36);
+      const nx = dx / distance;
+      const ny = dy / distance;
+      tail.nodes.forEach((node) => {
+        const ndx = node.x - head.x;
+        const ndy = node.y - head.y;
+        const nodeDistance = Math.max(1, Math.hypot(ndx, ndy));
+        const local = clamp(1 - nodeDistance / (impactRadius * 1.35), 0, 1);
+        const radialX = ndx / nodeDistance;
+        const radialY = ndy / nodeDistance;
+        const push = impulse * local * local;
+        node.vx += (radialX * 0.86 + nx * 0.14) * push;
+        node.vy += (radialY * 0.86 + ny * 0.14) * push;
+      });
+      tail.vx += nx * impulse * 0.035;
+      tail.vy += ny * impulse * 0.035;
+    }
+
+    function signalCharacterColorAtPosition(body, bounds, fallbackColor) {
+      if (!bounds) return fallbackColor;
+      const nx = clamp((body.x - bounds.x) / Math.max(1, bounds.w), 0, 1);
+      const ny = clamp((body.y - bounds.y) / Math.max(1, bounds.h), 0, 1);
+      const topLeft = [57, 255, 20];
+      const topRight = [82, 158, 255];
+      const bottomLeft = [255, 61, 31];
+      const bottomRight = [188, 48, 236];
+      const top = topLeft.map((channel, index) => lerp(channel, topRight[index], nx));
+      const bottom = bottomLeft.map((channel, index) => lerp(channel, bottomRight[index], nx));
+      const color = top.map((channel, index) => lerp(channel, bottom[index], ny));
+      const lowAnchorGlow = signalCharacterState.lowAnchor * (1 - ny) * (1 - nx * 0.55);
+      color[1] = lerp(color[1], 255, lowAnchorGlow * 0.32);
+      color[0] = lerp(color[0], color[0] * 0.82, lowAnchorGlow * 0.18);
+      return color.map((channel) => Math.round(clamp(channel, 0, 255)));
+    }
+
+    function updateSignalCharacterPhysics(targetX, targetY, hasSignal, targetColor, bounds) {
       const now = performance.now() / 1000;
       if (hasSignal) signalCharacterPhysics.lastSignalAt = now;
       const silenceAge = now - signalCharacterPhysics.lastSignalAt;
@@ -4747,13 +4873,33 @@
 
       const stiffness = 0.062 + signalCharacterState.transientImpact * 0.055 + signalCharacterState.spectralCrest * 0.022;
       const damping = 0.82 + signalCharacterState.dynamic * 0.08;
-      const headTargetX = targetX;
-      const headTargetY = targetY;
+      const boundaryMode = signalCharacterBoundarySelect?.value || "none";
+      const radius = signalCharacterBlobRadius();
+      const headTarget = boundaryMode === "none"
+        ? { x: targetX, y: targetY }
+        : clampSignalCharacterTarget(targetX, targetY, bounds, radius);
+      const headTargetX = headTarget.x;
+      const headTargetY = headTarget.y;
       updateSpringMass(signalCharacterPhysics.head, headTargetX, headTargetY, stiffness, damping);
-      const headColorSpeed = hasSignal ? 0.22 : 0.04;
-      signalCharacterPhysics.head.color = signalCharacterPhysics.head.color.map((channel, index) => lerp(channel, targetColor[index], headColorSpeed));
+      if (boundaryMode !== "none") {
+        const hit = applySignalCharacterWall(signalCharacterPhysics.head, bounds, radius, 0.9);
+        if (hit) {
+          signalCharacterPhysics.head.vx *= 0.72;
+          signalCharacterPhysics.head.vy *= 0.72;
+        }
+      }
+      const headPositionColor = signalCharacterColorAtPosition(signalCharacterPhysics.head, bounds, targetColor);
+      const headColorSpeed = hasSignal ? 0.58 : 0.08;
+      signalCharacterPhysics.head.color = signalCharacterPhysics.head.color.map((channel, index) => lerp(channel, headPositionColor[index], headColorSpeed));
       updateSpringMass(signalCharacterPhysics.tailBlob, signalCharacterPhysics.head.x, signalCharacterPhysics.head.y, stiffness * 0.1, 0.965);
-      signalCharacterPhysics.tailBlob.color = signalCharacterPhysics.tailBlob.color.map((channel, index) => lerp(channel, signalCharacterPhysics.head.color[index], hasSignal ? 0.018 : 0.006));
+      if (boundaryMode !== "none") {
+        applySignalCharacterWall(signalCharacterPhysics.tailBlob, bounds, radius * 0.92, 0.46);
+      }
+      const tailPositionColor = signalCharacterColorAtPosition(signalCharacterPhysics.tailBlob, bounds, signalCharacterPhysics.head.color);
+      signalCharacterPhysics.tailBlob.color = signalCharacterPhysics.tailBlob.color.map((channel, index) => lerp(channel, tailPositionColor[index], hasSignal ? 0.075 : 0.012));
+      if (boundaryMode === "everything") {
+        applySignalCharacterTailImpact(signalCharacterPhysics.head, signalCharacterPhysics.tailBlob, 1.65);
+      }
       let leader = signalCharacterPhysics.head;
       for (let i = 0; i < signalCharacterTrail.length; i += 1) {
         const follower = signalCharacterTrail[i];
@@ -4786,6 +4932,9 @@
       const angles = options.angles || signalCharacterPhysics.blobAngles;
       const frequencies = options.frequencies || signalCharacterPhysics.blobFreq;
       const nodes = options.nodes || signalCharacterPhysics.blobNodes;
+      const bounds = options.bounds || null;
+      const renderCtx = options.context || ctx;
+      const wallEnabled = Boolean(bounds);
       while (angles.length < nodeCount) {
         const index = angles.length;
         angles.push((index / nodeCount) * Math.PI * 2);
@@ -4817,36 +4966,39 @@
         node.vy = (node.vy + (targetY - node.y) * nodeStiffness) * nodeDamping;
         node.x += node.vx;
         node.y += node.vy;
+        if (wallEnabled) {
+          applySignalCharacterNodeWall(node, bounds, options.nodeRestitution ?? 0.34, options.nodeFriction ?? 0.64);
+        }
         points.push({ x: node.x, y: node.y });
       }
 
-      ctx.save();
-      ctx.globalCompositeOperation = "screen";
-      const glow = ctx.createRadialGradient(body.x, body.y, 2, body.x, body.y, baseRadius * 2.6);
+      renderCtx.save();
+      renderCtx.globalCompositeOperation = "screen";
+      const glow = renderCtx.createRadialGradient(body.x, body.y, 2, body.x, body.y, baseRadius * 2.6);
       glow.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${0.26 * alpha})`);
       glow.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(body.x, body.y, baseRadius * 2.85 + stretch * 0.45, 0, Math.PI * 2);
-      ctx.fill();
+      renderCtx.fillStyle = glow;
+      renderCtx.beginPath();
+      renderCtx.arc(body.x, body.y, baseRadius * 2.85 + stretch * 0.45, 0, Math.PI * 2);
+      renderCtx.fill();
 
-      ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${0.9 * alpha})`;
-      ctx.strokeStyle = `rgba(245,245,245,${0.62 * alpha})`;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
+      renderCtx.globalCompositeOperation = "source-over";
+      renderCtx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${0.9 * alpha})`;
+      renderCtx.strokeStyle = `rgba(245,245,245,${0.62 * alpha})`;
+      renderCtx.lineWidth = 1.6;
+      renderCtx.beginPath();
       for (let i = 0; i < points.length; i += 1) {
         const p0 = points[(i - 1 + points.length) % points.length];
         const p1 = points[i];
         const midX = (p0.x + p1.x) * 0.5;
         const midY = (p0.y + p1.y) * 0.5;
-        if (i === 0) ctx.moveTo(midX, midY);
-        ctx.quadraticCurveTo(p1.x, p1.y, (p1.x + points[(i + 1) % points.length].x) * 0.5, (p1.y + points[(i + 1) % points.length].y) * 0.5);
+        if (i === 0) renderCtx.moveTo(midX, midY);
+        renderCtx.quadraticCurveTo(p1.x, p1.y, (p1.x + points[(i + 1) % points.length].x) * 0.5, (p1.y + points[(i + 1) % points.length].y) * 0.5);
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
+      renderCtx.closePath();
+      renderCtx.fill();
+      renderCtx.stroke();
+      renderCtx.restore();
     }
 
     function drawSignalCharacterMap(x, y, w, h) {
@@ -4860,7 +5012,7 @@
         Math.round(40 + signalCharacterState.lowAnchor * 190),
         Math.round(110 + signalCharacterState.noisy * 120)
       ];
-      const physics = updateSignalCharacterPhysics(px, py, hasSignal, targetColor);
+      const physics = updateSignalCharacterPhysics(px, py, hasSignal, targetColor, { x, y, w, h });
 
       ctx.fillStyle = "#050505";
       ctx.fillRect(x, y, w, h);
@@ -4889,6 +5041,9 @@
         ctx.save();
         const headColor = physics.head.color || targetColor;
         const tailColor = physics.tailBlob.color || headColor;
+        const boundaryMode = signalCharacterBoundarySelect?.value || "none";
+        const blobBounds = boundaryMode === "none" ? null : { x, y, w, h };
+        const blobContext = boundaryMode === "none" && characterOverlayCtx ? characterOverlayCtx : ctx;
         drawSignalCharacterBlob(
           physics.tailBlob,
           tailColor.map((value) => Math.round(value)),
@@ -4900,10 +5055,24 @@
             inertiaScale: 10,
             sizeScale: 0.92,
             frequencyBase: 0.006,
-            frequencyDivisor: 5200
+            frequencyDivisor: 5200,
+            bounds: blobBounds,
+            context: blobContext,
+            nodeRestitution: boundaryMode === "everything" ? 0.18 : 0.28,
+            nodeFriction: boundaryMode === "everything" ? 0.52 : 0.64
           }
         );
-        drawSignalCharacterBlob(physics.head, headColor.map((value) => Math.round(value)), physics.headAlpha);
+        drawSignalCharacterBlob(
+          physics.head,
+          headColor.map((value) => Math.round(value)),
+          physics.headAlpha,
+          {
+            bounds: blobBounds,
+            context: blobContext,
+            nodeRestitution: boundaryMode === "everything" ? 0.24 : 0.36,
+            nodeFriction: boundaryMode === "everything" ? 0.58 : 0.68
+          }
+        );
         ctx.restore();
       }
 
@@ -6891,6 +7060,9 @@
       setStageHeight(calculateMeteringHeight());
       hidePatternNestedAddSlot();
       hidePatternDisplayControl();
+      if (characterOverlayCtx) {
+        characterOverlayCtx.clearRect(0, 0, W, activeStageHeight);
+      }
       const renderRange = getMeteringRenderRange();
       const renderTop = Math.floor(renderRange.top);
       const renderBottom = Math.ceil(renderRange.bottom);
@@ -7174,6 +7346,7 @@
           signalCharacterModeSelect,
           signalCharacterWindowSelect,
           signalCharacterDisplaySelect,
+          signalCharacterBoundarySelect,
           signalCharacterFftWeight,
           signalCharacterNoise,
           signalCharacterTransient,
@@ -7194,6 +7367,7 @@
           rawDescriptors: true,
           flatBarsOnly: true,
           hidesPointWithoutSignal: true,
+          boundaries: signalCharacterBoundarySelect?.value || "none",
           trailPoints: signalCharacterTrail.length
         },
         metrics: {
@@ -7310,6 +7484,9 @@
       }
 
       setStageHeight(H);
+      if (characterOverlayCtx) {
+        characterOverlayCtx.clearRect(0, 0, W, activeStageHeight);
+      }
       const g = Number(glitch.value) * (0.25 + smoothed.peak + smoothed.high);
       renderBlob(style);
 
@@ -7436,6 +7613,7 @@
       signalCharacterOnsetEnvelope = 0;
     });
     signalCharacterDisplaySelect.addEventListener("change", markLayoutControlsDirty);
+    signalCharacterBoundarySelect.addEventListener("change", resetSignalCharacterPhysics);
     signalCharacterFftWeight.addEventListener("input", () => {
       signalCharacterFftWeightValue.textContent = Number(signalCharacterFftWeight.value).toFixed(2);
     });

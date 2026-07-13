@@ -10,6 +10,7 @@
   <main>
     <section class="stage" aria-label="Metering prototype">
       <canvas id="blobCanvas" width="700" height="1320"></canvas>
+      <canvas id="characterOverlayCanvas" class="character-overlay-canvas" width="700" height="1320" aria-hidden="true"></canvas>
       <div class="hud">
         <span id="status" aria-live="polite"></span>
         <span id="modeLabel">METERING V1</span>
@@ -311,6 +312,15 @@
           <option value="both" selected>Map + Bars</option>
           <option value="map">Map</option>
           <option value="bars">Bars</option>
+        </select>
+      </label>
+
+      <label>
+        Character Map Boundaries
+        <select id="signalCharacterBoundarySelect">
+          <option value="none" selected>None</option>
+          <option value="wall">Wall</option>
+          <option value="everything">Everything</option>
         </select>
       </label>
 

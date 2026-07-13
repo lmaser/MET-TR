@@ -20,9 +20,9 @@ window.METTR_CONTRACT = {
     rightColumnX: 358,
     spectrum: { height: 118, advance: 150 },
     oscilloscope: { height: 70, advance: 100 },
-    waveformShort: { height: 54, advance: 82 },
-    waveformMedium: { height: 58, advance: 86 },
-    waveformLong: { height: 58, advance: 102 },
+    waveformShort: { height: 70, advance: 100 },
+    waveformMedium: { height: 70, advance: 100 },
+    waveformLong: { height: 70, advance: 114 },
     stereo: { height: 202, compactHeight: 150 },
     loudness: { height: 202, compactHeight: 150 },
     dualMetersAdvance: 238,
@@ -49,10 +49,62 @@ window.METTR_CONTRACT = {
       compactScale: 2.55
     }
   },
-  algorithms: {
-    base: {
-      id: "METERING BASE",
-      label: "Base reference",
+  ui: {
+    moduleHeader: {
+      desktopHeightPx: 34,
+      mobileHeightPx: 42,
+      desktopActionSizePx: 24,
+      mobileActionSizePx: 30,
+      desktopIconStrokePx: 2,
+      mobileIconStrokePx: 3,
+      desktopTitleLineHeightPx: 24,
+      mobileTitleLineHeightPx: 30,
+      desktopWidthRatio: 1,
+      mobileWidthRatio: 0.5,
+      desktopFontSizePx: 14,
+      mobileFontSizePx: 15,
+      iconStartRatio: 0.56,
+      iconColor: "#f5f5f5",
+      iconCenterTolerancePx: 2,
+      maxRightSlackPx: 10,
+      nestedBodyGapPx: 18
+    },
+    waveformDisplay: {
+      labelReservePx: 12,
+      short: { targetPeak: 0.72, maxGain: 2.6, fill: 0.5 },
+      medium: { targetPeak: 0.68, maxGain: 2.0, fill: 0.49 },
+      long: { targetPeak: 0.56, maxGain: 1.35, fill: 0.47 }
+    }
+  },
+  legacyAlgorithms: window.METTR_LEGACY_ALGORITHMS || {},
+  activeAlgorithm: {
+    id: "METERING V1",
+    label: "Metering with pattern detector",
+    modules: [
+      "spectrum",
+      "oscilloscope",
+      "waveformShort",
+      "waveformMedium",
+      "waveformLong",
+      "stereo",
+      "loudness",
+      "pattern"
+    ]
+  },
+  layouts: {
+    maxModules: 10,
+    default: {
+      id: "Default Min",
+      modules: [
+        "spectrum",
+        "oscilloscope",
+        "waveformMedium",
+        "stereo",
+        "loudness"
+      ]
+    },
+    full: {
+      id: "Default Full",
       modules: [
         "spectrum",
         "oscilloscope",
@@ -60,16 +112,13 @@ window.METTR_CONTRACT = {
         "waveformMedium",
         "waveformLong",
         "stereo",
-        "loudness"
-      ]
-    },
-    nmstr: {
-      id: "METERING V1b",
-      label: "Editable branch",
-      extends: "base",
-      modules: [
+        "loudness",
         "pattern"
       ]
+    },
+    blank: {
+      id: "Blank",
+      modules: []
     }
   },
   modules: [

@@ -186,7 +186,10 @@
       visible: 480,
       start: 0
     };
-    const meteringAlgorithms = contract.algorithms;
+    const activeMeteringAlgorithm = contract.activeAlgorithm;
+    const legacyMeteringAlgorithms = contract.legacyAlgorithms || {};
+    const meteringLayouts = contract.layouts || {};
+    const MAX_LAYOUT_MODULES = meteringLayouts.maxModules || 10;
     const METERING_RENDERERS = {
       drawSpectrumPanel,
       drawOscilloscopePanel,
@@ -202,7 +205,22 @@
       renderer: METERING_RENDERERS[module.renderer]
     }));
     const METERING_MODULE_BY_ID = Object.fromEntries(METERING_MODULES.map((module) => [module.id, module]));
-    const METERING_FLOW = contract.flow;
+    const METERING_MODULE_LABELS = {
+      spectrum: "Spectrum",
+      oscilloscope: "Oscilloscope",
+      waveformShort: "Waveform Short",
+      waveformMedium: "Waveform Medium",
+      waveformLong: "Waveform Long",
+      stereo: "Stereometer",
+      loudness: "Loudness",
+      pattern: "Pattern Detector"
+    };
+    const availableLayoutModules = METERING_MODULES
+      .map((module) => module.id)
+      .filter((id) => activeMeteringAlgorithm.modules.includes(id));
+    let currentLayoutId = "default";
+    let currentLayoutModules = [];
+    let layoutControlsDirty = true;
     const graphOpenState = {
       spectrum: true,
       oscilloscope: true,
@@ -214,8 +232,10 @@
       pattern: true,
       patternDisplayRender: true
     };
-    let patternDisplayToggleRect = null;
-    let patternDisplayGearRect = null;
+    const PATTERN_NESTED_MODULES = {
+      displayRender: "Display Render"
+    };
+    let patternNestedModules = ["displayRender"];
     let activeInspectorMount = null;
     let graphControlScale = 1;
     let cameraTilt = { x: 0, y: 0, twist: 0 };
@@ -253,16 +273,70 @@
     }
 
     function getCurrentAlgorithm() {
-      return meteringAlgorithms[algorithmSelect.value] || meteringAlgorithms.nmstr;
+      return activeMeteringAlgorithm;
     }
 
-    function getAlgorithmModuleIds(algorithm = getCurrentAlgorithm(), seen = new Set()) {
-      if (!algorithm || seen.has(algorithm.id)) return [];
-      seen.add(algorithm.id);
-      const inherited = algorithm.extends
-        ? getAlgorithmModuleIds(meteringAlgorithms[algorithm.extends], seen)
-        : [];
-      return [...new Set([...inherited, ...(algorithm.modules || [])])];
+    function markLayoutControlsDirty() {
+      layoutControlsDirty = true;
+    }
+
+    function sanitizeLayoutModules(modules) {
+      const seen = new Set();
+      const clean = [];
+      for (const id of modules || []) {
+        if (!availableLayoutModules.includes(id) || seen.has(id)) continue;
+        seen.add(id);
+        clean.push(id);
+        if (clean.length >= MAX_LAYOUT_MODULES) break;
+      }
+      return clean;
+    }
+
+    function getLayoutPreset(id) {
+      return meteringLayouts[id] || meteringLayouts.default || { modules: [] };
+    }
+
+    function setCurrentLayout(id) {
+      currentLayoutId = Array.isArray(meteringLayouts[id]?.modules) ? id : "default";
+      currentLayoutModules = sanitizeLayoutModules(getLayoutPreset(currentLayoutId).modules);
+      syncLayoutSelectUi();
+      markLayoutControlsDirty();
+      setStageHeight(calculateMeteringHeight());
+      syncGraphControlsForLayout();
+    }
+
+    function syncLayoutSelectUi() {
+      const label = getLayoutPreset(currentLayoutId).id || currentLayoutId;
+      algorithmSelect.value = currentLayoutId;
+      algorithmSelectLabel.textContent = label;
+      document.body.dataset.algorithm = activeMeteringAlgorithm.id;
+      document.body.dataset.layout = currentLayoutId;
+      modeLabel.textContent = activeMeteringAlgorithm.id;
+    }
+
+    function getLayoutModuleIds() {
+      return currentLayoutModules.slice();
+    }
+
+    function getAvailableModulesToAdd() {
+      const active = new Set(currentLayoutModules);
+      return availableLayoutModules.filter((id) => !active.has(id));
+    }
+
+    function removeLayoutModule(id) {
+      currentLayoutModules = currentLayoutModules.filter((moduleId) => moduleId !== id);
+      markLayoutControlsDirty();
+      setStageHeight(calculateMeteringHeight());
+      syncGraphControlsForLayout();
+    }
+
+    function addLayoutModule(id) {
+      if (!id || currentLayoutModules.length >= MAX_LAYOUT_MODULES) return;
+      if (!availableLayoutModules.includes(id) || currentLayoutModules.includes(id)) return;
+      currentLayoutModules = sanitizeLayoutModules([...currentLayoutModules, id]);
+      markLayoutControlsDirty();
+      setStageHeight(calculateMeteringHeight());
+      syncGraphControlsForLayout();
     }
 
     function getModuleRect(module) {
@@ -333,15 +407,40 @@
           + getCompactAdvanceClearance(module, compactBase, METER_LAYOUT.compactMeterAdvance);
       }
       const heightDelta = getModuleHeight(module, compact) - rect.height;
-      return rect.advance
+      const baseAdvance = rect.advance || rect.height + 36;
+      return baseAdvance
         + Math.max(0, heightDelta)
-        + getCompactAdvanceClearance(module, rect.height, rect.advance);
+        + getCompactAdvanceClearance(module, rect.height, baseAdvance);
     }
 
     function getModuleAdvance(module, compact = useCompactGraphLayout()) {
       return graphOpenState[module.id]
         ? getOpenAdvance(module, compact)
         : getCollapsedAdvance(module, compact);
+    }
+
+    function getLayoutAddSlotAdvance() {
+      return useCompactGraphLayout() ? getCompactControlLaneGap() + 22 : 74;
+    }
+
+    function getLayoutRows() {
+      const layout = METER_LAYOUT;
+      let y = getMeteringTop();
+      const rows = [];
+      const moduleIds = getLayoutModuleIds();
+      for (let i = 0; i < moduleIds.length; i += 1) {
+        const module = METERING_MODULE_BY_ID[moduleIds[i]];
+        if (!module) continue;
+        if (i > 0) y += layout.rowGap;
+        const height = getModuleHeight(module);
+        const advance = getModuleAdvance(module, useCompactGraphLayout());
+        rows.push({ module, y, height, advance });
+        y += advance;
+      }
+      return {
+        rows,
+        addY: y + (moduleIds.length ? layout.rowGap : 0)
+      };
     }
 
     function moveControlById(id, mount) {
@@ -396,16 +495,242 @@
       activeInspectorMount = null;
     }
 
+    function syncGraphToggleButton(button, isOpen) {
+      if (!button) return;
+      button.textContent = "";
+      button.classList.toggle("is-open", isOpen);
+      button.classList.toggle("is-closed", !isOpen);
+      button.setAttribute("aria-pressed", isOpen ? "true" : "false");
+    }
+
+    function hasPatternNestedModule(id) {
+      return patternNestedModules.includes(id);
+    }
+
+    function getAvailablePatternNestedModules() {
+      return Object.keys(PATTERN_NESTED_MODULES).filter((id) => !hasPatternNestedModule(id));
+    }
+
+    function removePatternNestedModule(id) {
+      patternNestedModules = patternNestedModules.filter((moduleId) => moduleId !== id);
+      closeFloatingInspector();
+    }
+
+    function addPatternNestedModule(id) {
+      if (!PATTERN_NESTED_MODULES[id] || hasPatternNestedModule(id)) return;
+      patternNestedModules.push(id);
+      graphOpenState.patternDisplayRender = true;
+    }
+
+    function ensurePatternNestedAddSlot() {
+      if (!graphControls) return null;
+      let slot = graphControls.querySelector('[data-module="patternNestedAdd"]');
+      if (slot) return slot;
+      slot = document.createElement("div");
+      slot.className = "control-group add-module-slot nested-add-slot";
+      slot.dataset.module = "patternNestedAdd";
+      slot.innerHTML = `
+        <button class="add-module-button" type="button" aria-label="Add Pattern module">+</button>
+        <select class="add-module-select" aria-label="Add Pattern module">
+          <option value="">Add module</option>
+        </select>
+      `;
+      const button = slot.querySelector(".add-module-button");
+      const select = slot.querySelector(".add-module-select");
+      button.addEventListener("click", () => {
+        if (select.disabled) return;
+        const available = getAvailablePatternNestedModules();
+        if (available.length === 1) {
+          addPatternNestedModule(available[0]);
+          return;
+        }
+        select.focus();
+      });
+      select.addEventListener("change", () => {
+        addPatternNestedModule(select.value);
+        select.value = "";
+      });
+      graphControls.appendChild(slot);
+      return slot;
+    }
+
+    function hidePatternNestedAddSlot() {
+      const slot = graphControls?.querySelector('[data-module="patternNestedAdd"]');
+      if (slot) slot.hidden = true;
+    }
+
+    function ensurePatternDisplayControl() {
+      if (!graphControls) return null;
+      let group = graphControls.querySelector('[data-module="patternDisplayRender"]');
+      if (group) return group;
+      group = document.createElement("div");
+      group.className = "control-group nested-module-control";
+      group.dataset.module = "patternDisplayRender";
+      group.innerHTML = `
+        <summary>
+          <span class="module-title">Display Render</span>
+          <span class="param-icon" aria-hidden="true"></span>
+          <button class="graph-toggle" type="button" aria-label="Toggle Display Render graph"></button>
+          <button class="module-remove" type="button" aria-label="Remove Display Render"></button>
+        </summary>
+      `;
+      const summary = group.querySelector("summary");
+      const toggle = group.querySelector(".graph-toggle");
+      const remove = group.querySelector(".module-remove");
+      summary.addEventListener("click", (event) => {
+        const clickedToggle = event.target.closest(".graph-toggle");
+        const clickedRemove = event.target.closest(".module-remove");
+        if (clickedToggle || clickedRemove) return;
+        event.preventDefault();
+        event.stopPropagation();
+        openFloatingInspector("Display Render", displayRenderControlsMount, group.getBoundingClientRect());
+      });
+      syncGraphToggleButton(toggle, graphOpenState.patternDisplayRender);
+      toggle.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        graphOpenState.patternDisplayRender = !graphOpenState.patternDisplayRender;
+        syncGraphToggleButton(toggle, graphOpenState.patternDisplayRender);
+      });
+      remove.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        removePatternNestedModule("displayRender");
+      });
+      graphControls.appendChild(group);
+      return group;
+    }
+
+    function hidePatternDisplayControl() {
+      const group = graphControls?.querySelector('[data-module="patternDisplayRender"]');
+      if (group) group.hidden = true;
+    }
+
+    function updatePatternDisplayControl(graphX, graphY) {
+      const group = ensurePatternDisplayControl();
+      if (!group) return;
+      const canShow = currentLayoutModules.includes("pattern")
+        && graphOpenState.pattern
+        && hasPatternNestedModule("displayRender");
+      group.hidden = !canShow;
+      if (!canShow) return;
+      const toggle = group.querySelector(".graph-toggle");
+      syncGraphToggleButton(toggle, graphOpenState.patternDisplayRender);
+      const scale = graphControlScale;
+      group.style.top = `${Math.max(2, graphY * scale)}px`;
+      group.style.left = `${graphX * scale}px`;
+      group.style.width = `${getModuleHeaderWidth()}px`;
+    }
+
+    function updatePatternNestedAddSlot(graphX, graphY, graphW) {
+      const slot = ensurePatternNestedAddSlot();
+      if (!slot) return;
+      const available = getAvailablePatternNestedModules();
+      const canAdd = currentLayoutModules.includes("pattern")
+        && graphOpenState.pattern
+        && available.length > 0;
+      const select = slot.querySelector(".add-module-select");
+      const button = slot.querySelector(".add-module-button");
+      slot.hidden = !canAdd;
+      button.disabled = !canAdd;
+      select.disabled = !canAdd;
+      select.innerHTML = '<option value="">Add module</option>';
+      for (const id of available) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = PATTERN_NESTED_MODULES[id];
+        select.appendChild(option);
+      }
+      if (!canAdd) return;
+      const scale = graphControlScale;
+      slot.style.top = `${Math.max(2, graphY * scale)}px`;
+      slot.style.left = `${graphX * scale}px`;
+      slot.style.width = `${graphW * scale}px`;
+    }
+
+    function ensureLayoutAddSlot() {
+      if (!graphControls) return null;
+      let slot = graphControls.querySelector('[data-module="layoutAdd"]');
+      if (slot) return slot;
+      slot = document.createElement("div");
+      slot.className = "control-group add-module-slot";
+      slot.dataset.module = "layoutAdd";
+      slot.innerHTML = `
+        <button class="add-module-button" type="button" aria-label="Add meter module">+</button>
+        <select class="add-module-select" aria-label="Add meter module">
+          <option value="">Add module</option>
+        </select>
+      `;
+      const button = slot.querySelector(".add-module-button");
+      const select = slot.querySelector(".add-module-select");
+      button.addEventListener("click", () => {
+        if (select.disabled) return;
+        select.focus();
+      });
+      select.addEventListener("change", () => {
+        addLayoutModule(select.value);
+        select.value = "";
+      });
+      graphControls.appendChild(slot);
+      return slot;
+    }
+
+    function updateLayoutAddSlot() {
+      const slot = ensureLayoutAddSlot();
+      if (!slot) return;
+      const select = slot.querySelector(".add-module-select");
+      const button = slot.querySelector(".add-module-button");
+      const available = getAvailableModulesToAdd();
+      const canAdd = currentLayoutModules.length < MAX_LAYOUT_MODULES && available.length > 0;
+      slot.hidden = !canAdd;
+      button.disabled = !canAdd;
+      select.disabled = !canAdd;
+      select.innerHTML = '<option value="">Add module</option>';
+      for (const id of available) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = METERING_MODULE_LABELS[id] || id;
+        select.appendChild(option);
+      }
+      if (canAdd) positionLayoutAddSlot(getLayoutRows().addY);
+    }
+
+    function syncGraphControlsForLayout() {
+      if (!graphControls) return;
+      const active = new Set(currentLayoutModules);
+      graphControls.querySelectorAll(".control-group").forEach((group) => {
+        const moduleId = group.dataset.module;
+        if (moduleId === "layoutAdd") return;
+        if (moduleId === "patternNestedAdd") return;
+        if (!METERING_MODULE_BY_ID[moduleId]) return;
+        group.hidden = !active.has(moduleId);
+        const remove = group.querySelector(".module-remove");
+        if (remove) remove.hidden = !active.has(moduleId);
+      });
+      updateLayoutAddSlot();
+      layoutControlsDirty = false;
+    }
+
     function organizeGraphControls() {
       if (graphControls && graphControls.parentElement !== stageEl) {
         stageEl.appendChild(graphControls);
       }
       graphControls?.querySelectorAll(".control-group").forEach((group) => {
+        if (group.dataset.module === "layoutAdd") return;
+        if (group.dataset.module === "patternNestedAdd") return;
+        if (METERING_MODULE_BY_ID[group.dataset.module] && !group.querySelector(".module-remove")) {
+          const remove = document.createElement("button");
+          remove.className = "module-remove";
+          remove.type = "button";
+          remove.setAttribute("aria-label", `Remove ${group.querySelector(".module-title")?.textContent?.trim() || "module"}`);
+          group.querySelector("summary")?.appendChild(remove);
+        }
         group.querySelector("summary")?.addEventListener("click", (event) => {
           const clickedToggle = event.target.closest(".graph-toggle");
-          if (clickedToggle) return;
+          const clickedRemove = event.target.closest(".module-remove");
+          if (clickedToggle || clickedRemove) return;
           event.preventDefault();
-          if (!event.target.closest(".param-icon")) return;
+          event.stopPropagation();
           const mount = group.querySelector(".control-body");
           if (!mount) return;
           const title = group.querySelector(".module-title")?.textContent?.trim() || "Parameters";
@@ -419,19 +744,31 @@
         group.addEventListener("toggle", () => {
           if (!group.open) return;
           graphControls.querySelectorAll(".control-group").forEach((other) => {
-            if (other !== group) other.open = false;
+          if (other !== group) other.open = false;
           });
         });
+        const remove = group.querySelector(".module-remove");
+        remove?.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          removeLayoutModule(group.dataset.module);
+        });
         const toggle = group.querySelector(".graph-toggle");
+        syncGraphToggleButton(toggle, graphOpenState[group.dataset.module]);
         toggle?.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
           const key = group.dataset.module;
           graphOpenState[key] = !graphOpenState[key];
-          toggle.textContent = graphOpenState[key] ? "-" : "+";
-          toggle.setAttribute("aria-pressed", graphOpenState[key] ? "true" : "false");
+          syncGraphToggleButton(toggle, graphOpenState[key]);
+          markLayoutControlsDirty();
+          setStageHeight(calculateMeteringHeight());
+          syncGraphControlsForLayout();
         });
       });
+      ensureLayoutAddSlot();
+      ensurePatternDisplayControl();
+      ensurePatternNestedAddSlot();
       moveControlById("spectrumFftSelect", spectrumControlsMount);
       moveControlById("spectrumBarsSelect", spectrumControlsMount);
       moveControlById("scopeFollowSelect", oscilloscopeControlsMount);
@@ -490,19 +827,26 @@
       const controlGap = compact ? 5 : 3;
       const controlTop = graphTop * scale - getModuleControlHeight(group) - controlGap;
       group.style.top = `${Math.max(2, controlTop)}px`;
-      if (compact && (key === "stereo" || key === "loudness")) {
-        group.style.left = `${layout.left * scale}px`;
-        group.style.width = `${layout.fullWidth * scale}px`;
-      } else if (key === "loudness") {
-        group.style.left = `${layout.rightColumnX * scale}px`;
-        group.style.width = `${layout.halfWidth * scale}px`;
-      } else if (key === "stereo") {
-        group.style.left = `${layout.left * scale}px`;
-        group.style.width = `${layout.halfWidth * scale}px`;
-      } else {
-        group.style.left = `${layout.left * scale}px`;
-        group.style.width = `${layout.fullWidth * scale}px`;
-      }
+      group.style.left = `${layout.left * scale}px`;
+      group.style.width = `${layout.fullWidth * scale}px`;
+    }
+
+    function getModuleHeaderWidth() {
+      const spec = contract.ui?.moduleHeader || {};
+      const ratio = useCompactGraphLayout()
+        ? (spec.mobileWidthRatio || 0.666666)
+        : (spec.desktopWidthRatio || 0.5);
+      return METER_LAYOUT.fullWidth * graphControlScale * ratio;
+    }
+
+    function positionLayoutAddSlot(graphTop) {
+      const slot = graphControls?.querySelector('[data-module="layoutAdd"]');
+      if (!slot || slot.hidden) return;
+      const layout = METER_LAYOUT;
+      const scale = graphControlScale;
+      slot.style.top = `${Math.max(2, graphTop * scale)}px`;
+      slot.style.left = `${layout.left * scale}px`;
+      slot.style.width = `${layout.fullWidth * scale}px`;
     }
 
     function updateGraphControlScale() {
@@ -521,26 +865,12 @@
       const layout = METER_LAYOUT;
       const compact = useCompactGraphLayout();
       let y = getMeteringTop();
-      const moduleIds = getAlgorithmModuleIds();
-      for (const item of METERING_FLOW) {
-        if (item.type === "module") {
-          if (!moduleIds.includes(item.id)) continue;
-          const module = METERING_MODULE_BY_ID[item.id];
-          if (item.beforeGap || module.beforeGap) y += layout.rowGap;
-          y += getModuleAdvance(module, compact);
-        } else if (item.type === "dual") {
-          const modules = item.ids
-            .filter((id) => moduleIds.includes(id))
-            .map((id) => METERING_MODULE_BY_ID[id]);
-          if (!modules.length) continue;
-          if (compact) {
-            for (const module of modules) y += getModuleAdvance(module, compact);
-          } else {
-            y += modules.some((module) => graphOpenState[module.id])
-              ? layout.dualMetersAdvance
-              : layout.stackedCollapsedAdvance;
-          }
-        }
+      const rows = getLayoutRows();
+      for (const row of rows.rows) {
+        y = row.y + row.advance;
+      }
+      if (rows.rows.length < MAX_LAYOUT_MODULES && getAvailableModulesToAdd().length) {
+        y = rows.addY + getLayoutAddSlotAdvance();
       }
       return Math.max(layout.minHeight, Math.ceil(y + layout.bottom));
     }
@@ -649,10 +979,7 @@
     }
 
     function applyAlgorithmUi() {
-      const algorithm = getCurrentAlgorithm();
-      modeLabel.textContent = algorithm.id;
-      algorithmSelectLabel.textContent = algorithmSelect.options[algorithmSelect.selectedIndex]?.textContent || algorithm.id;
-      document.body.dataset.algorithm = algorithmSelect.value;
+      setCurrentLayout(algorithmSelect.value);
     }
 
     function getPatternFlashColor(levels) {
@@ -1688,7 +2015,7 @@
       } else {
         patternState.confidence = lerp(patternState.confidence, 0, 0.06);
       }
-      const enabled = getCurrentAlgorithm() === meteringAlgorithms.nmstr;
+      const enabled = currentLayoutModules.includes("pattern");
       const generalTarget = enabled ? clamp((metrics.peak * 0.72 + metrics.rms * 0.42) * generalAmount, 0, 1) : 0;
       const kickTarget = enabled ? patternState.hits.kick * kickAmount : 0;
       const tomTarget = enabled ? patternState.hits.tom * tomAmount : 0;
@@ -3308,8 +3635,32 @@
       drawMeterText(scopeLabel, x + 10, y + h - 10, 10, "rgba(166,166,166,0.78)");
     }
 
-    function drawWaveformLane(columns, x, y, w, h, key, label) {
-      const centerY = y + h * 0.5;
+    function getWaveformDisplayProfile(kind) {
+      const display = contract.ui?.waveformDisplay || {};
+      return display[kind] || display.long || { targetPeak: 0.56, maxGain: 1.35, fill: 0.47 };
+    }
+
+    function getWaveformLaneRect(y, h) {
+      const reserve = contract.ui?.waveformDisplay?.labelReservePx || 12;
+      const usableH = Math.max(12, h - reserve);
+      return {
+        y,
+        usableH,
+        centerY: y + usableH * 0.5
+      };
+    }
+
+    function peakForSignal(signal) {
+      let peak = 0;
+      for (let i = 0; i < signal.length; i += 1) {
+        peak = Math.max(peak, Math.abs(signal[i] || 0));
+      }
+      return peak;
+    }
+
+    function drawWaveformLane(columns, x, y, w, h, key, label, profile = getWaveformDisplayProfile("long")) {
+      const lane = getWaveformLaneRect(y, h);
+      const centerY = lane.centerY;
       const count = Math.max(1, columns.length);
       const colW = w / count;
       ctx.strokeStyle = "rgba(255,255,255,0.07)";
@@ -3319,23 +3670,31 @@
       ctx.stroke();
       for (let i = 0; i < columns.length; i += 1) {
         const column = columns[i];
-        const value = clamp(column[key] * 1.18, 0, 1);
+        const peak = Math.max(0.0001, column.peak || column.local || column[key] || 0);
+        const targetGain = clamp((column.local || peak) / peak, 1, profile.maxGain || 1);
+        const value = clamp(column[key] * targetGain, 0, 1);
         const px = x + i * colW;
-        const half = Math.max(0.6, value * h * 0.48);
+        const half = Math.max(0.6, value * lane.usableH * (profile.fill || 0.48));
         ctx.fillStyle = waveformColorForColumn(column, 0.88);
         ctx.fillRect(px, centerY - half, Math.max(1, colW + 0.3), half * 2);
         if (waveformPeakSelect.value === "on" && column.hit > 0.62 && column.local > 0.55) {
           const transientAlpha = clamp((column.hit - 0.55) * (column.local - 0.35) * 0.34, 0, 0.22);
           ctx.fillStyle = waveformColorForColumn({ ...column, peak: 1, local: 1, hit: column.hit }, transientAlpha);
-          ctx.fillRect(px, y, Math.max(1, colW * 0.42), h);
+          ctx.fillRect(px, lane.y, Math.max(1, colW * 0.42), lane.usableH);
         }
       }
       drawMeterText(label, x + 8, y + h - 8, 10, "rgba(166,166,166,0.76)");
     }
 
-    function drawStaticWaveformLane(x, y, w, h, key, label) {
+    function drawStaticWaveformLane(x, y, w, h, key, label, profile = getWaveformDisplayProfile("long")) {
       if (analyser) analyser.getByteTimeDomainData(timeData);
-      const centerY = y + h * 0.5;
+      const lane = getWaveformLaneRect(y, h);
+      const centerY = lane.centerY;
+      let peakVisible = 0.001;
+      for (let i = 0; i < timeData.length; i += 1) {
+        peakVisible = Math.max(peakVisible, Math.abs((timeData[i] - 128) / 128));
+      }
+      const gain = clamp((profile.targetPeak || 0.56) / peakVisible, 1, profile.maxGain || 1);
       ctx.strokeStyle = "rgba(255,255,255,0.07)";
       ctx.beginPath();
       ctx.moveTo(x, centerY);
@@ -3345,9 +3704,9 @@
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       for (let i = 0; i < timeData.length; i += 1) {
-        const raw = (timeData[i] - 128) / 128;
+        const raw = clamp((timeData[i] - 128) / 128 * gain, -1, 1);
         const px = x + i / Math.max(1, timeData.length - 1) * w;
-        const py = centerY - raw * h * 0.44;
+        const py = centerY - raw * lane.usableH * (profile.fill || 0.44);
         if (i === 0) ctx.moveTo(px, py);
         else ctx.lineTo(px, py);
       }
@@ -3396,9 +3755,12 @@
     }
 
     function drawWaveformShortLane(signal, x, y, w, h, label) {
-      const centerY = y + h * 0.5;
+      const profile = getWaveformDisplayProfile("short");
+      const lane = getWaveformLaneRect(y, h);
+      const centerY = lane.centerY;
       const width = Math.max(1, Math.floor(w));
       const samplesPerPixel = Math.max(1, signal.length / width);
+      const gain = clamp((profile.targetPeak || 0.72) / Math.max(0.001, peakForSignal(signal)), 1, profile.maxGain || 2.6);
       ctx.strokeStyle = "rgba(255,255,255,0.07)";
       ctx.beginPath();
       ctx.moveTo(x, centerY);
@@ -3411,7 +3773,7 @@
         let min = 0;
         let max = 0;
         for (let i = start; i < end; i += 1) {
-          const v = signal[i] || 0;
+          const v = clamp((signal[i] || 0) * gain, -1, 1);
           if (v < min) min = v;
           if (v > max) max = v;
         }
@@ -3422,8 +3784,8 @@
           hit: Math.max(smoothed.bassHit, smoothed.midHit, smoothed.peak),
           band: smoothed.low >= smoothed.mid && smoothed.low >= smoothed.high ? "low" : smoothed.mid >= smoothed.high ? "mid" : "high"
         };
-        const top = centerY - max * h * 0.47;
-        const bottom = centerY - min * h * 0.47;
+        const top = centerY - max * lane.usableH * (profile.fill || 0.5);
+        const bottom = centerY - min * lane.usableH * (profile.fill || 0.5);
         ctx.fillStyle = waveformColorForColumn(column, 0.92);
         ctx.fillRect(x + px, Math.min(top, bottom), 1.1, Math.max(1, Math.abs(bottom - top)));
       }
@@ -3433,7 +3795,7 @@
       ctx.beginPath();
       for (let px = 0; px < width; px += 1) {
         const index = Math.min(signal.length - 1, Math.floor(px / Math.max(1, width - 1) * (signal.length - 1)));
-        const py = centerY - signal[index] * h * 0.47;
+        const py = centerY - clamp(signal[index] * gain, -1, 1) * lane.usableH * (profile.fill || 0.5);
         if (px === 0) ctx.moveTo(x + px, py);
         else ctx.lineTo(x + px, py);
       }
@@ -3452,28 +3814,29 @@
       const gap = twoLane ? 6 : 0;
       const laneH = twoLane ? (h - gap) / 2 : h;
       const columns = waveformState.columns.slice(-Math.floor(w));
+      const profile = getWaveformDisplayProfile("long");
 
       if (waveformLoopSelect.value === "static") {
         if (twoLane && channel === "mid-side") {
-          drawStaticWaveformLane(x, y, w, laneH, "mid", "mid");
-          drawStaticWaveformLane(x, y + laneH + gap, w, laneH, "side", "side");
+          drawStaticWaveformLane(x, y, w, laneH, "mid", "mid", profile);
+          drawStaticWaveformLane(x, y + laneH + gap, w, laneH, "side", "side", profile);
         } else if (twoLane) {
-          drawStaticWaveformLane(x, y, w, laneH, "left", "left");
-          drawStaticWaveformLane(x, y + laneH + gap, w, laneH, "right", "right");
+          drawStaticWaveformLane(x, y, w, laneH, "left", "left", profile);
+          drawStaticWaveformLane(x, y + laneH + gap, w, laneH, "right", "right", profile);
         } else {
-          drawStaticWaveformLane(x, y, w, h, channel, channel);
+          drawStaticWaveformLane(x, y, w, h, channel, channel, profile);
         }
         return;
       }
 
       if (twoLane && channel === "mid-side") {
-        drawWaveformLane(columns, x, y, w, laneH, "mid", "mid");
-        drawWaveformLane(columns, x, y + laneH + gap, w, laneH, "side", "side");
+        drawWaveformLane(columns, x, y, w, laneH, "mid", "mid", profile);
+        drawWaveformLane(columns, x, y + laneH + gap, w, laneH, "side", "side", profile);
       } else if (twoLane) {
-        drawWaveformLane(columns, x, y, w, laneH, "left", "left");
-        drawWaveformLane(columns, x, y + laneH + gap, w, laneH, "right", "right");
+        drawWaveformLane(columns, x, y, w, laneH, "left", "left", profile);
+        drawWaveformLane(columns, x, y + laneH + gap, w, laneH, "right", "right", profile);
       } else {
-        drawWaveformLane(columns, x, y, w, h, channel, channel);
+        drawWaveformLane(columns, x, y, w, h, channel, channel, profile);
       }
     }
 
@@ -3513,15 +3876,16 @@
       const speed = Number(waveformSpeedSelect.value);
       const mediumCount = Math.max(72, Math.floor(60 * speed));
       const columns = waveformState.columns.slice(-mediumCount);
+      const profile = getWaveformDisplayProfile("medium");
 
       if (twoLane && channel === "mid-side") {
-        drawWaveformLane(columns, x, y, w, laneH, "mid", "mid");
-        drawWaveformLane(columns, x, y + laneH + gap, w, laneH, "side", "side");
+        drawWaveformLane(columns, x, y, w, laneH, "mid", "mid", profile);
+        drawWaveformLane(columns, x, y + laneH + gap, w, laneH, "side", "side", profile);
       } else if (twoLane) {
-        drawWaveformLane(columns, x, y, w, laneH, "left", "left");
-        drawWaveformLane(columns, x, y + laneH + gap, w, laneH, "right", "right");
+        drawWaveformLane(columns, x, y, w, laneH, "left", "left", profile);
+        drawWaveformLane(columns, x, y + laneH + gap, w, laneH, "right", "right", profile);
       } else {
-        drawWaveformLane(columns, x, y, w, h, channel, `${channel} / ~1s`);
+        drawWaveformLane(columns, x, y, w, h, channel, `${channel} / ~1s`, profile);
       }
       drawMeterText("~1s", x + w - 28, y + h - 8, 10, "rgba(166,166,166,0.76)");
     }
@@ -3541,7 +3905,8 @@
       ];
       const compact = useCompactGraphLayout();
       const topPad = Math.max(18, compact ? h * 0.035 : h * 0.08);
-      const displayOpen = graphOpenState.patternDisplayRender;
+      const displayPresent = hasPatternNestedModule("displayRender");
+      const displayOpen = displayPresent && graphOpenState.patternDisplayRender;
       const displayBoost = compact
         ? lerp(1, contract.responsive?.patternDisplay?.compactScale || 1.8, getCompactResponsiveT())
         : 1;
@@ -3571,7 +3936,16 @@
       const rhythmY = y + topPad + usableH + Math.max(18, compact ? h * 0.025 : 16);
       const historyY = rhythmY + Math.max(14, compact ? h * 0.018 : 16);
       const displayHeaderY = historyY + historyH + Math.max(28, compact ? h * 0.035 : 30);
-      const elementsLabelY = displayHeaderY + 30;
+      const headerSpec = contract.ui?.moduleHeader || {};
+      const displayHeaderTop = displayHeaderY - (compact ? 21 : 17);
+      const displayHeaderH = compact
+        ? (headerSpec.mobileHeightPx || 42)
+        : (headerSpec.desktopHeightPx || 34);
+      const nestedBodyGap = headerSpec.nestedBodyGapPx || 18;
+      const cssToCanvas = 1 / Math.max(0.001, graphControlScale);
+      const displayHeaderCanvasH = displayHeaderH * cssToCanvas;
+      const nestedBodyGapCanvas = nestedBodyGap * cssToCanvas;
+      const elementsLabelY = displayHeaderTop + displayHeaderCanvasH + nestedBodyGapCanvas;
       const elementsY = elementsLabelY + 14;
       const footerPad = compact ? 18 : 12;
       const spectralLabelGap = 14;
@@ -3605,27 +3979,12 @@
         ctx.fillStyle = event.type === "kick" ? "#ff3a18" : event.type === "snare" ? "#39ff14" : event.type === "hat" ? "#7ed6ff" : event.type === "cymbal" ? "#bc30ec" : "#ff8b2a";
         ctx.fillRect(px, py - (historyH - 12) * clamp(event.strength, 0.2, 1), 3, (historyH - 12) * clamp(event.strength, 0.2, 1));
       }
-      const displayHeaderW = 154;
-      patternDisplayToggleRect = {
-        x: x + 10,
-        y: displayHeaderY - 12,
-        w: displayHeaderW,
-        h: 18
-      };
-      patternDisplayGearRect = {
-        x: x + 118,
-        y: displayHeaderY - 12,
-        w: 20,
-        h: 18
-      };
-      ctx.fillStyle = "#000";
-      ctx.fillRect(patternDisplayToggleRect.x, patternDisplayToggleRect.y, patternDisplayToggleRect.w, patternDisplayToggleRect.h);
-      ctx.strokeStyle = "#202020";
-      ctx.strokeRect(patternDisplayToggleRect.x, patternDisplayToggleRect.y, patternDisplayToggleRect.w, patternDisplayToggleRect.h);
-      drawMeterText("Display Render", x + 18, displayHeaderY, 10, "rgba(245,245,245,0.78)");
-      drawMeterText("⚙", x + 126, displayHeaderY, 10, "rgba(166,166,166,0.86)");
-      drawMeterText(graphOpenState.patternDisplayRender ? "-" : "+", x + 148, displayHeaderY, 11, "rgba(245,245,245,0.92)");
-      if (graphOpenState.patternDisplayRender) {
+      if (displayPresent) {
+        updatePatternDisplayControl(x + 10, displayHeaderTop);
+      } else {
+        hidePatternDisplayControl();
+      }
+      if (displayOpen) {
         const fieldX = x + 10;
         const fieldW = w - 20;
         drawMeterText("ELEMENTS OUT", fieldX, elementsLabelY, 10, "rgba(245,245,245,0.76)");
@@ -3633,6 +3992,10 @@
         drawMeterText("SPECTRAL OUT", fieldX, spectralLabelY, 10, "rgba(245,245,245,0.76)");
         drawSpectralOutField(fieldX, spectralY, fieldW, displayFieldH);
       }
+      const addY = displayPresent
+        ? spectralY + displayFieldH + Math.max(18, compact ? h * 0.02 : 14)
+        : displayHeaderTop;
+      updatePatternNestedAddSlot(x + 10, addY, w - 20);
     }
 
     function drawLoudnessPanel(x, y, w, h) {
@@ -3699,8 +4062,9 @@
     }
 
     function drawMetering() {
-      const algorithm = getCurrentAlgorithm();
       setStageHeight(calculateMeteringHeight());
+      hidePatternNestedAddSlot();
+      hidePatternDisplayControl();
       const renderRange = getMeteringRenderRange();
       const renderTop = Math.floor(renderRange.top);
       const renderBottom = Math.ceil(renderRange.bottom);
@@ -3716,71 +4080,21 @@
         ctx.stroke();
       }
 
-      if (graphControls) {
-        const moduleIds = getAlgorithmModuleIds(algorithm);
-        graphControls.querySelectorAll(".control-group").forEach((group) => {
-          const moduleId = group.dataset.module;
-          if (!METERING_MODULE_BY_ID[moduleId]) return;
-          group.hidden = !moduleIds.includes(moduleId);
-        });
+      if (graphControls && layoutControlsDirty) {
+        syncGraphControlsForLayout();
       }
 
       const layout = METER_LAYOUT;
-      let y = getMeteringTop();
-      const moduleIds = getAlgorithmModuleIds(algorithm);
-      const drawFullModule = (module) => {
-        positionModuleControl(module.id, y);
-        const moduleHeight = getModuleHeight(module);
-        if (graphOpenState[module.id]) {
-          if (rectIntersectsRenderRange(y, moduleHeight, renderRange)) {
-            module.renderer(layout.left, y, layout.fullWidth, moduleHeight);
-          }
-          y += getModuleAdvance(module);
-        } else {
-          y += getModuleAdvance(module);
+      const layoutRows = getLayoutRows();
+      for (const row of layoutRows.rows) {
+        positionModuleControl(row.module.id, row.y);
+        if (graphOpenState[row.module.id] && rectIntersectsRenderRange(row.y, row.height, renderRange)) {
+          row.module.renderer(layout.left, row.y, layout.fullWidth, row.height);
         }
-      };
-      const drawStackedModule = (module) => {
-        positionModuleControl(module.id, y);
-        const moduleHeight = getModuleHeight(module);
-        if (graphOpenState[module.id]) {
-          if (rectIntersectsRenderRange(y, moduleHeight, renderRange)) {
-            module.renderer(layout.left, y, layout.fullWidth, moduleHeight);
-          }
-          y += getModuleAdvance(module, true);
-        } else {
-          y += getModuleAdvance(module, true);
-        }
-      };
+      }
 
-      for (const item of METERING_FLOW) {
-        if (item.type === "module") {
-          if (!moduleIds.includes(item.id)) continue;
-          const module = METERING_MODULE_BY_ID[item.id];
-          if (item.beforeGap || module.beforeGap) y += layout.rowGap;
-          drawFullModule(module);
-        } else if (item.type === "dual") {
-          const modules = item.ids
-            .filter((id) => moduleIds.includes(id))
-            .map((id) => METERING_MODULE_BY_ID[id]);
-          if (!modules.length) continue;
-          if (useCompactGraphLayout()) {
-            modules.forEach(drawStackedModule);
-          } else {
-            for (const module of modules) positionModuleControl(module.id, y);
-            for (const module of modules) {
-              if (!graphOpenState[module.id]) continue;
-              const rect = getModuleRect(module);
-              const x = module.column === "right" ? layout.rightColumnX : layout.left;
-              if (rectIntersectsRenderRange(y, rect.height, renderRange)) {
-                module.renderer(x, y, layout.halfWidth, rect.height);
-              }
-            }
-            y += modules.some((module) => graphOpenState[module.id])
-              ? layout.dualMetersAdvance
-              : layout.stackedCollapsedAdvance;
-          }
-        }
+      if (layoutRows.rows.length < MAX_LAYOUT_MODULES && getAvailableModulesToAdd().length) {
+        positionLayoutAddSlot(layoutRows.addY);
       }
 
       updateReadout();
@@ -3803,6 +4117,113 @@
       } else {
         memoryText.textContent = "n/a";
       }
+    }
+
+    function auditModuleHeaders() {
+      const spec = contract.ui?.moduleHeader || {};
+      const tolerance = spec.iconCenterTolerancePx ?? 2;
+      const maxRightSlack = spec.maxRightSlackPx ?? 12;
+      const compact = useCompactGraphLayout();
+      const expectedAction = compact
+        ? (spec.mobileActionSizePx ?? 30)
+        : (spec.desktopActionSizePx ?? 24);
+      const expectedHeight = compact
+        ? (spec.mobileHeightPx ?? 42)
+        : (spec.desktopHeightPx ?? 34);
+      const expectedLine = compact
+        ? (spec.mobileTitleLineHeightPx ?? expectedAction)
+        : (spec.desktopTitleLineHeightPx ?? expectedAction);
+      const expectedWidth = getModuleHeaderWidth();
+      return Array.from(document.querySelectorAll(".stage .control-group:not([hidden]) > summary")).map((summary) => {
+        const group = summary.closest(".control-group");
+        const summaryRect = summary.getBoundingClientRect();
+        const title = summary.querySelector(".module-title");
+        const titleRect = title?.getBoundingClientRect();
+        const iconRects = Array.from(summary.querySelectorAll(".param-icon,.graph-toggle,.module-remove"))
+          .map((icon) => ({
+            className: icon.className,
+            rect: icon.getBoundingClientRect()
+          }));
+        const lastIcon = iconRects[iconRects.length - 1];
+        const titleCenter = titleRect ? titleRect.top + titleRect.height * 0.5 : null;
+        const iconCenters = iconRects.map((icon) => icon.rect.top + icon.rect.height * 0.5);
+        const maxCenterDelta = titleCenter == null || !iconCenters.length
+          ? 0
+          : Math.max(...iconCenters.map((center) => Math.abs(center - titleCenter)));
+        const actionSizesOk = iconRects.every((icon) => (
+          Math.abs(icon.rect.width - expectedAction) <= 1
+          && Math.abs(icon.rect.height - expectedAction) <= 1
+        ));
+        const titleLineHeight = title ? parseFloat(getComputedStyle(title).lineHeight) : 0;
+        const rightSlack = lastIcon ? summaryRect.right - lastIcon.rect.right : 0;
+        const checkRightSlack = iconRects.length >= 3;
+        return {
+          module: group?.dataset.module || "",
+          actionSizesOk,
+          summaryHeightOk: Math.abs(summaryRect.height - expectedHeight) <= 1,
+          summaryWidthOk: Math.abs(summaryRect.width - expectedWidth) <= 1,
+          titleLineHeightOk: Math.abs(titleLineHeight - expectedLine) <= 1,
+          iconCenterOk: maxCenterDelta <= tolerance,
+          rightSlackOk: !checkRightSlack || rightSlack <= maxRightSlack,
+          metrics: {
+            summaryHeight: Math.round(summaryRect.height),
+            summaryWidth: Math.round(summaryRect.width),
+            titleLineHeight: Math.round(titleLineHeight),
+            maxCenterDelta: Number(maxCenterDelta.toFixed(2)),
+            rightSlack: Math.round(rightSlack)
+          }
+        };
+      });
+    }
+
+    function auditDisplayRenderSpacing() {
+      const spec = contract.ui?.moduleHeader || {};
+      const minGap = spec.nestedBodyGapPx || 18;
+      const display = document.querySelector('[data-module="patternDisplayRender"] > summary');
+      if (!display || display.closest(".control-group")?.hidden) {
+        return { visible: false, gapOk: true, metrics: { minGap } };
+      }
+      const displayRect = display.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const scaleY = canvasRect.height / Math.max(1, activeStageHeight);
+      const compact = useCompactGraphLayout();
+      const headerHeight = compact
+        ? (spec.mobileHeightPx || 42)
+        : (spec.desktopHeightPx || 34);
+      const expectedElementsTop = displayRect.top + headerHeight + minGap;
+      const actualCanvasGap = minGap / Math.max(0.001, scaleY);
+      return {
+        visible: true,
+        gapOk: expectedElementsTop >= displayRect.bottom + minGap - 1,
+        metrics: {
+          displayBottom: Math.round(displayRect.bottom),
+          expectedElementsTop: Math.round(expectedElementsTop),
+          minGap,
+          canvasGap: Math.round(actualCanvasGap),
+          scaleY: Number(scaleY.toFixed(3))
+        }
+      };
+    }
+
+    function auditWaveformDisplayContract() {
+      const display = contract.ui?.waveformDisplay || {};
+      const reserve = display.labelReservePx || 12;
+      return ["short", "medium", "long"].map((kind) => {
+        const profile = getWaveformDisplayProfile(kind);
+        const fill = profile.fill || 0.48;
+        return {
+          kind,
+          labelReserveOk: reserve >= 10,
+          fillOk: fill > 0 && fill <= 0.52,
+          gainOk: (profile.maxGain || 1) >= 1 && (profile.maxGain || 1) <= 3,
+          metrics: {
+            targetPeak: profile.targetPeak,
+            maxGain: profile.maxGain,
+            fill,
+            labelReservePx: reserve
+          }
+        };
+      });
     }
 
     function drawFrame() {
@@ -3907,25 +4328,6 @@
       configureSpectrumAnalyser();
     });
     algorithmSelect.addEventListener("change", applyAlgorithmUi);
-    canvas.addEventListener("click", (event) => {
-      if (!patternDisplayToggleRect || getCurrentAlgorithm() !== meteringAlgorithms.nmstr || !graphOpenState.pattern) return;
-      const rect = canvas.getBoundingClientRect();
-      const px = (event.clientX - rect.left) / rect.width * W;
-      const py = (event.clientY - rect.top) / rect.height * activeStageHeight;
-      const gear = patternDisplayGearRect;
-      if (gear && px >= gear.x && px <= gear.x + gear.w && py >= gear.y && py <= gear.y + gear.h) {
-        openFloatingInspector("Display Render", displayRenderControlsMount, {
-          left: rect.left + gear.x / W * rect.width,
-          right: rect.left + (gear.x + gear.w) / W * rect.width,
-          top: rect.top + gear.y / activeStageHeight * rect.height,
-          bottom: rect.top + (gear.y + gear.h) / activeStageHeight * rect.height
-        });
-        return;
-      }
-      const hit = patternDisplayToggleRect;
-      if (px < hit.x || px > hit.x + hit.w || py < hit.y || py > hit.y + hit.h) return;
-      graphOpenState.patternDisplayRender = !graphOpenState.patternDisplayRender;
-    });
     floatingInspectorClose.addEventListener("click", closeFloatingInspector);
     inspectorBackdrop.addEventListener("click", closeFloatingInspector);
     document.addEventListener("keydown", (event) => {
@@ -3938,8 +4340,17 @@
       if (event.target === canvas) return;
       closeFloatingInspector();
     });
+    window.METTR_AUDIT = {
+      ...(window.METTR_AUDIT || {}),
+      moduleHeaders: auditModuleHeaders,
+      displayRenderSpacing: auditDisplayRenderSpacing,
+      waveformDisplay: auditWaveformDisplayContract
+    };
     window.addEventListener("resize", () => {
       updateGraphControlScale();
+      markLayoutControlsDirty();
+      setStageHeight(calculateMeteringHeight());
+      syncGraphControlsForLayout();
       refreshInputCapabilities();
     });
 

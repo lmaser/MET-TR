@@ -12,39 +12,39 @@
       <canvas id="blobCanvas" width="700" height="1320"></canvas>
       <div class="hud">
         <span id="status" aria-live="polite"></span>
-        <span id="modeLabel">METERING V1b</span>
+        <span id="modeLabel">METERING V1</span>
       </div>
     </section>
 
     <section class="graph-controls" aria-label="Graph parameters">
       <details class="control-group" data-module="spectrum">
-        <summary><span class="module-title">Spectrum</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Spectrum graph">-</button></summary>
+        <summary><span class="module-title">Spectrum</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Spectrum graph"></button></summary>
         <div id="spectrumControlsMount" class="control-body"></div>
       </details>
       <details class="control-group" data-module="oscilloscope">
-        <summary><span class="module-title">Oscilloscope</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Oscilloscope graph">-</button></summary>
+        <summary><span class="module-title">Oscilloscope</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Oscilloscope graph"></button></summary>
         <div id="oscilloscopeControlsMount" class="control-body"></div>
       </details>
       <details class="control-group" data-module="waveformShort">
-        <summary><span class="module-title">Waveform Short</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Short graph">-</button></summary>
+        <summary><span class="module-title">Waveform Short</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Short graph"></button></summary>
         <div id="waveformShortControlsMount" class="control-body"></div>
       </details>
       <details class="control-group" data-module="waveformMedium">
-        <summary><span class="module-title">Waveform Medium</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Medium graph">-</button></summary>
+        <summary><span class="module-title">Waveform Medium</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Medium graph"></button></summary>
         <div id="waveformMediumControlsMount" class="control-body"></div>
       </details>
       <details class="control-group" data-module="waveformLong">
-        <summary><span class="module-title">Waveform Long</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Long graph">-</button></summary>
+        <summary><span class="module-title">Waveform Long</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Waveform Long graph"></button></summary>
         <div id="waveformLongControlsMount" class="control-body"></div>
       </details>
       <details class="control-group no-params" data-module="stereo">
-        <summary><span class="module-title">Stereometer</span><button class="graph-toggle" type="button" aria-label="Toggle Stereometer graph">-</button></summary>
+        <summary><span class="module-title">Stereometer</span><button class="graph-toggle" type="button" aria-label="Toggle Stereometer graph"></button></summary>
       </details>
       <details class="control-group no-params" data-module="loudness">
-        <summary><span class="module-title">Loudness</span><button class="graph-toggle" type="button" aria-label="Toggle Loudness graph">-</button></summary>
+        <summary><span class="module-title">Loudness</span><button class="graph-toggle" type="button" aria-label="Toggle Loudness graph"></button></summary>
       </details>
       <details class="control-group algorithm-local" data-module="pattern">
-        <summary><span class="module-title">Pattern Detector</span><span class="param-icon" aria-hidden="true">⚙</span><button class="graph-toggle" type="button" aria-label="Toggle Pattern Detector graph">-</button></summary>
+        <summary><span class="module-title">Pattern Detector</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Pattern Detector graph"></button></summary>
         <div id="patternControlsMount" class="control-body"></div>
       </details>
     </section>
@@ -69,15 +69,16 @@
         </div>
 
         <div class="header-select">
-          <select id="algorithmSelect" aria-label="Algorithm">
-            <option value="base">METERING BASE</option>
-            <option value="nmstr" selected>METERING V1b</option>
+          <select id="algorithmSelect" aria-label="Layout">
+            <option value="default" selected>Default Min</option>
+            <option value="full">Default Full</option>
+            <option value="blank">Blank</option>
           </select>
-          <span id="algorithmSelectLabel" class="select-display" aria-hidden="true">METERING V1b</span>
+          <span id="algorithmSelectLabel" class="select-display" aria-hidden="true">Default Min</span>
         </div>
 
         <details class="control-group" data-module="readout">
-          <summary><span class="module-title">Readout</span><span class="param-icon" aria-hidden="true">⚙</span></summary>
+          <summary><span class="module-title">Readout</span><span class="param-icon" aria-hidden="true"></span></summary>
           <div id="readoutControlsMount" class="control-body"></div>
         </details>
       </div>
@@ -315,6 +316,7 @@
     </aside>
   </main>
 
+  <script src="./src/metering-legacy.js" defer></script>
   <script src="./src/metering-contract.js" defer></script>
   <script src="./src/display-output.js" defer></script>
   <script src="./src/app.js" defer></script>

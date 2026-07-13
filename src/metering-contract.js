@@ -19,7 +19,10 @@ window.METTR_CONTRACT = {
     halfWidth: 314,
     rightColumnX: 358,
     spectrum: { height: 118, advance: 150 },
+    spectralDynamics: { height: 142, advance: 176 },
     spectrogram: { height: 292, advance: 328 },
+    tuner: { height: 178, advance: 212 },
+    signalCharacter: { height: 190, advance: 224 },
     oscilloscope: { height: 70, advance: 100 },
     waveformShort: { height: 70, advance: 100 },
     waveformMedium: { height: 70, advance: 100 },
@@ -38,7 +41,10 @@ window.METTR_CONTRACT = {
     maxHeightBoost: 2.4,
     modules: {
       spectrum: { compactScale: 3.2 },
+      spectralDynamics: { compactScale: 2.8 },
       spectrogram: { compactScale: 1.75 },
+      tuner: { compactScale: 2.1 },
+      signalCharacter: { compactScale: 2.35 },
       oscilloscope: { compactScale: 3.05 },
       waveformShort: { compactScale: 2.75 },
       waveformMedium: { compactScale: 2.55 },
@@ -85,7 +91,10 @@ window.METTR_CONTRACT = {
     label: "Metering with pattern detector",
     modules: [
       "spectrum",
+      "spectralDynamics",
       "spectrogram",
+      "tuner",
+      "signalCharacter",
       "oscilloscope",
       "waveformShort",
       "waveformMedium",
@@ -96,7 +105,7 @@ window.METTR_CONTRACT = {
     ]
   },
   layouts: {
-    maxModules: 10,
+    maxModules: 12,
     default: {
       id: "Default",
       modules: [
@@ -105,7 +114,10 @@ window.METTR_CONTRACT = {
         "waveformShort",
         "waveformMedium",
         "waveformLong",
+        "spectralDynamics",
         "spectrogram",
+        "tuner",
+        "signalCharacter",
         "stereo",
         "loudness",
         "pattern"
@@ -121,6 +133,16 @@ window.METTR_CONTRACT = {
         "loudness"
       ]
     },
+    spectral: {
+      id: "Spectral",
+      modules: [
+        "spectrum",
+        "spectralDynamics",
+        "spectrogram",
+        "tuner",
+        "signalCharacter"
+      ]
+    },
     blank: {
       id: "Blank",
       modules: []
@@ -128,7 +150,10 @@ window.METTR_CONTRACT = {
   },
   modules: [
     { id: "spectrum", renderer: "drawSpectrumPanel", rect: "spectrum", flow: "full" },
+    { id: "spectralDynamics", renderer: "drawSpectralDynamicsPanel", rect: "spectralDynamics", flow: "full" },
     { id: "spectrogram", renderer: "drawSpectrogramPanel", rect: "spectrogram", flow: "full" },
+    { id: "tuner", renderer: "drawTunerPanel", rect: "tuner", flow: "full" },
+    { id: "signalCharacter", renderer: "drawSignalCharacterPanel", rect: "signalCharacter", flow: "full" },
     { id: "oscilloscope", renderer: "drawOscilloscopePanel", rect: "oscilloscope", flow: "full" },
     { id: "waveformShort", renderer: "drawWaveformShortPanel", rect: "waveformShort", flow: "full", beforeGap: true },
     { id: "waveformMedium", renderer: "drawWaveformMediumPanel", rect: "waveformMedium", flow: "full", beforeGap: true },
@@ -139,11 +164,14 @@ window.METTR_CONTRACT = {
   ],
   flow: [
     { type: "module", id: "spectrum" },
-    { type: "module", id: "spectrogram" },
     { type: "module", id: "oscilloscope" },
     { type: "module", id: "waveformShort", beforeGap: true },
     { type: "module", id: "waveformMedium", beforeGap: true },
     { type: "module", id: "waveformLong", beforeGap: true },
+    { type: "module", id: "spectralDynamics" },
+    { type: "module", id: "spectrogram" },
+    { type: "module", id: "tuner" },
+    { type: "module", id: "signalCharacter" },
     { type: "dual", ids: ["stereo", "loudness"] },
     { type: "module", id: "pattern" }
   ]

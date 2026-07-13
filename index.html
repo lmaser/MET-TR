@@ -21,9 +21,20 @@
         <summary><span class="module-title">Spectrum</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Spectrum graph"></button></summary>
         <div id="spectrumControlsMount" class="control-body"></div>
       </details>
+      <details class="control-group" data-module="spectralDynamics">
+        <summary><span class="module-title">Spectral Dynamics</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Spectral Dynamics graph"></button></summary>
+        <div id="spectralDynamicsControlsMount" class="control-body"></div>
+      </details>
       <details class="control-group" data-module="spectrogram">
         <summary><span class="module-title">Spectrogram</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Spectrogram graph"></button></summary>
         <div id="spectrogramControlsMount" class="control-body"></div>
+      </details>
+      <details class="control-group" data-module="tuner">
+        <summary><span class="module-title">Tuner</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Tuner graph"></button></summary>
+        <div id="tunerControlsMount" class="control-body"></div>
+      </details>
+      <details class="control-group no-params" data-module="signalCharacter">
+        <summary><span class="module-title">Signal Character</span><button class="graph-toggle" type="button" aria-label="Toggle Signal Character graph"></button></summary>
       </details>
       <details class="control-group" data-module="oscilloscope">
         <summary><span class="module-title">Oscilloscope</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Oscilloscope graph"></button></summary>
@@ -76,6 +87,7 @@
         <div class="header-select">
           <select id="algorithmSelect" aria-label="Layout">
             <option value="default" selected>Default</option>
+            <option value="spectral">Spectral</option>
             <option value="min">Min</option>
             <option value="blank">Blank</option>
           </select>
@@ -116,6 +128,55 @@
           <option value="on" selected>On</option>
           <option value="off">Off</option>
         </select>
+      </label>
+
+      <label>
+        Spectrum Tilt <span id="spectrumTiltValue">0.0dB</span>
+        <input id="spectrumTilt" type="range" min="-12" max="12" step="0.5" value="0">
+      </label>
+
+      <label>
+        Spectral Dynamics FFT
+        <select id="spectralDynamicsFftSelect">
+          <option value="1024">1024</option>
+          <option value="2048">2048</option>
+          <option value="4096">4096</option>
+          <option value="8192" selected>8192</option>
+          <option value="16384">16384</option>
+        </select>
+      </label>
+
+      <label>
+        Spectral Dynamics Window
+        <select id="spectralDynamicsWindowSelect">
+          <option value="short">Short</option>
+          <option value="medium" selected>Medium</option>
+          <option value="long">Long</option>
+          <option value="freeze">Freeze</option>
+        </select>
+      </label>
+
+      <label>
+        Spectral Dynamics Range
+        <select id="spectralDynamicsRangeSelect">
+          <option value="minmax" selected>Min/Max</option>
+          <option value="peak">Peak Hold</option>
+          <option value="delta">Delta Only</option>
+        </select>
+      </label>
+
+      <label>
+        Spectral Dynamics Display
+        <select id="spectralDynamicsDisplaySelect">
+          <option value="envelopeCurrent" selected>Envelope + Current</option>
+          <option value="envelope">Envelope</option>
+          <option value="delta">Delta Only</option>
+        </select>
+      </label>
+
+      <label>
+        Spectral Dynamics Tilt <span id="spectralDynamicsTiltValue">0.0dB</span>
+        <input id="spectralDynamicsTilt" type="range" min="-12" max="12" step="0.5" value="0">
       </label>
 
       <label>
@@ -210,6 +271,11 @@
           <option value="scroll" selected>Scroll</option>
           <option value="static">Static</option>
         </select>
+      </label>
+
+      <label>
+        Tuner Reference A4 <span id="tunerReferenceValue">440.0Hz</span>
+        <input id="tunerReference" type="range" min="410" max="480" step="0.1" value="440">
       </label>
 
       <label>

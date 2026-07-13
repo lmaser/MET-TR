@@ -21,6 +21,14 @@
     const algorithmSelectLabel = document.getElementById("algorithmSelectLabel");
     const spectrumFftSelect = document.getElementById("spectrumFftSelect");
     const spectrumBarsSelect = document.getElementById("spectrumBarsSelect");
+    const spectrumTilt = document.getElementById("spectrumTilt");
+    const spectrumTiltValue = document.getElementById("spectrumTiltValue");
+    const spectralDynamicsFftSelect = document.getElementById("spectralDynamicsFftSelect");
+    const spectralDynamicsWindowSelect = document.getElementById("spectralDynamicsWindowSelect");
+    const spectralDynamicsRangeSelect = document.getElementById("spectralDynamicsRangeSelect");
+    const spectralDynamicsDisplaySelect = document.getElementById("spectralDynamicsDisplaySelect");
+    const spectralDynamicsTilt = document.getElementById("spectralDynamicsTilt");
+    const spectralDynamicsTiltValue = document.getElementById("spectralDynamicsTiltValue");
     const spectrogramFftSelect = document.getElementById("spectrogramFftSelect");
     const spectrogramDetailSelect = document.getElementById("spectrogramDetailSelect");
     const spectrogramScaleSelect = document.getElementById("spectrogramScaleSelect");
@@ -33,6 +41,8 @@
     const spectrogramFreqOverlaySelect = document.getElementById("spectrogramFreqOverlaySelect");
     const spectrogramPianoOverlaySelect = document.getElementById("spectrogramPianoOverlaySelect");
     const spectrogramLoopSelect = document.getElementById("spectrogramLoopSelect");
+    const tunerReference = document.getElementById("tunerReference");
+    const tunerReferenceValue = document.getElementById("tunerReferenceValue");
     const scopeFollowSelect = document.getElementById("scopeFollowSelect");
     const waveformChannelSelect = document.getElementById("waveformChannelSelect");
     const waveformColorSelect = document.getElementById("waveformColorSelect");
@@ -47,7 +57,9 @@
     const stereoHighToggle = document.getElementById("stereoHighToggle");
     const graphControls = document.querySelector(".graph-controls");
     const spectrumControlsMount = document.getElementById("spectrumControlsMount");
+    const spectralDynamicsControlsMount = document.getElementById("spectralDynamicsControlsMount");
     const spectrogramControlsMount = document.getElementById("spectrogramControlsMount");
+    const tunerControlsMount = document.getElementById("tunerControlsMount");
     const oscilloscopeControlsMount = document.getElementById("oscilloscopeControlsMount");
     const waveformShortControlsMount = document.getElementById("waveformShortControlsMount");
     const waveformMediumControlsMount = document.getElementById("waveformMediumControlsMount");
@@ -152,6 +164,7 @@
     let leftFreq = new Uint8Array(512);
     let rightFreq = new Uint8Array(512);
     let floatFreqData = new Float32Array(1024);
+    let tunerFloatTimeData = new Float32Array(2048);
     let spectrogramFreqData = new Float32Array(2048);
     let spectrogramLowData = new Float32Array(16384);
     let spectrogramMidData = new Float32Array(4096);
@@ -160,6 +173,7 @@
     let spectrogramLastColumnDb = new Float32Array(0);
     let previousFreqData = new Uint8Array(1024);
     let previousPatternFreqData = new Uint8Array(1024);
+    let signalCharacterPreviousBands = [];
     let inputSource = "system";
     let metrics = { rms: 0, low: 0, mid: 0, high: 0, side: 0, peak: 0, density: 0, centroid: 0, bassHit: 0, midHit: 0, flux: 0, left: 0, right: 0 };
     let smoothed = { rms: 0, low: 0, mid: 0, high: 0, side: 0, peak: 0, density: 0, centroid: 0, bassHit: 0, midHit: 0, flux: 0, left: 0, right: 0 };
@@ -168,6 +182,15 @@
       spectrum: [],
       spectrumDelta: [],
       spectrumPeak: [],
+      spectralDynamics: {
+        current: [],
+        average: [],
+        min: [],
+        max: [],
+        peak: [],
+        range: [],
+        lastUpdatedAt: 0
+      },
       loudnessFrames: [],
       peakDb: -120,
       momentaryDb: -120,
@@ -203,6 +226,45 @@
       note: null,
       plot: null
     };
+    const tunerState = {
+      freq: 0,
+      note: "--",
+      cents: 0,
+      confidence: 0,
+      rms: 0,
+      density: 0,
+      stable: false,
+      detected: false,
+      lastStableAt: -99,
+      lastDetectedAt: -99,
+      lastSignalAt: -99,
+      lastAnalysisAt: 0
+    };
+    const signalCharacterState = {
+      flatness: 0,
+      spectralCrest: 0,
+      crestFactor: 0,
+      zeroCrossing: 0,
+      transientDensity: 0,
+      transientImpact: 0,
+      eventDensity: 0,
+      lowAnchor: 0,
+      tonal: 0,
+      noisy: 0,
+      mapNoise: 0,
+      mapMotion: 0,
+      sparse: 0,
+      transient: 0,
+      dynamic: 0
+    };
+    const signalCharacterTrail = [];
+    const signalCharacterOnsets = [];
+    let signalCharacterOnsetEnvelope = 0;
+    let signalCharacterLastOnsetAt = -99;
+    let signalCharacterPreviousPeak = 0;
+    let signalCharacterPreviousRms = 0;
+    let signalCharacterFluxFloor = 0;
+    let signalCharacterFluxPeak = 0.001;
     const patternState = {
       previous: { kick: 0, tom: 0, snare: 0, hat: 0, cymbal: 0, global: 0 },
       envelope: { kick: 0, tom: 0, snare: 0, hat: 0, cymbal: 0, global: 0 },
@@ -247,7 +309,10 @@
     const MAX_LAYOUT_MODULES = meteringLayouts.maxModules || 10;
     const METERING_RENDERERS = {
       drawSpectrumPanel,
+      drawSpectralDynamicsPanel,
       drawSpectrogramPanel,
+      drawTunerPanel,
+      drawSignalCharacterPanel,
       drawOscilloscopePanel,
       drawWaveformShortPanel,
       drawWaveformMediumPanel,
@@ -263,7 +328,10 @@
     const METERING_MODULE_BY_ID = Object.fromEntries(METERING_MODULES.map((module) => [module.id, module]));
     const METERING_MODULE_LABELS = {
       spectrum: "Spectrum",
+      spectralDynamics: "Spectral Dynamics",
       spectrogram: "Spectrogram",
+      tuner: "Tuner",
+      signalCharacter: "Signal Character",
       oscilloscope: "Oscilloscope",
       waveformShort: "Waveform Short",
       waveformMedium: "Waveform Medium",
@@ -280,7 +348,10 @@
     let layoutControlsDirty = true;
     const graphOpenState = {
       spectrum: true,
+      spectralDynamics: true,
       spectrogram: true,
+      tuner: true,
+      signalCharacter: true,
       oscilloscope: true,
       waveformShort: true,
       waveformMedium: true,
@@ -321,6 +392,14 @@
       return Math.max(min, Math.min(max, value));
     }
 
+    function finiteOr(value, fallback = 0) {
+      return Number.isFinite(value) ? value : fallback;
+    }
+
+    function clampFinite(value, min, max, fallback = min) {
+      return clamp(finiteOr(value, fallback), min, max);
+    }
+
     function lerp(a, b, amount) {
       return a + (b - a) * amount;
     }
@@ -352,6 +431,12 @@
 
     function getLayoutPreset(id) {
       return meteringLayouts[id] || meteringLayouts.default || { modules: [] };
+    }
+
+    function getInitialLayoutId() {
+      const params = new URLSearchParams(window.location.search);
+      const requested = (params.get("layout") || "").trim().toLowerCase();
+      return Array.isArray(meteringLayouts[requested]?.modules) ? requested : "default";
     }
 
     function setCurrentLayout(id) {
@@ -834,6 +919,12 @@
       ensurePatternNestedAddSlot();
       moveControlById("spectrumFftSelect", spectrumControlsMount);
       moveControlById("spectrumBarsSelect", spectrumControlsMount);
+      moveControlById("spectrumTilt", spectrumControlsMount);
+      moveControlById("spectralDynamicsFftSelect", spectralDynamicsControlsMount);
+      moveControlById("spectralDynamicsWindowSelect", spectralDynamicsControlsMount);
+      moveControlById("spectralDynamicsRangeSelect", spectralDynamicsControlsMount);
+      moveControlById("spectralDynamicsDisplaySelect", spectralDynamicsControlsMount);
+      moveControlById("spectralDynamicsTilt", spectralDynamicsControlsMount);
       moveControlById("spectrogramFftSelect", spectrogramControlsMount);
       moveControlById("spectrogramDetailSelect", spectrogramControlsMount);
       moveControlById("spectrogramScaleSelect", spectrogramControlsMount);
@@ -845,6 +936,7 @@
       moveControlById("spectrogramFreqOverlaySelect", spectrogramControlsMount);
       moveControlById("spectrogramPianoOverlaySelect", spectrogramControlsMount);
       moveControlById("spectrogramLoopSelect", spectrogramControlsMount);
+      moveControlById("tunerReference", tunerControlsMount);
       moveControlById("scopeFollowSelect", oscilloscopeControlsMount);
       moveControlById("waveformChannelSelect", waveformShortControlsMount);
       moveControlById("waveformColorSelect", waveformShortControlsMount);
@@ -1070,7 +1162,7 @@
     }
 
     function applyAlgorithmUi() {
-      setCurrentLayout(algorithmSelect.value);
+      setCurrentLayout(algorithmSelect.value || getInitialLayoutId());
     }
 
     function getPatternFlashColor(levels) {
@@ -1153,6 +1245,14 @@
       lowEnvelope = 0;
       midEnvelope = 0;
       rmsEnvelope = 0;
+      signalCharacterPreviousBands = [];
+      signalCharacterOnsets.length = 0;
+      signalCharacterOnsetEnvelope = 0;
+      signalCharacterLastOnsetAt = -99;
+      signalCharacterPreviousPeak = 0;
+      signalCharacterPreviousRms = 0;
+      signalCharacterFluxFloor = 0;
+      signalCharacterFluxPeak = 0.001;
       beatFlash = 0;
       for (let i = 0; i < planePhysics.length; i += 1) {
         const plane = planePhysics[i];
@@ -1173,9 +1273,24 @@
       meterState.spectrumPeak = new Array(bins).fill(0);
     }
 
+    function resetSpectralDynamicsState() {
+      const bins = 192;
+      meterState.spectralDynamics.current = new Array(bins).fill(0);
+      meterState.spectralDynamics.average = new Array(bins).fill(0);
+      meterState.spectralDynamics.min = new Array(bins).fill(0);
+      meterState.spectralDynamics.max = new Array(bins).fill(0);
+      meterState.spectralDynamics.peak = new Array(bins).fill(0);
+      meterState.spectralDynamics.range = new Array(bins).fill(0);
+      meterState.spectralDynamics.lastUpdatedAt = 0;
+    }
+
+    function requestedSpectrumFftSize() {
+      return Math.max(Number(spectrumFftSelect.value || 8192), Number(spectralDynamicsFftSelect.value || 8192));
+    }
+
     function configureSpectrumAnalyser() {
       if (!analyser) return;
-      analyser.fftSize = Number(spectrumFftSelect.value);
+      analyser.fftSize = requestedSpectrumFftSize();
       analyser.minDecibels = -96;
       analyser.maxDecibels = -12;
       analyser.smoothingTimeConstant = 0.06;
@@ -1183,8 +1298,11 @@
       floatFreqData = new Float32Array(analyser.frequencyBinCount);
       previousFreqData = new Uint8Array(analyser.frequencyBinCount);
       previousPatternFreqData = new Uint8Array(analyser.frequencyBinCount);
+      signalCharacterPreviousBands = [];
       timeData = new Uint8Array(analyser.fftSize);
+      tunerFloatTimeData = new Float32Array(analyser.fftSize);
       resetSpectrumState();
+      resetSpectralDynamicsState();
     }
 
     function resetSpectrogramState(clear = true) {
@@ -2312,6 +2430,8 @@
       let powerSum = 0;
       let entropy = 0;
       let weighted = 0;
+      let maxMag = 0;
+      let magSum = 0;
       let count = 0;
       const start = Math.max(1, Math.floor(freq.length * 0.01));
       const end = Math.floor(freq.length * 0.92);
@@ -2320,6 +2440,8 @@
       for (let i = start; i < end; i += 1) {
         const mag = freq[i] / 255;
         const power = mag * mag + 1e-8;
+        maxMag = Math.max(maxMag, mag);
+        magSum += mag;
         arithmetic += power;
         logSum += Math.log(power);
         powerSum += power;
@@ -2329,10 +2451,11 @@
       }
 
       if (!count || powerSum < 0.00001) {
-        return { density: 0, centroid: 0 };
+        return { density: 0, centroid: 0, flatness: 0, spectralCrest: 0 };
       }
 
       const flatness = Math.exp(logSum / count) / (arithmetic / count);
+      const spectralCrest = magSum > 0 ? maxMag / magSum * Math.sqrt(count) : 0;
       for (const power of powers) {
         const p = power / powerSum;
         entropy -= p * Math.log(p);
@@ -2341,7 +2464,217 @@
       entropy /= Math.log(count);
       const centroid = weighted / powerSum;
       const density = clamp(flatness * 0.62 + entropy * 0.38, 0, 1);
-      return { density, centroid };
+      return { density, centroid, flatness: clamp(flatness, 0, 1), spectralCrest: clamp(spectralCrest, 0, 1) };
+    }
+
+    function spectrumBandValue(index, bars, tiltDb = 0) {
+      if (!audioContext || !floatFreqData.length) return { shaped: 0, db: -120, center: 0 };
+      const nyquist = audioContext.sampleRate / 2;
+      const a = index / bars;
+      const b = (index + 1) / bars;
+      const f0 = 16 * Math.pow(nyquist / 16, Math.pow(a, 1.34));
+      const f1 = 16 * Math.pow(nyquist / 16, Math.pow(b, 1.34));
+      const center = Math.sqrt(f0 * f1);
+      const bandwidth = Math.max(f1 - f0, nyquist / floatFreqData.length * 1.2);
+      const samples = index < Math.floor(bars * 0.3) ? 7 : 5;
+      let power = 0;
+      let maxDb = -140;
+      let weightSum = 0;
+      for (let j = 0; j < samples; j += 1) {
+        const pos = samples === 1 ? 0 : (j / (samples - 1) - 0.5) * 2;
+        const freq = clamp(center + pos * bandwidth * 0.48, 16, nyquist);
+        const freqIndex = freq / nyquist * (floatFreqData.length - 1);
+        const db = interpolateFloatSpectrum(freqIndex);
+        const weight = 0.5 + 0.5 * Math.cos(pos * Math.PI);
+        maxDb = Math.max(maxDb, db);
+        power += Math.pow(10, db / 10) * weight;
+        weightSum += weight;
+      }
+      const meanDb = powerToDb(power / Math.max(0.0001, weightSum));
+      const tiltPosition = clamp((Math.log10(clamp(center, 20, 20000)) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20)), 0, 1);
+      const binDb = meanDb * 0.82 + maxDb * 0.18 + tiltDb * (tiltPosition - 0.5);
+      const bassComp = index < Math.floor(bars * 0.24) ? (1 - index / Math.floor(bars * 0.24)) * 0.045 : 0;
+      return { shaped: Math.pow(dbToMeter(binDb - bassComp), 1.18), db: binDb, center };
+    }
+
+    function spectralDynamicsProfile() {
+      const windowMode = spectralDynamicsWindowSelect.value;
+      if (windowMode === "short") return { avg: 0.38, minFall: 0.42, maxRise: 0.74, minRise: 0.035, maxFall: 0.035, peakFall: 0.035 };
+      if (windowMode === "long") return { avg: 0.08, minFall: 0.18, maxRise: 0.46, minRise: 0.008, maxFall: 0.008, peakFall: 0.008 };
+      if (windowMode === "freeze") return { avg: 0.12, minFall: 1, maxRise: 1, minRise: 0, maxFall: 0, peakFall: 0 };
+      return { avg: 0.16, minFall: 0.28, maxRise: 0.58, minRise: 0.018, maxFall: 0.018, peakFall: 0.018 };
+    }
+
+    function updateSpectralDynamicsState(hasLiveAudio) {
+      const state = meterState.spectralDynamics;
+      const bars = state.current.length || 192;
+      if (!state.current.length) resetSpectralDynamicsState();
+      if (!hasLiveAudio || metrics.rms < 0.0008) {
+        const release = 0.22;
+        for (let i = 0; i < bars; i += 1) {
+          state.current[i] = lerp(state.current[i] || 0, 0, release);
+          state.average[i] = lerp(state.average[i] || 0, 0, release);
+          state.min[i] = lerp(state.min[i] || 0, 0, release);
+          state.max[i] = lerp(state.max[i] || 0, 0, release);
+          state.peak[i] = lerp(state.peak[i] || 0, 0, release);
+          state.range[i] = lerp(state.range[i] || 0, 0, release);
+        }
+        return;
+      }
+
+      const profile = spectralDynamicsProfile();
+      const tiltDb = Number(spectralDynamicsTilt.value || 0);
+      const rangeMode = spectralDynamicsRangeSelect.value;
+      for (let i = 0; i < bars; i += 1) {
+        const shaped = spectrumBandValue(i, bars, tiltDb).shaped;
+        const previousCurrent = state.current[i] || 0;
+        const current = lerp(previousCurrent, shaped, shaped > previousCurrent ? 0.82 : 0.36);
+        const avg = lerp(state.average[i] || 0, current, profile.avg);
+        let minValue = state.min[i] || current;
+        let maxValue = state.max[i] || current;
+        if (rangeMode === "peak") {
+          minValue = Math.min(avg, lerp(minValue, avg, profile.minRise));
+          maxValue = Math.max(current, maxValue - profile.peakFall);
+        } else {
+          minValue = current < minValue ? lerp(minValue, current, profile.minFall) : lerp(minValue, avg, profile.minRise);
+          maxValue = current > maxValue ? lerp(maxValue, current, profile.maxRise) : lerp(maxValue, avg, profile.maxFall);
+        }
+        if (spectralDynamicsWindowSelect.value === "freeze") {
+          minValue = Math.min(state.min[i] || current, current);
+          maxValue = Math.max(state.max[i] || current, current);
+        }
+        const range = clamp(maxValue - minValue, 0, 1);
+        state.current[i] = current;
+        state.average[i] = avg;
+        state.min[i] = minValue;
+        state.max[i] = maxValue;
+        state.peak[i] = Math.max(current, (state.peak[i] || 0) - profile.peakFall);
+        state.range[i] = range;
+      }
+      state.lastUpdatedAt = audioContext ? audioContext.currentTime : performance.now() / 1000;
+    }
+
+    function logBandDbProfile(freq, bands = 28) {
+      if (!audioContext || !freq.length) return [];
+      const nyquist = audioContext.sampleRate * 0.5;
+      const minHz = 30;
+      const maxHz = Math.min(19000, nyquist * 0.92);
+      const minLog = Math.log10(minHz);
+      const maxLog = Math.log10(maxHz);
+      const profile = [];
+      for (let band = 0; band < bands; band += 1) {
+        const a = band / bands;
+        const b = (band + 1) / bands;
+        const lo = Math.pow(10, minLog + (maxLog - minLog) * a);
+        const hi = Math.pow(10, minLog + (maxLog - minLog) * b);
+        const start = clamp(Math.floor(lo / nyquist * freq.length), 1, freq.length - 1);
+        const end = clamp(Math.ceil(hi / nyquist * freq.length), start + 1, freq.length);
+        let power = 0;
+        let count = 0;
+        for (let i = start; i < end; i += 1) {
+          const mag = freq[i] / 255;
+          power += mag * mag;
+          count += 1;
+        }
+        const rms = Math.sqrt(power / Math.max(1, count));
+        profile.push(20 * Math.log10(rms + 0.00001));
+      }
+      return profile;
+    }
+
+    function signalCharacterTransientFeatures(hasLiveAudio, freq) {
+      const now = audioContext ? audioContext.currentTime : performance.now() / 1000;
+      if (!hasLiveAudio || !freq.length) {
+        signalCharacterPreviousBands = [];
+        signalCharacterOnsets.length = 0;
+        signalCharacterOnsetEnvelope = 0;
+        signalCharacterPreviousPeak = metrics.peak;
+        signalCharacterPreviousRms = metrics.rms;
+        signalCharacterFluxFloor = 0;
+        signalCharacterFluxPeak = 0.001;
+        return { impact: 0, density: 0, superFlux: 0, peakRise: 0, rmsRise: 0 };
+      }
+
+      const bands = logBandDbProfile(freq, 28);
+      if (!signalCharacterPreviousBands.length || signalCharacterPreviousBands.length !== bands.length) {
+        signalCharacterPreviousBands = bands.slice();
+      }
+
+      let diffSum = 0;
+      let activeBands = 0;
+      let weightSum = 0;
+      let hfcSum = 0;
+      let lowRiseSum = 0;
+      let lowWeightSum = 0;
+      for (let i = 0; i < bands.length; i += 1) {
+        const prevLocal = Math.max(
+          signalCharacterPreviousBands[Math.max(0, i - 1)],
+          signalCharacterPreviousBands[i],
+          signalCharacterPreviousBands[Math.min(signalCharacterPreviousBands.length - 1, i + 1)]
+        );
+        const riseDb = Math.max(0, bands[i] - prevLocal - 0.7);
+        const bandPos = i / Math.max(1, bands.length - 1);
+        const weight = 0.78 + Math.pow(bandPos, 0.72) * 0.44;
+        diffSum += riseDb * weight;
+        hfcSum += riseDb * Math.pow(0.22 + bandPos, 1.25);
+        weightSum += weight;
+        if (bandPos < 0.34) {
+          const lowWeight = 1.35 - bandPos;
+          lowRiseSum += riseDb * lowWeight;
+          lowWeightSum += lowWeight;
+        }
+        if (riseDb > 2.5) activeBands += 1;
+      }
+      signalCharacterPreviousBands = bands.slice();
+
+      const rawFluxDb = diffSum / Math.max(1, weightSum);
+      const rawHfcDb = hfcSum / Math.max(1, weightSum);
+      const rawLowRiseDb = lowRiseSum / Math.max(1, lowWeightSum);
+      signalCharacterFluxFloor = lerp(signalCharacterFluxFloor, rawFluxDb, rawFluxDb > signalCharacterFluxFloor ? 0.018 : 0.12);
+      signalCharacterFluxPeak = Math.max(signalCharacterFluxPeak * 0.985, rawFluxDb, 0.001);
+      const relativeFlux = Math.max(0, rawFluxDb - signalCharacterFluxFloor * 0.72);
+      const adaptiveFlux = relativeFlux / Math.max(0.75, signalCharacterFluxPeak * 0.52, signalCharacterFluxFloor * 1.8);
+      const superFlux = clamp(Math.pow(adaptiveFlux, 0.68), 0, 1);
+      const hfcImpact = clamp(Math.pow(rawHfcDb / 5.6, 0.74), 0, 1);
+      const lowImpact = clamp(Math.pow(rawLowRiseDb / 3.2, 0.72) * 0.74 + metrics.bassHit * 0.38, 0, 1);
+      const peakRise = clamp((metrics.peak - signalCharacterPreviousPeak) * 7.5, 0, 1);
+      const rmsRise = clamp((metrics.rms - signalCharacterPreviousRms) * 12, 0, 1);
+      signalCharacterPreviousPeak = lerp(signalCharacterPreviousPeak, metrics.peak, metrics.peak > signalCharacterPreviousPeak ? 0.78 : 0.18);
+      signalCharacterPreviousRms = lerp(signalCharacterPreviousRms, metrics.rms, metrics.rms > signalCharacterPreviousRms ? 0.62 : 0.14);
+
+      const elementHit = Math.max(
+        patternState.hits.kick,
+        patternState.hits.tom * 0.85,
+        patternState.hits.snare,
+        patternState.hits.hat * 0.78,
+        patternState.hits.cymbal * 0.72
+      );
+      const breadth = clamp(activeBands / Math.max(1, bands.length * 0.38), 0, 1);
+      const instant = clamp(superFlux * 0.42 + lowImpact * 0.24 + hfcImpact * 0.14 + peakRise * 0.1 + rmsRise * 0.06 + elementHit * 0.06 + breadth * 0.04, 0, 1);
+      const onsetThreshold = Math.max(0.18, signalCharacterOnsetEnvelope + 0.055);
+      if (instant > onsetThreshold && now - signalCharacterLastOnsetAt > 0.055) {
+        signalCharacterOnsets.push({ time: now, strength: instant });
+        signalCharacterLastOnsetAt = now;
+      }
+      signalCharacterOnsetEnvelope = lerp(signalCharacterOnsetEnvelope, instant, instant > signalCharacterOnsetEnvelope ? 0.34 : 0.085);
+      const densityWindow = 2.4;
+      while (signalCharacterOnsets.length && now - signalCharacterOnsets[0].time > densityWindow) {
+        signalCharacterOnsets.shift();
+      }
+      const density = clamp(signalCharacterOnsets.reduce((sum, event) => sum + event.strength, 0) / densityWindow / 4.2, 0, 1);
+      return { impact: instant, density, superFlux, peakRise, rmsRise, lowImpact, hfcImpact };
+    }
+
+    function zeroCrossingRateFromTime(values) {
+      if (!values || values.length < 2) return 0;
+      let crossings = 0;
+      let previous = values[0] - 128;
+      for (let i = 1; i < values.length; i += 1) {
+        const current = values[i] - 128;
+        if ((previous <= 0 && current > 0) || (previous >= 0 && current < 0)) crossings += 1;
+        previous = current;
+      }
+      return crossings / Math.max(1, values.length - 1);
     }
 
     function ampToDb(value) {
@@ -2414,6 +2747,7 @@
         meterState.spectrum = new Array(240).fill(0);
         meterState.spectrumDelta = new Array(240).fill(0);
         meterState.spectrumPeak = new Array(240).fill(0);
+        resetSpectralDynamicsState();
         meterState.loudnessFrames = [];
         meterState.peakDb = -120;
         meterState.momentaryDb = -120;
@@ -2458,32 +2792,9 @@
       const next = new Array(bars);
       const delta = new Array(bars);
       const peak = new Array(bars);
-      const nyquist = audioContext.sampleRate / 2;
+      const spectrumTiltDb = Number(spectrumTilt.value || 0);
       for (let i = 0; i < bars; i += 1) {
-        const a = i / bars;
-        const b = (i + 1) / bars;
-        const f0 = 16 * Math.pow(nyquist / 16, Math.pow(a, 1.34));
-        const f1 = 16 * Math.pow(nyquist / 16, Math.pow(b, 1.34));
-        const center = Math.sqrt(f0 * f1);
-        const bandwidth = Math.max(f1 - f0, nyquist / floatFreqData.length * 1.2);
-        const samples = i < 72 ? 7 : 5;
-        let power = 0;
-        let maxDb = -140;
-        let weightSum = 0;
-        for (let j = 0; j < samples; j += 1) {
-          const pos = samples === 1 ? 0 : (j / (samples - 1) - 0.5) * 2;
-          const freq = clamp(center + pos * bandwidth * 0.48, 16, nyquist);
-          const freqIndex = freq / nyquist * (floatFreqData.length - 1);
-          const db = interpolateFloatSpectrum(freqIndex);
-          const weight = 0.5 + 0.5 * Math.cos(pos * Math.PI);
-          maxDb = Math.max(maxDb, db);
-          power += Math.pow(10, db / 10) * weight;
-          weightSum += weight;
-        }
-        const meanDb = powerToDb(power / Math.max(0.0001, weightSum));
-        const binDb = meanDb * 0.82 + maxDb * 0.18;
-        const bassComp = i < 58 ? (1 - i / 58) * 0.045 : 0;
-        const shaped = Math.pow(dbToMeter(binDb - bassComp), 1.18);
+        const shaped = spectrumBandValue(i, bars, spectrumTiltDb).shaped;
         const previous = meterState.spectrum[i] || 0;
         const attack = shaped > previous ? 0.82 : 0.34;
         next[i] = lerp(previous, shaped, attack);
@@ -2493,6 +2804,7 @@
       meterState.spectrum = next;
       meterState.spectrumDelta = delta;
       meterState.spectrumPeak = peak;
+      updateSpectralDynamicsState(metrics.rms > 0.001 || metrics.peak > 0.004);
 
       leftAnalyser.getByteTimeDomainData(leftTime);
       rightAnalyser.getByteTimeDomainData(rightTime);
@@ -2738,6 +3050,7 @@
 
     function updateMetrics() {
       let hasLiveAudio = false;
+      let spectral = { density: 0, centroid: 0, flatness: 0, spectralCrest: 0 };
       if (!analyser) {
         metrics = {
           rms: 0,
@@ -2759,7 +3072,7 @@
         analyser.getByteFrequencyData(freqData);
         analyser.getByteTimeDomainData(timeData);
         const time = rmsFromTime(timeData);
-        const spectral = spectralShapeFeatures(freqData);
+        spectral = spectralShapeFeatures(freqData);
         const stereo = stereoEnergy();
         const flux = spectralFlux(freqData);
         metrics = {
@@ -2798,6 +3111,7 @@
       }
       beatFlash = Math.max(beatFlash * 0.72, metrics.bassHit, metrics.flux * 0.8);
       updatePatternDetector(hasLiveAudio);
+      updateSignalCharacterState(hasLiveAudio, spectral, timeData, freqData);
 
       for (const key of Object.keys(metrics)) {
         if (key === "density" || key === "centroid") {
@@ -3462,6 +3776,13 @@
       return lerp(a, b, frac);
     }
 
+    function spectrumDbAtFrequency(freq) {
+      if (!audioContext || !floatFreqData.length) return -140;
+      const nyquist = audioContext.sampleRate * 0.5;
+      const index = clamp(freq, 0, nyquist) / nyquist * (floatFreqData.length - 1);
+      return interpolateFloatSpectrum(index);
+    }
+
     function spectrogramBinDb(freq) {
       if (spectrogramDetailSelect.value !== "musical") {
         return spectrogramDbFromData(spectrogramFreqData, freq);
@@ -3477,12 +3798,289 @@
 
     function midiNoteName(midi) {
       const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-      return `${names[midi % 12]}${Math.floor(midi / 12) - 1}`;
+      if (!Number.isFinite(midi)) return "--";
+      const roundedMidi = Math.round(midi);
+      const noteIndex = ((roundedMidi % 12) + 12) % 12;
+      return `${names[noteIndex]}${Math.floor(roundedMidi / 12) - 1}`;
+    }
+
+    function frequencyToMidi(freq, referenceA = 440) {
+      if (!Number.isFinite(freq) || !Number.isFinite(referenceA) || freq <= 0 || referenceA <= 0) return NaN;
+      return 69 + 12 * Math.log2(freq / referenceA);
     }
 
     function isBlackMidiKey(midi) {
       return [1, 3, 6, 8, 10].includes(midi % 12);
     }
+
+    function getTunerFrame() {
+      if (analyser && tunerFloatTimeData.length === analyser.fftSize) {
+        analyser.getFloatTimeDomainData(tunerFloatTimeData);
+      }
+      const source = tunerFloatTimeData && tunerFloatTimeData.length ? tunerFloatTimeData : null;
+      const size = Math.min(source?.length || 0, 8192);
+      if (!size) return null;
+      const frame = new Float32Array(size);
+      let mean = 0;
+      for (let i = 0; i < size; i += 1) {
+        const v = Number.isFinite(source[i]) ? source[i] : 0;
+        frame[i] = v;
+        mean += v;
+      }
+      mean /= Math.max(1, size);
+      let rms = 0;
+      for (let i = 0; i < size; i += 1) {
+        frame[i] -= mean;
+        rms += frame[i] * frame[i];
+      }
+      return { frame, rms: Math.sqrt(rms / Math.max(1, size)) };
+    }
+
+    function normalizedAutocorrelationAt(frame, tau) {
+      const size = frame.length;
+      const maxTau = size - 2;
+      const t = clampFinite(tau, 1, maxTau, 1);
+      const iTau = clamp(Math.floor(t), 1, maxTau);
+      const frac = t - iTau;
+      const sample = (offset) => {
+        const currentTau = clamp(iTau + offset, 1, maxTau);
+        let ac = 0;
+        let e0 = 0;
+        let e1 = 0;
+        const limit = size - currentTau;
+        for (let i = 0; i < limit; i += 1) {
+          const a = frame[i];
+          const b = frame[i + currentTau];
+          ac += a * b;
+          e0 += a * a;
+          e1 += b * b;
+        }
+        return ac / Math.sqrt(Math.max(1e-12, e0 * e1));
+      };
+      const a = sample(0);
+      const b = sample(1);
+      return lerp(a, b, frac);
+    }
+
+    function detectPitchYin(frame, sampleRate, minFreq = 27.5, maxFreq = 4186) {
+      const size = frame.length;
+      const minTau = Math.max(2, Math.floor(sampleRate / maxFreq));
+      const maxTau = Math.min(Math.floor(sampleRate / minFreq), Math.floor(size * 0.5) - 2);
+      if (maxTau <= minTau + 2) return null;
+      const yin = new Float32Array(maxTau + 1);
+      for (let tau = 1; tau <= maxTau; tau += 1) {
+        let sum = 0;
+        const limit = size - tau;
+        for (let i = 0; i < limit; i += 1) {
+          const d = frame[i] - frame[i + tau];
+          sum += d * d;
+        }
+        yin[tau] = sum;
+      }
+      let running = 0;
+      for (let tau = 1; tau <= maxTau; tau += 1) {
+        running += yin[tau];
+        yin[tau] = running > 0 ? yin[tau] * tau / running : 1;
+      }
+      let tauEstimate = -1;
+      const threshold = 0.12;
+      for (let tau = minTau; tau <= maxTau; tau += 1) {
+        if (tau >= minTau && yin[tau] < threshold) {
+          while (tau + 1 <= maxTau && yin[tau + 1] < yin[tau]) tau += 1;
+          tauEstimate = tau;
+          break;
+        }
+      }
+      if (tauEstimate < 0) {
+        let best = minTau;
+        for (let tau = minTau + 1; tau <= maxTau; tau += 1) {
+          if (yin[tau] < yin[best]) best = tau;
+        }
+        tauEstimate = best;
+      }
+      const t0 = clamp(tauEstimate - 1, minTau, maxTau);
+      const t2 = clamp(tauEstimate + 1, minTau, maxTau);
+      const denominator = 2 * (2 * yin[tauEstimate] - yin[t2] - yin[t0]);
+      const parabolicOffset = Math.abs(denominator) > 0.000001 ? (yin[t2] - yin[t0]) / denominator : 0;
+      const betterTau = tauEstimate + clampFinite(parabolicOffset, -1, 1, 0);
+      if (!Number.isFinite(betterTau) || betterTau <= 0) return null;
+      const freq = sampleRate / betterTau;
+      const confidence = clampFinite(1 - yin[tauEstimate], 0, 1, 0);
+      if (!Number.isFinite(freq) || freq < minFreq || freq > maxFreq || confidence <= 0) return null;
+      const periodicity = normalizedAutocorrelationAt(frame, betterTau);
+      const refinedConfidence = clampFinite(confidence * 0.72 + Math.max(0, periodicity) * 0.28, 0, 1, confidence);
+      return { freq, confidence: refinedConfidence };
+    }
+
+    function detectLowestSpectralPitch(reference = 440) {
+      if (!audioContext || !floatFreqData.length) return null;
+      const minMidi = 21;
+      const maxMidi = 60;
+      let best = null;
+      for (let midi = minMidi; midi <= maxMidi; midi += 1) {
+        const freq = reference * (2 ** ((midi - 69) / 12));
+        if (freq < 27.5 || freq > 1046.5) continue;
+        const centerDb = spectrumDbAtFrequency(freq);
+        const lowSide = spectrumDbAtFrequency(freq / 2 ** (0.34 / 12));
+        const highSide = spectrumDbAtFrequency(freq * 2 ** (0.34 / 12));
+        const localContrast = centerDb - Math.max(lowSide, highSide);
+        const present = centerDb > -78 && localContrast > -1.5;
+        if (!present) continue;
+        let support = 0;
+        let weight = 0;
+        for (let harmonic = 2; harmonic <= 6; harmonic += 1) {
+          const harmonicFreq = freq * harmonic;
+          if (harmonicFreq >= audioContext.sampleRate * 0.48) break;
+          const harmonicDb = spectrumDbAtFrequency(harmonicFreq);
+          const expectedDrop = harmonic <= 3 ? 28 : 36;
+          const harmonicScore = smoothstep(-expectedDrop, 7, harmonicDb - centerDb);
+          support += harmonicScore / harmonic;
+          weight += 1 / harmonic;
+        }
+        const harmonicSupport = weight > 0 ? support / weight : 0;
+        const subStrength = smoothstep(-76, -30, centerDb);
+        const contrastScore = smoothstep(-1, 8, localContrast);
+        const confidence = clamp(subStrength * 0.48 + contrastScore * 0.22 + harmonicSupport * 0.3, 0, 1);
+        if (confidence < 0.34) continue;
+        const candidate = { freq, confidence, midi, db: centerDb };
+        if (!best || candidate.midi < best.midi || (candidate.midi === best.midi && candidate.confidence > best.confidence)) {
+          best = candidate;
+        }
+      }
+      return best;
+    }
+
+    function updateSignalCharacterState(hasLiveAudio, spectral, time, freq) {
+      const crestDb = hasLiveAudio ? ampToDb(metrics.peak) - ampToDb(Math.max(metrics.rms, 0.000001)) : 0;
+      const crestNorm = clamp((crestDb - 3) / 18, 0, 1);
+      const zcr = hasLiveAudio ? zeroCrossingRateFromTime(time) : 0;
+      const zcrNorm = clamp(zcr * 28, 0, 1);
+      const transientFeatures = signalCharacterTransientFeatures(hasLiveAudio, freq || freqData);
+      const transientDensity = transientFeatures.density;
+      const lowAnchor = clamp(tunerState.confidence * 0.72 + (tunerState.detected ? 0.28 : 0), 0, 1);
+      const bandTotal = Math.max(0.0001, metrics.low + metrics.mid + metrics.high);
+      const highRatio = clamp(metrics.high / bandTotal, 0, 1);
+      const hitEvidence = Math.max(
+        patternState.hits.kick,
+        patternState.hits.tom * 0.85,
+        patternState.hits.snare,
+        patternState.hits.hat * 0.78,
+        patternState.hits.cymbal * 0.72,
+        metrics.bassHit * 0.82,
+        metrics.midHit * 0.74
+      );
+      const tonal = clamp((1 - spectral.flatness) * 0.48 + spectral.spectralCrest * 0.34 + lowAnchor * 0.18 - zcrNorm * 0.08, 0, 1);
+      const noisy = clamp(spectral.flatness * 0.42 + zcrNorm * 0.24 + spectral.density * 0.18 + highRatio * 0.22 - spectral.spectralCrest * 0.06, 0, 1);
+      const sparse = clamp(1 - transientDensity * 0.78 - spectral.density * 0.22, 0, 1);
+      const transient = clamp(transientFeatures.impact * 0.78 + metrics.flux * 0.14 + Math.max(metrics.bassHit, metrics.midHit) * 0.08, 0, 1);
+      const mapNoise = clamp(shapeAudio(noisy * 0.9 + highRatio * 0.22 + (1 - tonal) * 0.08, 1.45), 0, 1);
+      const mapMotion = clamp(shapeAudio(
+        transientFeatures.impact * 0.64
+          + hitEvidence * 0.28
+          + metrics.flux * 0.22
+          + transientDensity * 0.12,
+        2.35
+      ), 0, 1);
+      const dynamic = crestNorm;
+      const targets = {
+        flatness: spectral.flatness,
+        spectralCrest: spectral.spectralCrest,
+        crestFactor: crestNorm,
+        zeroCrossing: zcrNorm,
+        transientDensity,
+        transientImpact: transientFeatures.impact,
+        eventDensity: transientDensity,
+        lowAnchor,
+        tonal,
+        noisy,
+        mapNoise,
+        mapMotion,
+        sparse,
+        transient,
+        dynamic
+      };
+      for (const [key, value] of Object.entries(targets)) {
+        const current = signalCharacterState[key] || 0;
+        const target = hasLiveAudio ? value : 0;
+        const isImpact = key === "transientImpact" || key === "transient" || key === "mapMotion";
+        const isMapAxis = key === "mapNoise";
+        const isDensity = key === "eventDensity" || key === "transientDensity";
+        const attack = isImpact ? 0.62 : isMapAxis ? 0.36 : isDensity ? 0.34 : 0.24;
+        const release = isImpact ? 0.3 : isMapAxis ? 0.18 : isDensity ? 0.16 : 0.12;
+        signalCharacterState[key] = lerp(current, target, target > current ? attack : release);
+      }
+    }
+
+    function chooseTunerPitchCandidate(yinResult, spectralResult) {
+      if (!spectralResult) return yinResult;
+      if (!yinResult) return spectralResult;
+      const octaveBelow = spectralResult.freq <= yinResult.freq * 0.78;
+      const strongLowest = spectralResult.confidence > 0.42;
+      if (octaveBelow && strongLowest) return spectralResult;
+      if (spectralResult.freq < yinResult.freq && spectralResult.confidence > yinResult.confidence * 0.82) return spectralResult;
+      return yinResult;
+    }
+
+    function updateTunerState(force = false) {
+      const now = performance.now() / 1000;
+      if (!force && now - tunerState.lastAnalysisAt < 0.075) return;
+      tunerState.lastAnalysisAt = now;
+      if (!analyser || !audioContext) {
+        tunerState.stable = false;
+        tunerState.detected = false;
+        tunerState.rms = 0;
+        tunerState.density = 0;
+        return;
+      }
+      const input = getTunerFrame();
+      if (!input) return;
+      const reference = clampFinite(Number(tunerReference.value), 410, 480, 440);
+      const result = chooseTunerPitchCandidate(
+        detectPitchYin(input.frame, audioContext.sampleRate),
+        detectLowestSpectralPitch(reference)
+      );
+      const densityPenalty = smoothstep(0.62, 0.92, metrics.density);
+      if (input.rms > 0.006 || smoothed.rms > 0.01) tunerState.lastSignalAt = now;
+      const usable = Boolean(result)
+        && input.rms > 0.004
+        && result.confidence > 0.42;
+      tunerState.rms = lerp(tunerState.rms, input.rms, 0.28);
+      tunerState.density = lerp(tunerState.density, metrics.density, 0.2);
+      if (!usable) {
+        tunerState.confidence = lerp(tunerState.confidence, 0, 0.22);
+        tunerState.stable = false;
+        tunerState.detected = false;
+        return;
+      }
+      const midi = frequencyToMidi(result.freq, reference);
+      if (!Number.isFinite(midi)) {
+        tunerState.confidence = lerp(tunerState.confidence, 0, 0.22);
+        tunerState.stable = false;
+        tunerState.detected = false;
+        return;
+      }
+      const rounded = Math.round(midi);
+      const cents = clampFinite((midi - rounded) * 100, -50, 50, 0);
+      const nextNote = midiNoteName(rounded);
+      const noteChanged = nextNote !== tunerState.note;
+      const previousFreq = !noteChanged && Number.isFinite(tunerState.freq) && tunerState.freq > 0 ? tunerState.freq : result.freq;
+      const previousCents = !noteChanged && Number.isFinite(tunerState.cents) ? tunerState.cents : cents;
+      tunerState.freq = lerp(previousFreq, result.freq, noteChanged ? 0.75 : 0.52);
+      tunerState.cents = lerp(previousCents, cents, noteChanged ? 0.82 : 0.68);
+      tunerState.note = nextNote;
+      if (tunerState.note === "--") {
+        tunerState.confidence = lerp(tunerState.confidence, 0, 0.22);
+        tunerState.stable = false;
+        tunerState.detected = false;
+        return;
+      }
+      tunerState.confidence = lerp(clampFinite(tunerState.confidence, 0, 1, 0), result.confidence * (1 - densityPenalty * 0.45), 0.34);
+      tunerState.detected = result.confidence > 0.42;
+      tunerState.stable = tunerState.detected && Math.abs(tunerState.cents) <= 50;
+      if (tunerState.detected) tunerState.lastDetectedAt = now;
+      if (tunerState.stable) tunerState.lastStableAt = now;
+    }
+
 
     function spectrogramNotes() {
       const notes = [];
@@ -3791,6 +4389,253 @@
       ctx.restore();
     }
 
+    function drawTunerPanel(x, y, w, h) {
+      updateTunerState();
+      ctx.fillStyle = "#030303";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#282828";
+      ctx.strokeRect(x, y, w, h);
+      const now = performance.now() / 1000;
+      const stale = now - tunerState.lastDetectedAt > 1.5;
+      const hasSignal = tunerState.rms > 0.006 || smoothed.rms > 0.01;
+      const sustainedSignal = hasSignal && now - tunerState.lastSignalAt < 0.4 && now - tunerState.lastSignalAt > -0.001;
+      const safeCents = clampFinite(tunerState.cents, -50, 50, 0);
+      const safeFreq = Number.isFinite(tunerState.freq) && tunerState.freq > 0 ? tunerState.freq : 0;
+      const safeNote = typeof tunerState.note === "string" && tunerState.note !== "undefined" ? tunerState.note : "--";
+      const recentlyDetected = now - tunerState.lastDetectedAt < 0.55;
+      const detected = Boolean((tunerState.detected || recentlyDetected) && safeNote !== "--" && safeFreq > 0);
+      const atonal = sustainedSignal && stale && tunerState.density > 0.84 && tunerState.confidence < 0.18;
+      const isInTune = detected && Math.abs(safeCents) <= 3;
+      const centerX = x + w * 0.5;
+      const top = y + 18;
+      const railY = y + h * 0.46;
+      const leftX = x + 54;
+      const rightX = x + w - 54;
+      const dotX = clampFinite(centerX + (safeCents / 50) * ((rightX - leftX) * 0.5), leftX, rightX, centerX);
+      const color = !detected
+        ? [118, 126, 136]
+        : isInTune
+          ? [57, 255, 20]
+          : Math.abs(safeCents) <= 10
+            ? [255, 190, 40]
+            : [255, 35, 24];
+      const displayText = detected
+        ? safeNote.replace(/(\d+)$/, "")
+        : atonal
+          ? "WTF?"
+          : "--";
+      ctx.save();
+      ctx.font = "700 16px Inter, ui-sans-serif, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "rgba(245,245,245,0.92)";
+      ctx.fillText("Tuner", centerX, top);
+      ctx.font = "700 13px Inter, ui-sans-serif, system-ui, sans-serif";
+      ctx.fillStyle = "rgba(245,245,245,0.86)";
+      ctx.fillText("-50", leftX, railY - 38);
+      ctx.fillText("0", centerX, railY - 38);
+      ctx.fillText("+50", rightX, railY - 38);
+      ctx.strokeStyle = "rgba(255,255,255,0.14)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(leftX, railY);
+      ctx.lineTo(centerX - 30, railY);
+      ctx.moveTo(centerX + 30, railY);
+      ctx.lineTo(rightX, railY);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(centerX, railY, 22, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalCompositeOperation = "screen";
+      const glow = ctx.createRadialGradient(dotX, railY, 2, dotX, railY, 28);
+      glow.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},0.72)`);
+      glow.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(dotX, railY, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+      ctx.beginPath();
+      ctx.arc(dotX, railY, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = displayText === "WTF?" ? "800 22px Inter, ui-sans-serif, system-ui, sans-serif" : "800 24px Inter, ui-sans-serif, system-ui, sans-serif";
+      ctx.fillStyle = displayText === "WTF?" ? "rgba(255,58,24,0.92)" : "rgba(245,245,245,0.94)";
+      ctx.fillText(displayText, centerX, railY + 36);
+      ctx.font = "700 13px Inter, ui-sans-serif, system-ui, sans-serif";
+      ctx.textBaseline = "bottom";
+      ctx.textAlign = "left";
+      ctx.fillStyle = "rgba(245,245,245,0.86)";
+      ctx.fillText(detected ? `${safeFreq.toFixed(1)} Hz` : "-- Hz", x + 42, y + h - 22);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(166,188,210,0.74)";
+      ctx.fillText(`${safeCents >= 0 ? "+" : ""}${safeCents.toFixed(1)} cents`, centerX, y + h - 22);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "rgba(245,245,245,0.86)";
+      ctx.fillText(`A4 ${clampFinite(Number(tunerReference.value), 410, 480, 440).toFixed(1)} Hz`, x + w - 42, y + h - 22);
+      ctx.restore();
+    }
+
+    function drawCharacterMeter(label, leftLabel, rightLabel, value, x, y, w, h, color) {
+      const v = clampFinite(value, 0, 1, 0);
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#2b2b2b";
+      ctx.strokeRect(x, y, w, h);
+      drawMeterText(label, x, y - 5, 10, "rgba(245,245,245,0.86)");
+      const fillW = Math.max(1, w * v);
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, fillW, h);
+      drawMeterText(leftLabel, x, y + h + 9, 8, "rgba(166,166,166,0.62)");
+      ctx.save();
+      ctx.textAlign = "right";
+      drawMeterText(rightLabel, x + w, y + h + 9, 8, "rgba(166,166,166,0.62)");
+      drawMeterText(v.toFixed(2), x + w - 34, y - 5, 10, "rgba(166,166,166,0.95)");
+      ctx.restore();
+    }
+
+    function drawSignalDecisionBar(label, value, x, y, w, color) {
+      const v = clampFinite(value, 0, 1, 0);
+      drawMeterText(label, x, y - 5, 10, "rgba(245,245,245,0.86)");
+      ctx.save();
+      ctx.textAlign = "right";
+      drawMeterText(v.toFixed(2), x + w, y - 5, 10, "rgba(166,188,210,0.82)");
+      ctx.restore();
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(x, y, w, 8);
+      ctx.strokeStyle = "#2b2b2b";
+      ctx.strokeRect(x, y, w, 8);
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, Math.max(1, w * v), 8);
+    }
+
+    function drawSignalCharacterMap(x, y, w, h) {
+      const noiseAxis = clampFinite(signalCharacterState.mapNoise, 0, 1, 0);
+      const motionAxis = clampFinite(signalCharacterState.mapMotion, 0, 1, 0);
+      const hasSignal = smoothed.rms > 0.012 || metrics.rms > 0.008 || metrics.peak > 0.018;
+      const px = x + noiseAxis * w;
+      const py = y + motionAxis * h;
+      if (!hasSignal) {
+        signalCharacterTrail.length = 0;
+      } else {
+        const latest = signalCharacterTrail[signalCharacterTrail.length - 1];
+        if (!latest || Math.abs(latest.x - px) + Math.abs(latest.y - py) > 1.8) {
+          signalCharacterTrail.push({ x: px, y: py, tonal: signalCharacterState.tonal, noisy: signalCharacterState.noisy, motion: motionAxis });
+          if (signalCharacterTrail.length > 32) signalCharacterTrail.shift();
+        }
+      }
+
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#2b2b2b";
+      ctx.strokeRect(x, y, w, h);
+      ctx.strokeStyle = "rgba(245,245,245,0.08)";
+      for (let i = 1; i < 4; i += 1) {
+        const gx = x + (w * i) / 4;
+        const gy = y + (h * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(gx, y);
+        ctx.lineTo(gx, y + h);
+        ctx.moveTo(x, gy);
+        ctx.lineTo(x + w, gy);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(245,245,245,0.18)";
+      ctx.beginPath();
+      ctx.moveTo(x + w / 2, y);
+      ctx.lineTo(x + w / 2, y + h);
+      ctx.moveTo(x, y + h / 2);
+      ctx.lineTo(x + w, y + h / 2);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.lineWidth = 1;
+      for (let i = 1; i < signalCharacterTrail.length; i += 1) {
+        const a = i / Math.max(1, signalCharacterTrail.length - 1);
+        const p0 = signalCharacterTrail[i - 1];
+        const p1 = signalCharacterTrail[i];
+        ctx.strokeStyle = `rgba(245,245,245,${0.04 + a * 0.18})`;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      if (hasSignal) {
+        const red = Math.round(120 + signalCharacterState.transient * 135);
+        const green = Math.round(40 + signalCharacterState.lowAnchor * 190);
+        const blue = Math.round(110 + signalCharacterState.noisy * 120);
+        ctx.fillStyle = `rgb(${red},${green},${blue})`;
+        ctx.beginPath();
+        ctx.arc(px, py, 8.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "rgba(245,245,245,0.88)";
+        ctx.beginPath();
+        ctx.arc(px, py, 12.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+
+      ctx.save();
+      ctx.textAlign = "center";
+      drawMeterText("STABLE", x + w * 0.5, y + 13, 9, "rgba(166,188,210,0.76)");
+      drawMeterText("TRANSIENT", x + w * 0.5, y + h - 7, 9, "rgba(166,188,210,0.76)");
+      ctx.textAlign = "left";
+      drawMeterText("TONAL", x + 6, y + h * 0.5 - 4, 9, "rgba(166,188,210,0.72)");
+      ctx.textAlign = "right";
+      drawMeterText("NOISY", x + w - 6, y + h * 0.5 - 4, 9, "rgba(166,188,210,0.72)");
+      ctx.restore();
+    }
+
+    function drawSignalCharacterPanel(x, y, w, h) {
+      ctx.fillStyle = "#030303";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#282828";
+      ctx.strokeRect(x, y, w, h);
+      const pad = 18;
+      const mapW = Math.max(228, Math.floor(w * 0.52));
+      const mapH = Math.max(100, h - 62);
+      const mapX = x + pad;
+      const mapY = y + 30;
+      drawMeterText("CHARACTER MAP", mapX, y + 17, 10, "rgba(245,245,245,0.82)");
+      drawSignalCharacterMap(mapX, mapY, mapW, mapH);
+
+      const decisionX = mapX + mapW + 18;
+      const decisionW = Math.max(180, x + w - pad - decisionX);
+      const tunerTrust = clamp(signalCharacterState.lowAnchor * 0.46 + signalCharacterState.tonal * 0.34 + (1 - signalCharacterState.noisy) * 0.2, 0, 1);
+      const patternTrust = clamp(signalCharacterState.transientImpact * 0.5 + signalCharacterState.eventDensity * 0.3 + signalCharacterState.spectralCrest * 0.2, 0, 1);
+      const noiseRisk = signalCharacterState.noisy;
+      drawMeterText("DECISION STRIP", decisionX, y + 17, 10, "rgba(245,245,245,0.82)");
+      drawSignalDecisionBar("Tuner Trust", tunerTrust, decisionX, mapY + 4, decisionW, "#bc30ec");
+      drawSignalDecisionBar("Pattern Trust", patternTrust, decisionX, mapY + 31, decisionW, "#ff3d1f");
+      drawSignalDecisionBar("Low Anchor", signalCharacterState.lowAnchor, decisionX, mapY + 58, decisionW, "#39ff14");
+      drawSignalDecisionBar("Noise Risk", noiseRisk, decisionX, mapY + 85, decisionW, "#529eff");
+      drawSignalDecisionBar("Event Density", signalCharacterState.eventDensity, decisionX, mapY + 112, decisionW, "#ffbe28");
+
+      const rawY = y + h - 22;
+      const rawX = x + pad;
+      const rawW = w - pad * 2;
+      ctx.fillStyle = "rgba(245,245,245,0.045)";
+      ctx.fillRect(rawX, rawY - 13, rawW, 21);
+      const raw = [
+        ["Flat", signalCharacterState.flatness],
+        ["Crest", signalCharacterState.spectralCrest],
+        ["Peak/RMS", signalCharacterState.crestFactor],
+        ["Impact", signalCharacterState.transientImpact],
+        ["Events", signalCharacterState.eventDensity]
+      ];
+      const colW = rawW / raw.length;
+      raw.forEach(([label, value], index) => {
+        const tx = rawX + index * colW + 7;
+        drawMeterText(label, tx, rawY - 2, 8, "rgba(166,188,210,0.7)");
+        drawMeterText(clampFinite(value, 0, 1, 0).toFixed(2), tx, rawY + 8, 9, "rgba(245,245,245,0.82)");
+      });
+    }
+
     function drawSpectrumPanel(x, y, w, h) {
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
@@ -3924,6 +4769,129 @@
         ctx.fillRect(mx + 1, ly - 10, mark.label.length * 7 + 4, 12);
         drawMeterText(mark.label, mx + 3, ly, 10, mark.major ? "rgba(146,154,174,0.88)" : "rgba(166,166,166,0.78)");
       }
+    }
+
+    function drawSpectrumFrequencyMarks(x, y, w, h) {
+      const marks = [
+        { f: 20, label: "20", major: false },
+        { f: 100, label: "100", major: true },
+        { f: 500, label: "500", major: false },
+        { f: 1000, label: "1k", major: true },
+        { f: 5000, label: "5k", major: false },
+        { f: 10000, label: "10k", major: true },
+        { f: 20000, label: "20k", major: false }
+      ];
+      ctx.strokeStyle = "rgba(126,138,162,0.25)";
+      ctx.lineWidth = 1;
+      for (const mark of marks) {
+        const mx = spectrumXForFrequency(mark.f, x, w);
+        ctx.beginPath();
+        ctx.moveTo(mx, y);
+        ctx.lineTo(mx, y + h);
+        ctx.stroke();
+        const ly = mark.major ? y + 14 : y + h - 8;
+        ctx.fillStyle = "rgba(0,0,0,0.62)";
+        ctx.fillRect(mx + 1, ly - 10, mark.label.length * 7 + 4, 12);
+        drawMeterText(mark.label, mx + 3, ly, 10, mark.major ? "rgba(146,154,174,0.88)" : "rgba(166,166,166,0.78)");
+      }
+    }
+
+    function drawSpectralDynamicsPanel(x, y, w, h) {
+      ctx.fillStyle = "#030303";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#282828";
+      ctx.strokeRect(x, y, w, h);
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      for (let i = 1; i < 6; i += 1) {
+        const gy = y + h * i / 6;
+        ctx.beginPath();
+        ctx.moveTo(x, gy);
+        ctx.lineTo(x + w, gy);
+        ctx.stroke();
+      }
+
+      const state = meterState.spectralDynamics;
+      const bars = state.current.length || 192;
+      const barW = w / Math.max(1, bars - 1);
+      const hasSignal = metrics.rms > 0.001 || metrics.peak > 0.004 || state.current.some((value) => value > 0.012);
+      drawSpectrumFrequencyMarks(x, y, w, h);
+      if (!hasSignal) {
+        drawMeterText("waiting for signal", x + 8, y + h - 8, 10, "rgba(166,166,166,0.48)");
+        return;
+      }
+
+      const display = spectralDynamicsDisplaySelect.value;
+      const rangeMode = spectralDynamicsRangeSelect.value;
+      const minPath = [];
+      const maxPath = [];
+      const avgPath = [];
+      const currentPath = [];
+      for (let i = 0; i < bars; i += 1) {
+        const px = x + i * barW;
+        const minV = clamp(state.min[i] || 0, 0, 1);
+        const maxV = clamp(Math.max(state.max[i] || 0, minV), 0, 1);
+        const avgV = clamp(state.average[i] || 0, 0, 1);
+        const currentV = clamp(state.current[i] || 0, 0, 1);
+        minPath.push({ x: px, y: y + h - minV * h, value: minV });
+        maxPath.push({ x: px, y: y + h - maxV * h, value: maxV });
+        avgPath.push({ x: px, y: y + h - avgV * h, value: avgV });
+        currentPath.push({ x: px, y: y + h - currentV * h, value: currentV, range: clamp(state.range[i] || 0, 0, 1) });
+      }
+
+      const envelope = new Path2D();
+      envelope.moveTo(maxPath[0].x, maxPath[0].y);
+      for (let i = 1; i < maxPath.length; i += 1) envelope.lineTo(maxPath[i].x, maxPath[i].y);
+      for (let i = minPath.length - 1; i >= 0; i -= 1) envelope.lineTo(minPath[i].x, minPath[i].y);
+      envelope.closePath();
+
+      if (display !== "delta") {
+        const envFill = ctx.createLinearGradient(x, y + h, x, y);
+        envFill.addColorStop(0, "rgba(38,0,80,0.18)");
+        envFill.addColorStop(0.5, "rgba(150,28,160,0.32)");
+        envFill.addColorStop(1, "rgba(255,56,24,0.22)");
+        ctx.fillStyle = envFill;
+        ctx.fill(envelope);
+        ctx.strokeStyle = "rgba(188,76,214,0.42)";
+        ctx.lineWidth = 0.85;
+        ctx.stroke(envelope);
+      }
+
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      for (let i = 0; i < currentPath.length; i += 1) {
+        const p = currentPath[i];
+        const width = Math.max(1.2, barW * 0.82);
+        const dynamic = rangeMode === "delta" || display === "delta" ? p.range : clamp(p.range * 1.35, 0, 1);
+        if (dynamic < 0.015) continue;
+        ctx.fillStyle = spectrumColor(clamp(dynamic * 1.2 + p.value * 0.35, 0, 1), clamp(0.16 + dynamic * 0.72, 0, 0.88));
+        ctx.fillRect(p.x - width * 0.5, y + h - dynamic * h, width, dynamic * h);
+      }
+      ctx.restore();
+
+      if (display !== "delta") {
+        ctx.strokeStyle = "rgba(245,245,245,0.5)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        avgPath.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+      }
+
+      if (display === "envelopeCurrent") {
+        ctx.strokeStyle = "rgba(156,166,206,0.9)";
+        ctx.lineWidth = 1.15;
+        ctx.beginPath();
+        currentPath.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+      }
+
+      const avgRange = state.range.reduce((sum, value) => sum + value, 0) / Math.max(1, state.range.length);
+      drawMeterText(`${spectralDynamicsWindowSelect.options[spectralDynamicsWindowSelect.selectedIndex]?.text || "Medium"}  ${rangeMode === "peak" ? "peak hold" : rangeMode === "delta" ? "delta" : "min/max"}  dyn ${avgRange.toFixed(2)}`, x + 8, y + h - 8, 10, "rgba(166,166,166,0.78)");
     }
 
     function drawStereoScopeGrid(cx, cy, r, compact) {
@@ -5120,6 +6088,61 @@
       };
     }
 
+    function auditTunerContract() {
+      return {
+        available: availableLayoutModules.includes("tuner"),
+        active: currentLayoutModules.includes("tuner"),
+        controlsPresent: Boolean(tunerReference && tunerReferenceValue),
+        rendererPresent: typeof METERING_MODULE_BY_ID.tuner?.renderer === "function",
+        metrics: {
+          reference: Number(tunerReference?.value || 0),
+          min: Number(tunerReference?.min || 0),
+          max: Number(tunerReference?.max || 0),
+          cents: tunerState.cents,
+          note: tunerState.note,
+          detected: tunerState.detected,
+          stable: tunerState.stable
+        }
+      };
+    }
+
+    function auditSignalCharacterContract() {
+      const values = [
+        signalCharacterState.flatness,
+        signalCharacterState.spectralCrest,
+        signalCharacterState.crestFactor,
+        signalCharacterState.zeroCrossing,
+        signalCharacterState.transientDensity,
+        signalCharacterState.transientImpact,
+        signalCharacterState.eventDensity,
+        signalCharacterState.lowAnchor
+      ];
+      return {
+        available: availableLayoutModules.includes("signalCharacter"),
+        active: currentLayoutModules.includes("signalCharacter"),
+        rendererPresent: typeof METERING_MODULE_BY_ID.signalCharacter?.renderer === "function",
+        valuesFinite: values.every(Number.isFinite),
+        displayContract: {
+          characterMap: true,
+          decisionStrip: true,
+          rawDescriptors: true,
+          flatBarsOnly: true,
+          hidesPointWithoutSignal: true,
+          trailPoints: signalCharacterTrail.length
+        },
+        metrics: {
+          flatness: signalCharacterState.flatness,
+          spectralCrest: signalCharacterState.spectralCrest,
+          crestFactor: signalCharacterState.crestFactor,
+          zeroCrossing: signalCharacterState.zeroCrossing,
+          transientDensity: signalCharacterState.transientDensity,
+          transientImpact: signalCharacterState.transientImpact,
+          eventDensity: signalCharacterState.eventDensity,
+          lowAnchor: signalCharacterState.lowAnchor
+        }
+      };
+    }
+
     function drawFrame() {
       const frameStart = performance.now();
       t += 1;
@@ -5230,6 +6253,19 @@
     spectrumFftSelect.addEventListener("change", () => {
       configureSpectrumAnalyser();
     });
+    spectrumTilt.addEventListener("input", () => {
+      spectrumTiltValue.textContent = `${Number(spectrumTilt.value).toFixed(1)}dB`;
+    });
+    spectralDynamicsFftSelect.addEventListener("change", () => {
+      configureSpectrumAnalyser();
+      resetSpectralDynamicsState();
+    });
+    spectralDynamicsWindowSelect.addEventListener("change", resetSpectralDynamicsState);
+    spectralDynamicsRangeSelect.addEventListener("change", resetSpectralDynamicsState);
+    spectralDynamicsDisplaySelect.addEventListener("change", resetSpectralDynamicsState);
+    spectralDynamicsTilt.addEventListener("input", () => {
+      spectralDynamicsTiltValue.textContent = `${Number(spectralDynamicsTilt.value).toFixed(1)}dB`;
+    });
     spectrogramFftSelect.addEventListener("change", () => {
       configureSpectrogramAnalyser();
     });
@@ -5247,6 +6283,9 @@
     spectrogramFreqOverlaySelect.addEventListener("change", () => resetSpectrogramState(false));
     spectrogramPianoOverlaySelect.addEventListener("change", () => resetSpectrogramState(false));
     spectrogramLoopSelect.addEventListener("change", () => resetSpectrogramState());
+    tunerReference.addEventListener("input", () => {
+      tunerReferenceValue.textContent = `${Number(tunerReference.value).toFixed(1)}Hz`;
+    });
     algorithmSelect.addEventListener("change", applyAlgorithmUi);
     floatingInspectorClose.addEventListener("click", closeFloatingInspector);
     inspectorBackdrop.addEventListener("click", closeFloatingInspector);
@@ -5267,7 +6306,9 @@
       waveformDisplay: auditWaveformDisplayContract,
       layoutAddSlotSpacing: auditLayoutAddSlotSpacing,
       stereoLayers: auditStereoLayerContract,
-      spectrogram: auditSpectrogramContract
+      spectrogram: auditSpectrogramContract,
+      tuner: auditTunerContract,
+      signalCharacter: auditSignalCharacterContract
     };
     window.addEventListener("resize", () => {
       updateGraphControlScale();
@@ -5290,5 +6331,6 @@
     organizeGraphControls();
     refreshInputCapabilities();
     setInputSource("system");
+    algorithmSelect.value = getInitialLayoutId();
     applyAlgorithmUi();
     drawFrame();

@@ -444,7 +444,6 @@
         Surface Projection
         <select id="wavesModeSelect">
           <option value="waves" selected>3D Waves</option>
-          <option value="iso">Iso 3D</option>
           <option value="flat">Flat</option>
         </select>
       </label>
@@ -461,8 +460,8 @@
         Surface Detail
         <select id="wavesDensitySelect">
           <option value="24">Low</option>
-          <option value="36" selected>Medium</option>
-          <option value="52">High</option>
+          <option value="36">Medium</option>
+          <option value="52" selected>High</option>
         </select>
       </label>
 
@@ -472,8 +471,8 @@
       </label>
 
       <label>
-        Wave Deform <span id="wavesGlowValue">0.70</span>
-        <input id="wavesGlow" type="range" min="0" max="1" step="0.01" value="0.70">
+        Wave Deform <span id="wavesGlowValue">1.00</span>
+        <input id="wavesGlow" type="range" min="0" max="2" step="0.01" value="1">
       </label>
 
       <section class="algorithm-local" aria-label="Pattern detector parameters">

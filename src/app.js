@@ -381,6 +381,8 @@ const canvas = document.getElementById("blobCanvas");
       envelope: { kick: 0, tom: 0, snare: 0, hat: 0, cymbal: 0, global: 0 },
       hits: { kick: 0, tom: 0, snare: 0, hat: 0, cymbal: 0, global: 0 },
       lastHit: { kick: -99, tom: -99, snare: -99, hat: -99, cymbal: -99, global: -99 },
+      classLock: { type: null, until: -99 },
+      pendingHits: [],
       events: [],
       bpm: 0,
       confidence: 0,
@@ -396,11 +398,35 @@ const canvas = document.getElementById("blobCanvas");
     };
     const PATTERN_DETECTOR_PROFILE = {
       kick: { sensitivity: 1.1, threshold: 0.92, gain: 3.05, envAttack: 0.04, envRelease: 0.16, hold: 0.68 },
-      tom: { sensitivity: 1.1, threshold: 0.8, gain: 2.85, envAttack: 0.035, envRelease: 0.18, hold: 0.68 },
+      tom: { sensitivity: 0.82, threshold: 0.96, gain: 2.1, envAttack: 0.045, envRelease: 0.22, hold: 0.46 },
       snare: { sensitivity: 1.08, threshold: 0.9, gain: 3.1, envAttack: 0.04, envRelease: 0.16, hold: 0.68 },
       hat: { sensitivity: 1.25, threshold: 0.74, gain: 2.65, envAttack: 0.018, envRelease: 0.26, hold: 0.55 },
       cymbal: { sensitivity: 1.1, threshold: 0.82, gain: 2.45, envAttack: 0.018, envRelease: 0.34, hold: 0.7 },
       global: { sensitivity: 1, threshold: 1, gain: 2.8, envAttack: 0.04, envRelease: 0.16, hold: 0.68 }
+    };
+    const PATTERN_DETECTOR_COMPETITION = {
+      kick: { close: 0.72, floor: 0.14, decay: 0.42 },
+      tom: { close: 0.82, floor: 0.1, decay: 0.32 },
+      snare: { close: 0.62, floor: 0.2, decay: 0.44 },
+      hat: { close: 0.62, floor: 0.18, decay: 0.5 },
+      cymbal: { close: 0.68, floor: 0.16, decay: 0.54 },
+      global: { close: 0, floor: 1, decay: 1 }
+    };
+    const PATTERN_DECISION_LATENCY_SECONDS = 0.012;
+    const PATTERN_CLASS_TIMING = {
+      kick: { lock: 0.18, minSeparation: 0.18 },
+      tom: { lock: 0.045, minSeparation: 0.22 },
+      snare: { lock: 0.3, minSeparation: 0.13 },
+      hat: { lock: 0.07, minSeparation: 0.045 },
+      cymbal: { lock: 0.28, minSeparation: 0.2 },
+      global: { lock: 0, minSeparation: 0.08 }
+    };
+    const PATTERN_CLASS_FAMILY = {
+      kick: "low",
+      tom: "low",
+      snare: "midHigh",
+      hat: "midHigh",
+      cymbal: "midHigh"
     };
     const spectralOutState = {
       r: 0,
@@ -752,9 +778,26 @@ const canvas = document.getElementById("blobCanvas");
       };
     }
 
+    function bindSharedRangeReset(input) {
+      if (!input || input.type !== "range" || input.dataset.sharedRangeReset === "1") return;
+      input.dataset.sharedRangeReset = "1";
+      input.title = input.title || "Double-click to reset";
+      input.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const fallback = input.getAttribute("value");
+        const nextValue = input.defaultValue || fallback;
+        if (nextValue == null || input.value === nextValue) return;
+        input.value = nextValue;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }
+
     function moveControlById(id, mount) {
       const control = document.getElementById(id);
       const wrapper = control ? control.closest("label") : null;
+      bindSharedRangeReset(control);
       if (wrapper && mount) mount.appendChild(wrapper);
     }
 
@@ -1163,6 +1206,7 @@ const canvas = document.getElementById("blobCanvas");
       const readout = document.querySelector("aside .readout");
       if (meterWrapper && readoutControlsMount) readoutControlsMount.appendChild(meterWrapper);
       if (readout && readoutControlsMount) readoutControlsMount.appendChild(readout);
+      document.querySelectorAll('input[type="range"]').forEach(bindSharedRangeReset);
       updateGraphControlScale();
     }
 
@@ -2383,6 +2427,8 @@ const canvas = document.getElementById("blobCanvas");
         patternState.hits[key] = 0;
         patternState.lastHit[key] = -99;
       }
+      patternState.classLock = { type: null, until: -99 };
+      patternState.pendingHits = [];
       patternState.events = [];
       patternState.bpm = 0;
       patternState.confidence = 0;
@@ -2396,6 +2442,50 @@ const canvas = document.getElementById("blobCanvas");
       patternState.cymbalFlash = 0;
       patternState.spectralFlash = 0;
       previousPatternFreqData = new Uint8Array(freqData.length);
+    }
+
+    function releasePendingPatternHits(now, threshold, minSeparation) {
+      const due = [];
+      const waiting = [];
+      for (const pending of patternState.pendingHits) {
+        if (pending.releaseAt <= now) due.push(pending);
+        else waiting.push(pending);
+      }
+      patternState.pendingHits = waiting;
+      if (!due.length) return;
+
+      const familyWinners = {};
+      for (const candidate of due) {
+        const family = PATTERN_CLASS_FAMILY[candidate.key];
+        if (!family) continue;
+        if (!familyWinners[family] || candidate.score > familyWinners[family].score) {
+          familyWinners[family] = candidate;
+        }
+      }
+
+      for (const candidate of due) {
+        const key = candidate.key;
+        const profile = PATTERN_DETECTOR_PROFILE[key] || PATTERN_DETECTOR_PROFILE.global;
+        const competition = PATTERN_DETECTOR_COMPETITION[key] || PATTERN_DETECTOR_COMPETITION.global;
+        const timing = PATTERN_CLASS_TIMING[key] || PATTERN_CLASS_TIMING.global;
+        let hit = candidate.hit;
+        const family = PATTERN_CLASS_FAMILY[key];
+        const familyWinner = family ? familyWinners[family] : null;
+        if (familyWinner && key !== familyWinner.key && key !== "global") {
+          const ratio = candidate.score / Math.max(0.001, familyWinner.score);
+          const gate = competition.floor + smoothstep(competition.close, 1.04, ratio) * (1 - competition.floor);
+          hit *= gate;
+        }
+        patternState.hits[key] = Math.max(patternState.hits[key], hit);
+        const effectiveMinSeparation = Math.max(minSeparation, timing.minSeparation);
+        if (hit > threshold * profile.threshold && now - patternState.lastHit[key] > effectiveMinSeparation) {
+          patternState.lastHit[key] = now;
+          if (key !== "global") {
+            patternState.classLock = { type: key, family: PATTERN_CLASS_FAMILY[key], until: now + timing.lock };
+          }
+          patternState.events.push({ time: now, type: key, strength: hit });
+        }
+      }
     }
 
     function updatePatternDetector(hasLiveAudio) {
@@ -2427,6 +2517,7 @@ const canvas = document.getElementById("blobCanvas");
       const spectralRise = 1 - Math.exp(-1 / Math.max(1, spectralSmooth * 60));
       const flashFall = 1 - Math.exp(-1 / 7);
       if (!hasLiveAudio) {
+        patternState.pendingHits = [];
         for (const key of Object.keys(patternState.hits)) {
           patternState.hits[key] *= 0.82;
           patternState.envelope[key] *= 0.98;
@@ -2498,18 +2589,36 @@ const canvas = document.getElementById("blobCanvas");
       const hatDominance = clamp((hatCore * 0.9 + hatTick * 0.32 - cymbalAir * 0.44 - snareShell * 0.1 + 0.01) * 1.8, 0, 1);
       const cymbalDominance = clamp((cymbalAir * 0.92 + cymbalWash * 0.5 + highBand * 0.24 - hatCore * 0.12 + 0.01) * 1.6, 0, 1);
       const tomRatio = tomCore / Math.max(0.001, deepSub + kickFundamental * 0.28);
-      const tomGate = smoothstep(0.95, 1.75, tomRatio) * smoothstep(0.3, 0.82, tomDominance);
+      const snareBodyGate = smoothstep(0.08, 0.42, snareShell + snareBody * 0.28);
+      const highToBodyRatio = (hatCore + hatAir * 0.5 + hatTick * 0.35) / Math.max(0.001, snareShell + snareBody * 0.35);
+      const hatSpectralGate = smoothstep(0.9, 1.95, highToBodyRatio);
+      const hatOnlyGate = smoothstep(0.08, 0.34, hatCore + hatTick * 0.4) * (1 - smoothstep(0.1, 0.5, snareShell + snareBody * 0.2));
+      const tomCandidate = smoothstep(0.16, 0.5, tomCore + tomRing * 0.85 + tomUpper * 0.34)
+        * smoothstep(0.58, 1.42, tomRatio)
+        * (1 - smoothstep(0.42, 0.92, snareCrack + clapNoise * 0.35));
+      const tomGate = smoothstep(0.26, 0.78, tomDominance + tomFlux * 2 + tomRing * 0.5) * (0.24 + tomCandidate * 0.82);
       const kickTransientGate = smoothstep(0.002, 0.018, kickFlux + Math.max(0, kickFundamental - patternState.envelope.kick) * 0.14 + metrics.bassHit * 0.035);
+      const kickCandidate = smoothstep(0.14, 0.58, kickFundamental + deepSub * 0.55 + kickPunch * 0.28)
+        * (1 - smoothstep(0.22, 0.78, snareNoiseMass + hatCore * 0.25) * (1 - kickDominance * 0.45))
+        * (1 - tomCandidate * smoothstep(0.18, 0.64, tomCore + tomRing));
+      const snareCandidate = smoothstep(0.14, 0.72, snareNoiseMass + snareBody * 0.18)
+        * (0.3 + snareBodyGate * 0.84)
+        * (1 - smoothstep(0.4, 0.9, kickLowMass) * (1 - snareDominance * 0.5));
+      const hatCandidate = smoothstep(0.11, 0.48, hatCore + hatTick * 0.35 + hatAir * 0.12)
+        * (0.46 + Math.max(hatOnlyGate, hatSpectralGate) * 0.76)
+        * (1 - smoothstep(0.32, 0.82, snareNoiseMass + cymbalAir * 0.25) * 0.34);
+      const cymbalCandidate = smoothstep(0.1, 0.46, cymbalAir + cymbalWash * 0.32 + highBand * 0.12)
+        * (1 - smoothstep(0.18, 0.54, hatCore - cymbalAir * 0.32) * 0.28);
       const highTail = Math.max(patternState.envelope.hat * 0.5, patternState.envelope.cymbal * 0.4);
       const hatTransient = Math.max(0, hatFlux * 3 + hatTick * 0.26 - highTail * 0.16);
       const cymbalTransient = Math.max(0, cymbalFlux * 2.6 + cymbalWash * 0.28 - patternState.envelope.cymbal * 0.1);
 
       const features = {
-        kick: Math.max(0, (kickFundamental * 0.94 + deepSub * 0.44 + kickPunch * 0.28 + kickFlux * 1.35 + Math.max(0, kickLowMass - snareShell) * 0.24 - tomCore * 0.18 - snareShell * 0.2 - snareCrack * 0.3 - clapNoise * 0.18 - hatCore * 0.12 - boxMid * 0.1) * (0.72 + kickDominance * 0.64) * (0.24 + kickTransientGate * 0.76)),
-        tom: Math.max(0, (tomCore * 0.78 + tomRing * 0.32 + tomUpper * 0.14 + Math.max(0, tomCore - deepSub * 0.55) * 0.62 + tomFlux * 0.85 + lowMid * 0.04 - kickFundamental * 0.12 - deepSub * 0.18 - snareCrack * 0.1 - hatCore * 0.08) * (0.36 + tomDominance * 0.64) * tomGate),
-        snare: Math.max(0, (snareShell * 0.52 + snareBody * 0.18 + snareCrack * 0.55 + clapNoise * 0.24 + snareFlux * 0.95 + metrics.flux * 0.06 - kickFundamental * 0.2 - kickPunch * 0.1 - hatCore * 0.18) * (0.74 + snareDominance * 0.58)),
-        hat: Math.max(0, (hatCore * 0.54 + hatTick * 0.22 + hatAir * 0.12 + hatTransient * 0.42 + highBand * 0.08 - kickFundamental * 0.05 - kickPunch * 0.03 - cymbalAir * 0.22) * (0.72 + hatDominance * 0.36)),
-        cymbal: Math.max(0, (cymbalBody * 0.24 + cymbalAir * 0.5 + cymbalWash * 0.32 + cymbalTransient * 0.38 + highBand * 0.14 - kickFundamental * 0.04) * (0.74 + cymbalDominance * 0.36)),
+        kick: Math.max(0, (kickFundamental * 0.94 + deepSub * 0.44 + kickPunch * 0.28 + kickFlux * 1.35 + Math.max(0, kickLowMass - snareShell) * 0.24 - tomCore * 0.18 - snareShell * 0.2 - snareCrack * 0.3 - clapNoise * 0.18 - hatCore * 0.12 - boxMid * 0.1) * (0.72 + kickDominance * 0.64) * (0.18 + kickTransientGate * 0.82) * (0.18 + kickCandidate * 0.82)),
+        tom: Math.max(0, (tomCore * 0.72 + tomRing * 0.78 + tomUpper * 0.2 + Math.max(0, tomCore - deepSub * 0.52) * 0.52 + tomFlux * 0.86 + lowMid * 0.03 - kickFundamental * 0.1 - deepSub * 0.2 - snareCrack * 0.14 - hatCore * 0.08) * (0.24 + tomDominance * 0.58) * tomGate),
+        snare: Math.max(0, (snareShell * 0.7 + snareBody * 0.26 + snareCrack * 0.42 + clapNoise * 0.16 + snareFlux * 0.92 + metrics.flux * 0.04 - kickFundamental * 0.18 - kickPunch * 0.08 - hatCore * 0.24 - hatAir * 0.12) * (0.62 + snareDominance * 0.58) * (0.28 + snareCandidate * 0.84)),
+        hat: Math.max(0, (hatCore * 0.72 + hatTick * 0.42 + hatAir * 0.14 + hatTransient * 0.48 + highBand * 0.08 - kickFundamental * 0.04 - kickPunch * 0.02 - cymbalAir * 0.16 - snareShell * 0.1) * (0.68 + hatDominance * 0.42) * (0.42 + hatCandidate * 0.84)),
+        cymbal: Math.max(0, (cymbalBody * 0.24 + cymbalAir * 0.56 + cymbalWash * 0.36 + cymbalTransient * 0.42 + highBand * 0.14 - kickFundamental * 0.04) * (0.72 + cymbalDominance * 0.42) * (0.44 + cymbalCandidate * 0.76)),
         global: globalEnergy
       };
 
@@ -2524,28 +2633,82 @@ const canvas = document.getElementById("blobCanvas");
       } else if (features.kick > features.snare * 0.82 && kickDominance > snareDominance && snareDominance < 0.42) {
         features.snare *= 0.54 + snareDominance * 0.24;
       }
+      if (snareCandidate > 0.42 && snareBodyGate > 0.26 && kickDominance < 0.72) {
+        features.kick *= 0.48 + kickDominance * 0.28;
+      }
+      if (snareCandidate > 0.34 && snareCrack + snareShell * 0.36 > (kickFundamental + deepSub * 0.5) * 0.42) {
+        features.kick *= 0.38 + kickDominance * 0.24;
+      }
+      if (snareBodyGate > 0.46 && snareCandidate > 0.42) {
+        features.cymbal *= 0.28 + cymbalCandidate * 0.3;
+        features.hat *= 0.52 + hatCandidate * 0.22;
+      }
+      if (Math.max(hatOnlyGate, hatSpectralGate) > 0.34 && snareBodyGate < 0.58) {
+        features.snare *= 0.2 + snareBodyGate * 0.42;
+        features.hat *= 1.14 + Math.max(hatOnlyGate, hatSpectralGate) * 0.32;
+      }
+      if (cymbalCandidate > 0.62 && cymbalAir > hatCore * 0.92 && snareBodyGate < 0.52) {
+        features.hat *= 0.58 + hatCandidate * 0.28;
+        features.snare *= 0.62 + snareCandidate * 0.18;
+      }
+      if (cymbalCandidate > 0.42 && cymbalWash + cymbalAir * 0.42 > hatTick + hatCore * 0.22) {
+        features.cymbal *= 1.14 + cymbalCandidate * 0.22;
+        features.hat *= 0.46 + hatCandidate * 0.24;
+      }
+      if (cymbalCandidate > 0.5 && cymbalAir > snareShell + snareBody * 0.28 && snareBodyGate < 0.62) {
+        features.snare *= 0.5 + snareBodyGate * 0.28;
+      }
+
+      const rankedFeatures = ["kick", "tom", "snare", "hat", "cymbal"]
+        .map((label) => ({ label, value: clamp(features[label], 0, 1) }))
+        .sort((a, b) => b.value - a.value);
+      const familyTop = {};
+      for (const item of rankedFeatures) {
+        const family = PATTERN_CLASS_FAMILY[item.label];
+        if (family && !familyTop[family]) familyTop[family] = item;
+      }
 
       for (const key of Object.keys(features)) {
         const profile = PATTERN_DETECTOR_PROFILE[key] || PATTERN_DETECTOR_PROFILE.global;
+        const competition = PATTERN_DETECTOR_COMPETITION[key] || PATTERN_DETECTOR_COMPETITION.global;
         const value = clamp(features[key], 0, 1);
         const env = patternState.envelope[key];
         const rise = Math.max(0, value - patternState.previous[key]);
         const relativeNovelty = Math.max(0, value - env) / Math.max(0.045, env * 0.7 + 0.035);
         const novelty = Math.max(0, value - env) + rise * 0.8 + relativeNovelty * 0.045;
         const localThreshold = threshold * 0.34 * profile.threshold;
-        const hit = clamp((novelty * sensitivity * profile.sensitivity - localThreshold) * profile.gain, 0, 1);
+        const rawHit = clamp((novelty * sensitivity * profile.sensitivity - localThreshold) * profile.gain, 0, 1);
+        const family = PATTERN_CLASS_FAMILY[key];
+        const topFeature = family ? familyTop[family] : null;
+        const featureRatio = key === "global" || !topFeature ? 1 : value / Math.max(0.001, topFeature.value);
+        const rankGate = key === "global" || !topFeature || key === topFeature.label
+          ? 1
+          : competition.floor + smoothstep(competition.close, 1.04, featureRatio) * (1 - competition.floor);
+        let hit = rawHit * rankGate;
+        if (patternState.classLock.type && now < patternState.classLock.until && key !== patternState.classLock.type && key !== "global" && patternState.classLock.family === family) {
+          const lockedFeature = clamp(features[patternState.classLock.type] || 0, 0, 1);
+          const escapeGate = smoothstep(1.12, 1.8, value / Math.max(0.001, lockedFeature));
+          hit *= 0.18 + escapeGate * 0.82;
+        }
         const strongestOther = Math.max(...Object.entries(features)
           .filter(([other]) => other !== key && other !== "global")
           .map(([, otherValue]) => clamp(otherValue, 0, 1)));
         const dominantHold = value >= strongestOther * 0.85 ? profile.hold : Math.min(profile.hold, 0.46);
-        patternState.hits[key] = Math.max(patternState.hits[key] * dominantHold, hit);
+        patternState.hits[key] *= dominantHold * competition.decay;
         patternState.envelope[key] = lerp(env, value, value > env ? profile.envAttack : profile.envRelease);
         patternState.previous[key] = value;
-        if (hit > threshold * profile.threshold && now - patternState.lastHit[key] > minSeparation) {
-          patternState.lastHit[key] = now;
-          patternState.events.push({ time: now, type: key, strength: hit });
+        if (hit > 0.001) {
+          patternState.pendingHits.push({
+            key,
+            hit,
+            value,
+            score: hit * (0.45 + value * 0.55),
+            time: now,
+            releaseAt: now + PATTERN_DECISION_LATENCY_SECONDS
+          });
         }
       }
+      releasePendingPatternHits(now, threshold, minSeparation);
       if (previousPatternFreqData.length !== freqData.length) {
         previousPatternFreqData = new Uint8Array(freqData.length);
       }
@@ -5991,12 +6154,20 @@ const canvas = document.getElementById("blobCanvas");
     function makeWavesColumn(rows, scale) {
       const source = meterState.spectrum.length ? meterState.spectrum : new Array(96).fill(0);
       const column = [];
+      let peak = 0;
       for (let row = 0; row < rows; row += 1) {
         const idx = wavesFrequencyIndex(row, rows, scale, source.length);
         const prev = source[Math.max(0, idx - 1)] || 0;
         const current = source[idx] || 0;
         const next = source[Math.min(source.length - 1, idx + 1)] || 0;
-        column.push(clamp((prev * 0.2 + current * 0.6 + next * 0.2) * 1.28, 0, 1));
+        const value = clamp((prev * 0.2 + current * 0.6 + next * 0.2) * 1.28, 0, 1);
+        peak = Math.max(peak, value);
+        column.push(value);
+      }
+      if (peak > 0.001) {
+        for (let i = 0; i < column.length; i += 1) {
+          column[i] = clamp(Math.pow(column[i] / peak, 0.82), 0, 1);
+        }
       }
       return column;
     }
@@ -6026,12 +6197,12 @@ const canvas = document.getElementById("blobCanvas");
       const temporal = wavesState.phase + ageNorm * Math.PI * (1.25 + midCurrent * 0.45);
       const xAngle = sideTilt + temporal + u * Math.PI * (1.55 + midCurrent * 0.8);
       const yAngle = temporal * 0.48 + v * Math.PI * (2.15 + highCurrent * 0.95);
-      const orbit = strength * (3.5 + amp * 10 + lowCurrent * 5 + highCurrent * 2.5);
+      const orbit = strength * (2.8 + amp * 8.2 + lowCurrent * 4 + highCurrent * 2.1);
       const pulse = Math.sin((u * 1.55 + v * 1.2 - wavesState.phase * 0.8) * Math.PI * 2);
       const shock = wavesState.shock;
       return {
-        x: Math.cos(xAngle + amp * Math.PI * 0.8) * orbit * (0.28 + v * 0.22) + slope * plotW * 0.006,
-        y: Math.sin(yAngle + amp * Math.PI * 0.55) * orbit * (0.18 + (1 - v) * 0.12) - pulse * shock * strength * plotH * 0.008,
+        x: Math.cos(xAngle + amp * Math.PI * 0.8) * orbit * (0.2 + v * 0.16) + slope * plotW * 0.0045,
+        y: Math.sin(yAngle + amp * Math.PI * 0.55) * orbit * (0.13 + (1 - v) * 0.09) - pulse * shock * strength * plotH * 0.005,
         z: (Math.sin(xAngle - yAngle) * 0.11 + pulse * shock * 0.14) * strength * amp
       };
     }
@@ -6046,13 +6217,13 @@ const canvas = document.getElementById("blobCanvas");
           z: amp
         };
       }
-      const baseX = plotX + plotW * 0.08;
-      const baseY = plotY + plotH * 0.86;
-      const timeX = plotW * 0.72;
-      const timeY = -plotH * 0.28;
-      const freqX = plotW * 0.28;
-      const freqY = -plotH * 0.54;
-      const zY = plotH * (0.18 + strength * 0.2);
+      const baseX = plotX + plotW * 0.12;
+      const baseY = plotY + plotH * 0.9;
+      const timeX = plotW * 0.62;
+      const timeY = -plotH * 0.18;
+      const freqX = plotW * 0.2;
+      const freqY = -plotH * 0.36;
+      const zY = plotH * (0.1 + Math.min(strength, 1.4) * 0.12);
       return {
         x: baseX + u * timeX + v * freqX + warp.x,
         y: baseY + u * timeY + v * freqY - warpedAmp * zY + warp.y,
@@ -6188,9 +6359,9 @@ const canvas = document.getElementById("blobCanvas");
       const plotH = h - pad * 2;
       const projection = wavesModeSelect?.value || "waves";
       const scale = wavesInputSelect?.value || "log";
-      const rows = clampFinite(Number(wavesDensitySelect?.value || 36), 16, 64, 36);
+      const rows = clampFinite(Number(wavesDensitySelect?.value || 52), 16, 64, 52);
       const persistence = clampFinite(Number(wavesPersistence?.value || 0.62), 0, 1, 0.62);
-      const strength = clampFinite(Number(wavesGlow?.value || 0.7), 0, 1, 0.7);
+      const strength = clampFinite(Number(wavesGlow?.value || 1), 0, 2, 1);
       const maxColumns = Math.round(44 + persistence * 76);
 
       if (!hasSignal) {
@@ -7924,8 +8095,8 @@ const canvas = document.getElementById("blobCanvas");
         displayContract: {
           hidesWithoutSignal: true,
           usesSpectrumHistory: true,
-          modes: ["waves", "iso", "flat"],
-          isoProjection: true,
+          modes: ["waves", "flat"],
+          isoProjection: false,
           visibleSpectrumPalette: true,
           spectralSurfaceCells: true,
           wavemakerSurfaceWarp: true,

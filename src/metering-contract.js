@@ -122,11 +122,11 @@ window.METTR_CONTRACT = {
       id: "Default",
       modules: [
         "spectrum",
+        "spectralDynamics",
         "oscilloscope",
         "waveformShort",
         "waveformMedium",
         "waveformLong",
-        "spectralDynamics",
         "spectrogram",
         "waves",
         "stereo",

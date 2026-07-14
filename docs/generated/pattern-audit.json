@@ -1,0 +1,3696 @@
+{
+  "generatedAt": "2026-07-14T19:38:13.515Z",
+  "reference": {
+    "format": 1,
+    "tracks": 2,
+    "division": 96,
+    "embeddedTempos": [
+      {
+        "tick": 0,
+        "bpm": 120
+      }
+    ],
+    "forcedBpm": 120,
+    "events": [
+      {
+        "type": "kick",
+        "note": 36,
+        "tick": 0,
+        "sourceTick": 0,
+        "time": 0,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "tom",
+        "note": 45,
+        "tick": 480,
+        "sourceTick": 96,
+        "time": 0.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "snare",
+        "note": 38,
+        "tick": 960,
+        "sourceTick": 192,
+        "time": 1,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "hat",
+        "note": 42,
+        "tick": 1440,
+        "sourceTick": 288,
+        "time": 1.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.045
+      },
+      {
+        "type": "cymbal",
+        "note": 49,
+        "tick": 1920,
+        "sourceTick": 384,
+        "time": 2,
+        "strength": 0.7874015748031497,
+        "duration": 0.18
+      },
+      {
+        "type": "kick",
+        "note": 36,
+        "tick": 2400,
+        "sourceTick": 480,
+        "time": 2.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "snare",
+        "note": 38,
+        "tick": 2400,
+        "sourceTick": 480,
+        "time": 2.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "snare",
+        "note": 38,
+        "tick": 2880,
+        "sourceTick": 576,
+        "time": 3,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "hat",
+        "note": 42,
+        "tick": 2880,
+        "sourceTick": 576,
+        "time": 3,
+        "strength": 0.7874015748031497,
+        "duration": 0.045
+      },
+      {
+        "type": "hat",
+        "note": 42,
+        "tick": 3360,
+        "sourceTick": 672,
+        "time": 3.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.045
+      },
+      {
+        "type": "tom",
+        "note": 45,
+        "tick": 3360,
+        "sourceTick": 672,
+        "time": 3.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "tom",
+        "note": 45,
+        "tick": 3840,
+        "sourceTick": 768,
+        "time": 4,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "cymbal",
+        "note": 49,
+        "tick": 3840,
+        "sourceTick": 768,
+        "time": 4,
+        "strength": 0.7874015748031497,
+        "duration": 0.18
+      },
+      {
+        "type": "kick",
+        "note": 36,
+        "tick": 4320,
+        "sourceTick": 864,
+        "time": 4.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "hat",
+        "note": 42,
+        "tick": 4320,
+        "sourceTick": 864,
+        "time": 4.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.045
+      },
+      {
+        "type": "kick",
+        "note": 36,
+        "tick": 4800,
+        "sourceTick": 960,
+        "time": 5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "tom",
+        "note": 45,
+        "tick": 4800,
+        "sourceTick": 960,
+        "time": 5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "snare",
+        "note": 38,
+        "tick": 5280,
+        "sourceTick": 1056,
+        "time": 5.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "tom",
+        "note": 45,
+        "tick": 5280,
+        "sourceTick": 1056,
+        "time": 5.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "kick",
+        "note": 36,
+        "tick": 5760,
+        "sourceTick": 1152,
+        "time": 6,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "kick",
+        "note": 36,
+        "tick": 6000,
+        "sourceTick": 1200,
+        "time": 6.25,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "snare",
+        "note": 38,
+        "tick": 6240,
+        "sourceTick": 1248,
+        "time": 6.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "kick",
+        "note": 36,
+        "tick": 6480,
+        "sourceTick": 1296,
+        "time": 6.75,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "hat",
+        "note": 42,
+        "tick": 6720,
+        "sourceTick": 1344,
+        "time": 7,
+        "strength": 0.7874015748031497,
+        "duration": 0.045
+      },
+      {
+        "type": "kick",
+        "note": 36,
+        "tick": 6840,
+        "sourceTick": 1368,
+        "time": 7.125,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "snare",
+        "note": 38,
+        "tick": 6960,
+        "sourceTick": 1392,
+        "time": 7.25,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "tom",
+        "note": 45,
+        "tick": 7080,
+        "sourceTick": 1416,
+        "time": 7.375,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "hat",
+        "note": 42,
+        "tick": 7200,
+        "sourceTick": 1440,
+        "time": 7.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.045
+      },
+      {
+        "type": "cymbal",
+        "note": 49,
+        "tick": 7200,
+        "sourceTick": 1440,
+        "time": 7.5,
+        "strength": 0.7874015748031497,
+        "duration": 0.18
+      },
+      {
+        "type": "snare",
+        "note": 38,
+        "tick": 7320,
+        "sourceTick": 1464,
+        "time": 7.625,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "snare",
+        "note": 38,
+        "tick": 7440,
+        "sourceTick": 1488,
+        "time": 7.75,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      },
+      {
+        "type": "kick",
+        "note": 36,
+        "tick": 7560,
+        "sourceTick": 1512,
+        "time": 7.875,
+        "strength": 0.7874015748031497,
+        "duration": 0.07
+      }
+    ]
+  },
+  "results": [
+    {
+      "name": "kick",
+      "expected": "kick",
+      "predicted": "kick",
+      "predictedFeature": "kick",
+      "predictedCount": "kick",
+      "pass": true,
+      "duration": 0.40047916666666666,
+      "sampleRate": 48000,
+      "frameCount": 38,
+      "rmsAvg": 0.08665774706446033,
+      "peakAvg": 0.2544042360723803,
+      "peaks": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 0,
+        "hat": 1,
+        "cymbal": 0.0256
+      },
+      "peakFeatures": {
+        "kick": 2.1903883925643988,
+        "tom": 0.04275475467310842,
+        "snare": 0.07356245692116856,
+        "hat": 0.5659288738258601,
+        "cymbal": 0.3359718826321442
+      },
+      "averages": {
+        "kick": 0.6224277891330888,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0.053304482635803105,
+        "cymbal": 0.0008963334360382063
+      },
+      "hitCounts": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 0,
+        "hat": 1,
+        "cymbal": 0
+      },
+      "firstHit": {
+        "kick": 0.157,
+        "tom": null,
+        "snare": null,
+        "hat": 0.157,
+        "cymbal": null
+      },
+      "retriggersAfter250ms": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0,
+        "cymbal": 0
+      },
+      "targetDominance": 1,
+      "featureDominance": 3.8704305326509902,
+      "diagnostics": {
+        "tonalLowTailMax": 0.9855742296918768,
+        "highWashMax": 0.1468753068257255,
+        "kickTransientGateMax": 1,
+        "tomGateMax": 0.3398591093651084,
+        "fluxMax": 1
+      },
+      "events": [
+        {
+          "time": 0.157,
+          "type": "kick",
+          "strength": 1
+        },
+        {
+          "time": 0.157,
+          "type": "hat",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "name": "snare",
+      "expected": "snare",
+      "predicted": "kick",
+      "predictedFeature": "snare",
+      "predictedCount": "kick",
+      "pass": true,
+      "duration": 0.3926875,
+      "sampleRate": 48000,
+      "frameCount": 37,
+      "rmsAvg": 0.04347127365713862,
+      "peakAvg": 0.25486305642973733,
+      "peaks": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 1,
+        "hat": 0.061589759186329834,
+        "cymbal": 1
+      },
+      "peakFeatures": {
+        "kick": 0.6967215099704669,
+        "tom": 0.02037816896055185,
+        "snare": 0.9945519911684195,
+        "hat": 0.7358018862875447,
+        "cymbal": 0.806354047997962
+      },
+      "averages": {
+        "kick": 0.03816775257139356,
+        "tom": 0,
+        "snare": 0.17562295492123428,
+        "hat": 0.005720838013237138,
+        "cymbal": 0.09904760315602326
+      },
+      "hitCounts": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 1,
+        "hat": 0,
+        "cymbal": 1
+      },
+      "firstHit": {
+        "kick": 0.157,
+        "tom": null,
+        "snare": 0.157,
+        "hat": null,
+        "cymbal": 0.221
+      },
+      "retriggersAfter250ms": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0,
+        "cymbal": 0
+      },
+      "targetDominance": 1,
+      "featureDominance": 1.2333936856120715,
+      "diagnostics": {
+        "tonalLowTailMax": 0.715686274509804,
+        "highWashMax": 0.528724210510373,
+        "kickTransientGateMax": 1,
+        "tomGateMax": 0.24108076707772771,
+        "fluxMax": 1
+      },
+      "events": [
+        {
+          "time": 0.157,
+          "type": "kick",
+          "strength": 1
+        },
+        {
+          "time": 0.157,
+          "type": "snare",
+          "strength": 1
+        },
+        {
+          "time": 0.221,
+          "type": "cymbal",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "name": "tom",
+      "expected": "tom",
+      "predicted": "kick",
+      "predictedFeature": "tom",
+      "predictedCount": "kick",
+      "pass": true,
+      "duration": 0.21972916666666667,
+      "sampleRate": 48000,
+      "frameCount": 21,
+      "rmsAvg": 0.06790831817520034,
+      "peakAvg": 0.26450228974932716,
+      "peaks": {
+        "kick": 1,
+        "tom": 1,
+        "snare": 0.0050247002321613474,
+        "hat": 1,
+        "cymbal": 0
+      },
+      "peakFeatures": {
+        "kick": 1.1731287445086878,
+        "tom": 1.698433705840675,
+        "snare": 0.11459053441329937,
+        "hat": 0.3001830136655338,
+        "cymbal": 0.06349915090909994
+      },
+      "averages": {
+        "kick": 0.4441054990760696,
+        "tom": 0.39663751665060104,
+        "snare": 0.0002999892673354373,
+        "hat": 0.061842918985760206,
+        "cymbal": 0
+      },
+      "hitCounts": {
+        "kick": 1,
+        "tom": 1,
+        "snare": 0,
+        "hat": 1,
+        "cymbal": 0
+      },
+      "firstHit": {
+        "kick": 0.253,
+        "tom": 0.157,
+        "snare": null,
+        "hat": 0.157,
+        "cymbal": null
+      },
+      "retriggersAfter250ms": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0,
+        "cymbal": 0
+      },
+      "targetDominance": 1,
+      "featureDominance": 1.4477811696208909,
+      "diagnostics": {
+        "tonalLowTailMax": 0.6390756302521009,
+        "highWashMax": 0.0526989724751157,
+        "kickTransientGateMax": 1,
+        "tomGateMax": 1.0317138756432653,
+        "fluxMax": 1
+      },
+      "events": [
+        {
+          "time": 0.157,
+          "type": "tom",
+          "strength": 1
+        },
+        {
+          "time": 0.157,
+          "type": "hat",
+          "strength": 1
+        },
+        {
+          "time": 0.253,
+          "type": "kick",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "name": "hats",
+      "expected": "hat",
+      "predicted": "snare",
+      "predictedFeature": "hat",
+      "predictedCount": "hat",
+      "pass": true,
+      "duration": 0.1985625,
+      "sampleRate": 48000,
+      "frameCount": 19,
+      "rmsAvg": 0.03684480467253928,
+      "peakAvg": 0.3086664169830711,
+      "peaks": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 1,
+        "hat": 1,
+        "cymbal": 0.0256
+      },
+      "peakFeatures": {
+        "kick": 0,
+        "tom": 0.1764922965364464,
+        "snare": 1.2211768340431068,
+        "hat": 1.4690429385781818,
+        "cymbal": 0.54574194735167
+      },
+      "averages": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 0.0659940900941102,
+        "hat": 0.6189334393044471,
+        "cymbal": 0.003267802814391676
+      },
+      "hitCounts": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 1,
+        "hat": 2,
+        "cymbal": 0
+      },
+      "firstHit": {
+        "kick": null,
+        "tom": null,
+        "snare": 0.157,
+        "hat": 0.157,
+        "cymbal": null
+      },
+      "retriggersAfter250ms": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0,
+        "cymbal": 0
+      },
+      "targetDominance": 1,
+      "featureDominance": 1.2029731465789708,
+      "diagnostics": {
+        "tonalLowTailMax": 0.056582633053221296,
+        "highWashMax": 0.32416446660167586,
+        "kickTransientGateMax": 1,
+        "tomGateMax": 0.7423856576781771,
+        "fluxMax": 1
+      },
+      "events": [
+        {
+          "time": 0.157,
+          "type": "snare",
+          "strength": 1
+        },
+        {
+          "time": 0.157,
+          "type": "hat",
+          "strength": 0.9333636804993202
+        },
+        {
+          "time": 0.24233333333333332,
+          "type": "hat",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "name": "cymbal",
+      "expected": "cymbal",
+      "predicted": "hat",
+      "predictedFeature": "cymbal",
+      "predictedCount": "cymbal",
+      "pass": true,
+      "duration": 0.4605208333333333,
+      "sampleRate": 48000,
+      "frameCount": 44,
+      "rmsAvg": 0.03167171483575134,
+      "peakAvg": 0.19392024680696937,
+      "peaks": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 0.10224000848263681,
+        "hat": 1,
+        "cymbal": 1
+      },
+      "peakFeatures": {
+        "kick": 0.02230294247620942,
+        "tom": 0.022253125466084607,
+        "snare": 0.7986879689590134,
+        "hat": 1.0045080947439284,
+        "cymbal": 1.163871483026803
+      },
+      "averages": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 0.0029132855521860133,
+        "hat": 0.04442319137746798,
+        "cymbal": 0.5300679034574886
+      },
+      "hitCounts": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 0,
+        "hat": 1,
+        "cymbal": 2
+      },
+      "firstHit": {
+        "kick": null,
+        "tom": null,
+        "snare": null,
+        "hat": 0.157,
+        "cymbal": 0.157
+      },
+      "retriggersAfter250ms": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0,
+        "cymbal": 1
+      },
+      "targetDominance": 1,
+      "featureDominance": 1.1586481872239167,
+      "diagnostics": {
+        "tonalLowTailMax": 0.22478991596638653,
+        "highWashMax": 0.5340993117105017,
+        "kickTransientGateMax": 1,
+        "tomGateMax": 0.37639808620654913,
+        "fluxMax": 1
+      },
+      "events": [
+        {
+          "time": 0.157,
+          "type": "hat",
+          "strength": 1
+        },
+        {
+          "time": 0.157,
+          "type": "cymbal",
+          "strength": 0.8931804620169526
+        },
+        {
+          "time": 0.3596666666666667,
+          "type": "cymbal",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "name": "synthetic_kick_plus_808_tail",
+      "expected": "kick",
+      "predicted": "kick",
+      "predictedFeature": "kick",
+      "predictedCount": "kick",
+      "pass": true,
+      "duration": 1.535,
+      "sampleRate": 48000,
+      "frameCount": 144,
+      "rmsAvg": 0.29557128049169823,
+      "peakAvg": 0.40265299214257133,
+      "peaks": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 0,
+        "hat": 1,
+        "cymbal": 0.01671215099803017
+      },
+      "peakFeatures": {
+        "kick": 2.4425891017580845,
+        "tom": 0.03875993291528429,
+        "snare": 0.06876414484803597,
+        "hat": 0.4453533165094969,
+        "cymbal": 0.17703132763855728
+      },
+      "averages": {
+        "kick": 0.19523549542150787,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0.009018759018759016,
+        "cymbal": 0.00015441272505719436
+      },
+      "hitCounts": {
+        "kick": 2,
+        "tom": 0,
+        "snare": 0,
+        "hat": 1,
+        "cymbal": 0
+      },
+      "firstHit": {
+        "kick": 0.157,
+        "tom": null,
+        "snare": null,
+        "hat": 0.157,
+        "cymbal": null
+      },
+      "retriggersAfter250ms": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0,
+        "cymbal": 0
+      },
+      "targetDominance": 1,
+      "featureDominance": 5.484609659813767,
+      "diagnostics": {
+        "tonalLowTailMax": 0.9840336134453782,
+        "highWashMax": 0.10443953005527398,
+        "kickTransientGateMax": 1,
+        "tomGateMax": 0.31629573297138047,
+        "fluxMax": 1
+      },
+      "events": [
+        {
+          "time": 0.157,
+          "type": "kick",
+          "strength": 1
+        },
+        {
+          "time": 0.157,
+          "type": "hat",
+          "strength": 1
+        },
+        {
+          "time": 0.733,
+          "type": "kick",
+          "strength": 0.9516962210085664
+        }
+      ]
+    },
+    {
+      "name": "synthetic_kick_plus_snare",
+      "expected": "kick",
+      "predicted": "kick",
+      "predictedFeature": "kick",
+      "predictedCount": "kick",
+      "pass": true,
+      "duration": 0.40047916666666666,
+      "sampleRate": 48000,
+      "frameCount": 38,
+      "rmsAvg": 0.05599666319881754,
+      "peakAvg": 0.25351527833232756,
+      "peaks": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 0.04000000000000001,
+        "hat": 1,
+        "cymbal": 1
+      },
+      "peakFeatures": {
+        "kick": 1.7062097714662643,
+        "tom": 0.0275399724873853,
+        "snare": 0.255492470309715,
+        "hat": 1.0372763114699977,
+        "cymbal": 1.4125194229556726
+      },
+      "averages": {
+        "kick": 0.6566138390188293,
+        "tom": 0,
+        "snare": 0.001319748719843742,
+        "hat": 0.03668561570513658,
+        "cymbal": 0.3510070418752394
+      },
+      "hitCounts": {
+        "kick": 2,
+        "tom": 0,
+        "snare": 0,
+        "hat": 1,
+        "cymbal": 1
+      },
+      "firstHit": {
+        "kick": 0.157,
+        "tom": null,
+        "snare": null,
+        "hat": 0.157,
+        "cymbal": 0.157
+      },
+      "retriggersAfter250ms": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0,
+        "cymbal": 0
+      },
+      "targetDominance": 1,
+      "featureDominance": 1.2079195115746089,
+      "diagnostics": {
+        "tonalLowTailMax": 0.9518207282913166,
+        "highWashMax": 0.46404054045258186,
+        "kickTransientGateMax": 1,
+        "tomGateMax": 0.25287053401966314,
+        "fluxMax": 1
+      },
+      "events": [
+        {
+          "time": 0.157,
+          "type": "kick",
+          "strength": 1
+        },
+        {
+          "time": 0.157,
+          "type": "hat",
+          "strength": 1
+        },
+        {
+          "time": 0.157,
+          "type": "cymbal",
+          "strength": 0.8931804620169526
+        },
+        {
+          "time": 0.3383333333333334,
+          "type": "kick",
+          "strength": 1
+        }
+      ]
+    },
+    {
+      "name": "synthetic_snare_plus_hats",
+      "expected": "snare",
+      "predicted": "kick",
+      "predictedFeature": "snare",
+      "predictedCount": "kick",
+      "pass": true,
+      "duration": 0.3926875,
+      "sampleRate": 48000,
+      "frameCount": 37,
+      "rmsAvg": 0.03248127633518733,
+      "peakAvg": 0.20157224958057743,
+      "peaks": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 1,
+        "hat": 0.07259291888593275,
+        "cymbal": 1
+      },
+      "peakFeatures": {
+        "kick": 0.6485450682924336,
+        "tom": 0.01837759011905342,
+        "snare": 0.932495177736574,
+        "hat": 0.7125025299653551,
+        "cymbal": 0.7920709512199008
+      },
+      "averages": {
+        "kick": 0.03398162643845209,
+        "tom": 0,
+        "snare": 0.139088414936207,
+        "hat": 0.005806061885899767,
+        "cymbal": 0.11452540084627183
+      },
+      "hitCounts": {
+        "kick": 1,
+        "tom": 0,
+        "snare": 1,
+        "hat": 0,
+        "cymbal": 1
+      },
+      "firstHit": {
+        "kick": 0.157,
+        "tom": null,
+        "snare": 0.157,
+        "hat": null,
+        "cymbal": 0.19966666666666666
+      },
+      "retriggersAfter250ms": {
+        "kick": 0,
+        "tom": 0,
+        "snare": 0,
+        "hat": 0,
+        "cymbal": 0
+      },
+      "targetDominance": 1,
+      "featureDominance": 1.1772874340365596,
+      "diagnostics": {
+        "tonalLowTailMax": 0.673389355742297,
+        "highWashMax": 0.48965095331329556,
+        "kickTransientGateMax": 1,
+        "tomGateMax": 0.24299913318752814,
+        "fluxMax": 1
+      },
+      "events": [
+        {
+          "time": 0.157,
+          "type": "kick",
+          "strength": 1
+        },
+        {
+          "time": 0.157,
+          "type": "snare",
+          "strength": 1
+        },
+        {
+          "time": 0.19966666666666666,
+          "type": "cymbal",
+          "strength": 1
+        }
+      ]
+    }
+  ],
+  "patternAudits": [
+    {
+      "name": "default-drums",
+      "file": "C:\\Users\\Dev\\MET-TR-responsive-work\\docs\\generated\\default-drums.wav",
+      "detectedMidi": "C:\\Users\\Dev\\MET-TR-responsive-work\\docs\\generated\\default-drums-detected.mid",
+      "duration": 8,
+      "sampleRate": 48000,
+      "declaredBpm": 120,
+      "audioTempoBpm": 120,
+      "comparison": {
+        "matched": 13,
+        "expected": 32,
+        "detected": 40,
+        "misses": [
+          {
+            "type": "kick",
+            "note": 36,
+            "tick": 0,
+            "sourceTick": 0,
+            "time": 0,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 1440,
+            "sourceTick": 288,
+            "time": 1.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 2400,
+            "sourceTick": 480,
+            "time": 2.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 2880,
+            "sourceTick": 576,
+            "time": 3,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 2880,
+            "sourceTick": 576,
+            "time": 3,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 3360,
+            "sourceTick": 672,
+            "time": 3.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "tom",
+            "note": 45,
+            "tick": 3840,
+            "sourceTick": 768,
+            "time": 4,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 4320,
+            "sourceTick": 864,
+            "time": 4.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "kick",
+            "note": 36,
+            "tick": 4800,
+            "sourceTick": 960,
+            "time": 5,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "note": 45,
+            "tick": 4800,
+            "sourceTick": 960,
+            "time": 5,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "note": 45,
+            "tick": 5280,
+            "sourceTick": 1056,
+            "time": 5.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "note": 36,
+            "tick": 6000,
+            "sourceTick": 1200,
+            "time": 6.25,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 6240,
+            "sourceTick": 1248,
+            "time": 6.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 6720,
+            "sourceTick": 1344,
+            "time": 7,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "kick",
+            "note": 36,
+            "tick": 6840,
+            "sourceTick": 1368,
+            "time": 7.125,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 6960,
+            "sourceTick": 1392,
+            "time": 7.25,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "note": 45,
+            "tick": 7080,
+            "sourceTick": 1416,
+            "time": 7.375,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 7200,
+            "sourceTick": 1440,
+            "time": 7.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 7320,
+            "sourceTick": 1464,
+            "time": 7.625,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          }
+        ],
+        "extras": [
+          {
+            "type": "kick",
+            "tick": 151,
+            "time": 0.157,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "tick": 448,
+            "time": 0.46633333333333327,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "tick": 499,
+            "time": 0.5196666666666666,
+            "strength": 0.7734646912087612,
+            "duration": 0.045
+          },
+          {
+            "type": "snare",
+            "tick": 509,
+            "time": 0.5303333333333333,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "cymbal",
+            "tick": 1451,
+            "time": 1.5116666666666667,
+            "strength": 1,
+            "duration": 0.18
+          },
+          {
+            "type": "hat",
+            "tick": 2086,
+            "time": 2.173,
+            "strength": 0.8340982638677339,
+            "duration": 0.045
+          },
+          {
+            "type": "hat",
+            "tick": 2168,
+            "time": 2.2583333333333333,
+            "strength": 1,
+            "duration": 0.045
+          },
+          {
+            "type": "hat",
+            "tick": 2250,
+            "time": 2.3436666666666666,
+            "strength": 1,
+            "duration": 0.045
+          },
+          {
+            "type": "hat",
+            "tick": 2332,
+            "time": 2.429,
+            "strength": 1,
+            "duration": 0.045
+          },
+          {
+            "type": "kick",
+            "tick": 2578,
+            "time": 2.685,
+            "strength": 0.9587532568038918,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "tick": 2762,
+            "time": 2.877,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "cymbal",
+            "tick": 2895,
+            "time": 3.0156666666666667,
+            "strength": 1,
+            "duration": 0.18
+          },
+          {
+            "type": "tom",
+            "tick": 2905,
+            "time": 3.026333333333333,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "tick": 3366,
+            "time": 3.506333333333333,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "cymbal",
+            "tick": 3376,
+            "time": 3.517,
+            "strength": 1,
+            "duration": 0.18
+          },
+          {
+            "type": "cymbal",
+            "tick": 4329,
+            "time": 4.5089999999999995,
+            "strength": 1,
+            "duration": 0.18
+          },
+          {
+            "type": "kick",
+            "tick": 4513,
+            "time": 4.701,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "tick": 4728,
+            "time": 4.925,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "tick": 5107,
+            "time": 5.3196666666666665,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "tick": 5168,
+            "time": 5.383666666666667,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "tick": 5936,
+            "time": 6.183666666666666,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "tick": 6274,
+            "time": 6.535666666666667,
+            "strength": 0.747704382992136,
+            "duration": 0.045
+          },
+          {
+            "type": "snare",
+            "tick": 6284,
+            "time": 6.546333333333333,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "cymbal",
+            "tick": 6735,
+            "time": 7.015666666666666,
+            "strength": 1,
+            "duration": 0.18
+          },
+          {
+            "type": "cymbal",
+            "tick": 7022,
+            "time": 7.314333333333333,
+            "strength": 0.8603472813229599,
+            "duration": 0.18
+          },
+          {
+            "type": "tom",
+            "tick": 7196,
+            "time": 7.495666666666667,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "tick": 7749,
+            "time": 8.071666666666667,
+            "strength": 1,
+            "duration": 0.07
+          }
+        ],
+        "precision": 0.325,
+        "recall": 0.40625,
+        "toleranceSeconds": 0.045
+      },
+      "audioTempoComparison": null,
+      "byClass": {
+        "kick": {
+          "matched": 5,
+          "expected": 9,
+          "detected": 14,
+          "misses": [
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 0,
+              "sourceTick": 0,
+              "time": 0,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 4800,
+              "sourceTick": 960,
+              "time": 5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 6000,
+              "sourceTick": 1200,
+              "time": 6.25,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 6840,
+              "sourceTick": 1368,
+              "time": 7.125,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            }
+          ],
+          "extras": [
+            {
+              "type": "kick",
+              "tick": 151,
+              "time": 0.157,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 448,
+              "time": 0.46633333333333327,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 2578,
+              "time": 2.685,
+              "strength": 0.9587532568038918,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 2762,
+              "time": 2.877,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 4513,
+              "time": 4.701,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 4728,
+              "time": 4.925,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 5168,
+              "time": 5.383666666666667,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 5936,
+              "time": 6.183666666666666,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 7749,
+              "time": 8.071666666666667,
+              "strength": 1,
+              "duration": 0.07
+            }
+          ],
+          "precision": 0.35714285714285715,
+          "recall": 0.5555555555555556,
+          "toleranceSeconds": 0.045
+        },
+        "tom": {
+          "matched": 2,
+          "expected": 6,
+          "detected": 5,
+          "misses": [
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 3840,
+              "sourceTick": 768,
+              "time": 4,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 4800,
+              "sourceTick": 960,
+              "time": 5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 5280,
+              "sourceTick": 1056,
+              "time": 5.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 7080,
+              "sourceTick": 1416,
+              "time": 7.375,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            }
+          ],
+          "extras": [
+            {
+              "type": "tom",
+              "tick": 2905,
+              "time": 3.026333333333333,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 5107,
+              "time": 5.3196666666666665,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 7196,
+              "time": 7.495666666666667,
+              "strength": 1,
+              "duration": 0.07
+            }
+          ],
+          "precision": 0.4,
+          "recall": 0.3333333333333333,
+          "toleranceSeconds": 0.045
+        },
+        "snare": {
+          "matched": 3,
+          "expected": 8,
+          "detected": 6,
+          "misses": [
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 2400,
+              "sourceTick": 480,
+              "time": 2.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 2880,
+              "sourceTick": 576,
+              "time": 3,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 6240,
+              "sourceTick": 1248,
+              "time": 6.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 6960,
+              "sourceTick": 1392,
+              "time": 7.25,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 7320,
+              "sourceTick": 1464,
+              "time": 7.625,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            }
+          ],
+          "extras": [
+            {
+              "type": "snare",
+              "tick": 509,
+              "time": 0.5303333333333333,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "tick": 3366,
+              "time": 3.506333333333333,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "tick": 6284,
+              "time": 6.546333333333333,
+              "strength": 1,
+              "duration": 0.07
+            }
+          ],
+          "precision": 0.5,
+          "recall": 0.375,
+          "toleranceSeconds": 0.045
+        },
+        "hat": {
+          "matched": 0,
+          "expected": 6,
+          "detected": 6,
+          "misses": [
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 1440,
+              "sourceTick": 288,
+              "time": 1.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 2880,
+              "sourceTick": 576,
+              "time": 3,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 3360,
+              "sourceTick": 672,
+              "time": 3.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 4320,
+              "sourceTick": 864,
+              "time": 4.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 6720,
+              "sourceTick": 1344,
+              "time": 7,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 7200,
+              "sourceTick": 1440,
+              "time": 7.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            }
+          ],
+          "extras": [
+            {
+              "type": "hat",
+              "tick": 499,
+              "time": 0.5196666666666666,
+              "strength": 0.7734646912087612,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2086,
+              "time": 2.173,
+              "strength": 0.8340982638677339,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2168,
+              "time": 2.2583333333333333,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2250,
+              "time": 2.3436666666666666,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2332,
+              "time": 2.429,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 6274,
+              "time": 6.535666666666667,
+              "strength": 0.747704382992136,
+              "duration": 0.045
+            }
+          ],
+          "precision": 0,
+          "recall": 0,
+          "toleranceSeconds": 0.045
+        },
+        "cymbal": {
+          "matched": 3,
+          "expected": 3,
+          "detected": 9,
+          "misses": [],
+          "extras": [
+            {
+              "type": "cymbal",
+              "tick": 1451,
+              "time": 1.5116666666666667,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "tick": 2895,
+              "time": 3.0156666666666667,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "tick": 3376,
+              "time": 3.517,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "tick": 4329,
+              "time": 4.5089999999999995,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "tick": 6735,
+              "time": 7.015666666666666,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "tick": 7022,
+              "time": 7.314333333333333,
+              "strength": 0.8603472813229599,
+              "duration": 0.18
+            }
+          ],
+          "precision": 0.3333333333333333,
+          "recall": 1,
+          "toleranceSeconds": 0.045
+        }
+      },
+      "audioTempoByClass": null,
+      "bestAlignment": {
+        "bpm": 120,
+        "offsetSeconds": -0.005,
+        "score": 1.225,
+        "comparison": {
+          "matched": 14,
+          "expected": 32,
+          "detected": 40,
+          "misses": [
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 0,
+              "sourceTick": 0,
+              "time": 0,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 1440,
+              "sourceTick": 288,
+              "time": 1.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 2400,
+              "sourceTick": 480,
+              "time": 2.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 2880,
+              "sourceTick": 576,
+              "time": 3,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 2880,
+              "sourceTick": 576,
+              "time": 3,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 3360,
+              "sourceTick": 672,
+              "time": 3.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 3840,
+              "sourceTick": 768,
+              "time": 4,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 4320,
+              "sourceTick": 864,
+              "time": 4.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 4800,
+              "sourceTick": 960,
+              "time": 5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 4800,
+              "sourceTick": 960,
+              "time": 5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 5280,
+              "sourceTick": 1056,
+              "time": 5.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 6000,
+              "sourceTick": 1200,
+              "time": 6.25,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 6720,
+              "sourceTick": 1344,
+              "time": 7,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 6840,
+              "sourceTick": 1368,
+              "time": 7.125,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 6960,
+              "sourceTick": 1392,
+              "time": 7.25,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 7080,
+              "sourceTick": 1416,
+              "time": 7.375,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 7200,
+              "sourceTick": 1440,
+              "time": 7.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 7320,
+              "sourceTick": 1464,
+              "time": 7.625,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            }
+          ],
+          "extras": [
+            {
+              "type": "kick",
+              "tick": 156,
+              "time": 0.162,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 452,
+              "time": 0.47133333333333327,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "tick": 504,
+              "time": 0.5246666666666666,
+              "strength": 0.7734646912087612,
+              "duration": 0.045
+            },
+            {
+              "type": "snare",
+              "tick": 514,
+              "time": 0.5353333333333333,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "cymbal",
+              "tick": 1456,
+              "time": 1.5166666666666666,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "hat",
+              "tick": 2091,
+              "time": 2.178,
+              "strength": 0.8340982638677339,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2173,
+              "time": 2.263333333333333,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2255,
+              "time": 2.3486666666666665,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2337,
+              "time": 2.4339999999999997,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "kick",
+              "tick": 2582,
+              "time": 2.69,
+              "strength": 0.9587532568038918,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 2767,
+              "time": 2.8819999999999997,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "cymbal",
+              "tick": 2900,
+              "time": 3.0206666666666666,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "tom",
+              "tick": 2910,
+              "time": 3.031333333333333,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "tick": 3371,
+              "time": 3.511333333333333,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "cymbal",
+              "tick": 3381,
+              "time": 3.522,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "tick": 4333,
+              "time": 4.513999999999999,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "kick",
+              "tick": 4518,
+              "time": 4.7059999999999995,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 4733,
+              "time": 4.93,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 5112,
+              "time": 5.324666666666666,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 5173,
+              "time": 5.3886666666666665,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 5941,
+              "time": 6.188666666666666,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "tick": 6279,
+              "time": 6.540666666666667,
+              "strength": 0.747704382992136,
+              "duration": 0.045
+            },
+            {
+              "type": "cymbal",
+              "tick": 6740,
+              "time": 7.020666666666666,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "tick": 7027,
+              "time": 7.319333333333333,
+              "strength": 0.8603472813229599,
+              "duration": 0.18
+            },
+            {
+              "type": "tom",
+              "tick": 7201,
+              "time": 7.500666666666667,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 7754,
+              "time": 8.076666666666668,
+              "strength": 1,
+              "duration": 0.07
+            }
+          ],
+          "precision": 0.35,
+          "recall": 0.4375,
+          "toleranceSeconds": 0.055
+        }
+      },
+      "result": {
+        "name": "default-drums",
+        "expected": null,
+        "predicted": "kick",
+        "predictedFeature": "kick",
+        "predictedCount": "kick",
+        "pass": null,
+        "duration": 8,
+        "sampleRate": 48000,
+        "frameCount": 751,
+        "rmsAvg": 0.10191534107707802,
+        "peakAvg": 0.43111798344688435,
+        "peaks": {
+          "kick": 1,
+          "tom": 1,
+          "snare": 1,
+          "hat": 1,
+          "cymbal": 1
+        },
+        "peakFeatures": {
+          "kick": 2.988942284408609,
+          "tom": 1.3246980423655854,
+          "snare": 0.8647980158353801,
+          "hat": 0.9065210047157679,
+          "cymbal": 1.1824256349577988
+        },
+        "averages": {
+          "kick": 0.20022435266043756,
+          "tom": 0.07312998426298885,
+          "snare": 0.06983178489657317,
+          "hat": 0.05796043336930888,
+          "cymbal": 0.15598151793556947
+        },
+        "hitCounts": {
+          "kick": 14,
+          "tom": 5,
+          "snare": 6,
+          "hat": 6,
+          "cymbal": 9
+        },
+        "firstHit": {
+          "kick": 0.157,
+          "tom": 0.5303333333333333,
+          "snare": 0.5303333333333333,
+          "hat": 0.5196666666666666,
+          "cymbal": 1.5116666666666667
+        },
+        "retriggersAfter250ms": {
+          "kick": 13,
+          "tom": 5,
+          "snare": 6,
+          "hat": 6,
+          "cymbal": 9
+        },
+        "targetDominance": 0,
+        "featureDominance": 0,
+        "diagnostics": {
+          "tonalLowTailMax": 0.9519607843137255,
+          "highWashMax": 0.4920042635920609,
+          "kickTransientGateMax": 1,
+          "tomGateMax": 1.06,
+          "fluxMax": 0.9076516544117698
+        },
+        "events": [
+          {
+            "time": 0.157,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 0.46633333333333327,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 0.5196666666666666,
+            "type": "hat",
+            "strength": 0.7734646912087612
+          },
+          {
+            "time": 0.5303333333333333,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 0.5303333333333333,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 1.0210000000000001,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 1.5116666666666667,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 2.013,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 2.173,
+            "type": "hat",
+            "strength": 0.8340982638677339
+          },
+          {
+            "time": 2.2583333333333333,
+            "type": "hat",
+            "strength": 1
+          },
+          {
+            "time": 2.3436666666666666,
+            "type": "hat",
+            "strength": 1
+          },
+          {
+            "time": 2.429,
+            "type": "hat",
+            "strength": 1
+          },
+          {
+            "time": 2.5036666666666667,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 2.685,
+            "type": "kick",
+            "strength": 0.9587532568038918
+          },
+          {
+            "time": 2.877,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 3.0156666666666667,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 3.026333333333333,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 3.4956666666666667,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 3.506333333333333,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 3.517,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 4.0183333333333335,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 4.5089999999999995,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 4.5089999999999995,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 4.701,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 4.925,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 5.3196666666666665,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 5.383666666666667,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 5.522333333333333,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 6.0023333333333335,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 6.183666666666666,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 6.535666666666667,
+            "type": "hat",
+            "strength": 0.747704382992136
+          },
+          {
+            "time": 6.546333333333333,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 6.759666666666667,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 7.015666666666666,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 7.314333333333333,
+            "type": "cymbal",
+            "strength": 0.8603472813229599
+          },
+          {
+            "time": 7.495666666666667,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 7.5169999999999995,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 7.794333333333333,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 7.890333333333333,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 8.071666666666667,
+            "type": "kick",
+            "strength": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "default-prog",
+      "file": "C:\\Users\\Dev\\MET-TR-responsive-work\\docs\\generated\\default-prog.wav",
+      "detectedMidi": "C:\\Users\\Dev\\MET-TR-responsive-work\\docs\\generated\\default-prog-detected.mid",
+      "duration": 8,
+      "sampleRate": 48000,
+      "declaredBpm": 120,
+      "audioTempoBpm": 120,
+      "comparison": {
+        "matched": 12,
+        "expected": 32,
+        "detected": 34,
+        "misses": [
+          {
+            "type": "kick",
+            "note": 36,
+            "tick": 0,
+            "sourceTick": 0,
+            "time": 0,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 1440,
+            "sourceTick": 288,
+            "time": 1.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "cymbal",
+            "note": 49,
+            "tick": 1920,
+            "sourceTick": 384,
+            "time": 2,
+            "strength": 0.7874015748031497,
+            "duration": 0.18
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 2400,
+            "sourceTick": 480,
+            "time": 2.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 2880,
+            "sourceTick": 576,
+            "time": 3,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 3360,
+            "sourceTick": 672,
+            "time": 3.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "tom",
+            "note": 45,
+            "tick": 3840,
+            "sourceTick": 768,
+            "time": 4,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "cymbal",
+            "note": 49,
+            "tick": 3840,
+            "sourceTick": 768,
+            "time": 4,
+            "strength": 0.7874015748031497,
+            "duration": 0.18
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 4320,
+            "sourceTick": 864,
+            "time": 4.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "tom",
+            "note": 45,
+            "tick": 4800,
+            "sourceTick": 960,
+            "time": 5,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "note": 45,
+            "tick": 5280,
+            "sourceTick": 1056,
+            "time": 5.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "note": 36,
+            "tick": 6000,
+            "sourceTick": 1200,
+            "time": 6.25,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 6240,
+            "sourceTick": 1248,
+            "time": 6.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 6720,
+            "sourceTick": 1344,
+            "time": 7,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "kick",
+            "note": 36,
+            "tick": 6840,
+            "sourceTick": 1368,
+            "time": 7.125,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 6960,
+            "sourceTick": 1392,
+            "time": 7.25,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "note": 42,
+            "tick": 7200,
+            "sourceTick": 1440,
+            "time": 7.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.045
+          },
+          {
+            "type": "cymbal",
+            "note": 49,
+            "tick": 7200,
+            "sourceTick": 1440,
+            "time": 7.5,
+            "strength": 0.7874015748031497,
+            "duration": 0.18
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 7320,
+            "sourceTick": 1464,
+            "time": 7.625,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "note": 38,
+            "tick": 7440,
+            "sourceTick": 1488,
+            "time": 7.75,
+            "strength": 0.7874015748031497,
+            "duration": 0.07
+          }
+        ],
+        "extras": [
+          {
+            "type": "kick",
+            "tick": 151,
+            "time": 0.157,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "tick": 407,
+            "time": 0.42366666666666664,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "tick": 519,
+            "time": 0.5409999999999999,
+            "strength": 0.9174384062603257,
+            "duration": 0.07
+          },
+          {
+            "type": "cymbal",
+            "tick": 1492,
+            "time": 1.5543333333333333,
+            "strength": 1,
+            "duration": 0.18
+          },
+          {
+            "type": "hat",
+            "tick": 2066,
+            "time": 2.1516666666666664,
+            "strength": 0.8967574419020378,
+            "duration": 0.045
+          },
+          {
+            "type": "hat",
+            "tick": 2148,
+            "time": 2.2369999999999997,
+            "strength": 1,
+            "duration": 0.045
+          },
+          {
+            "type": "hat",
+            "tick": 2229,
+            "time": 2.3223333333333334,
+            "strength": 1,
+            "duration": 0.045
+          },
+          {
+            "type": "hat",
+            "tick": 2311,
+            "time": 2.4076666666666666,
+            "strength": 1,
+            "duration": 0.045
+          },
+          {
+            "type": "kick",
+            "tick": 2578,
+            "time": 2.685,
+            "strength": 0.9692924085617497,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "tick": 2670,
+            "time": 2.7809999999999997,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "tick": 2885,
+            "time": 3.005,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "tick": 3376,
+            "time": 3.517,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "tick": 4605,
+            "time": 4.797,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "tick": 5045,
+            "time": 5.2556666666666665,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "hat",
+            "tick": 5803,
+            "time": 6.045,
+            "strength": 0.8277442838184645,
+            "duration": 0.045
+          },
+          {
+            "type": "kick",
+            "tick": 6233,
+            "time": 6.492999999999999,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "tom",
+            "tick": 6264,
+            "time": 6.5249999999999995,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "snare",
+            "tick": 6305,
+            "time": 6.567666666666667,
+            "strength": 0.953862729317202,
+            "duration": 0.07
+          },
+          {
+            "type": "kick",
+            "tick": 6756,
+            "time": 7.037,
+            "strength": 1,
+            "duration": 0.07
+          },
+          {
+            "type": "cymbal",
+            "tick": 6766,
+            "time": 7.047666666666666,
+            "strength": 0.914879234262944,
+            "duration": 0.18
+          },
+          {
+            "type": "cymbal",
+            "tick": 7257,
+            "time": 7.559666666666667,
+            "strength": 1,
+            "duration": 0.18
+          },
+          {
+            "type": "tom",
+            "tick": 7790,
+            "time": 8.114333333333333,
+            "strength": 0.9958005043242475,
+            "duration": 0.07
+          }
+        ],
+        "precision": 0.35294117647058826,
+        "recall": 0.375,
+        "toleranceSeconds": 0.045
+      },
+      "audioTempoComparison": null,
+      "byClass": {
+        "kick": {
+          "matched": 6,
+          "expected": 9,
+          "detected": 11,
+          "misses": [
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 0,
+              "sourceTick": 0,
+              "time": 0,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 6000,
+              "sourceTick": 1200,
+              "time": 6.25,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 6840,
+              "sourceTick": 1368,
+              "time": 7.125,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            }
+          ],
+          "extras": [
+            {
+              "type": "kick",
+              "tick": 151,
+              "time": 0.157,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 407,
+              "time": 0.42366666666666664,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 2578,
+              "time": 2.685,
+              "strength": 0.9692924085617497,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 6233,
+              "time": 6.492999999999999,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 6756,
+              "time": 7.037,
+              "strength": 1,
+              "duration": 0.07
+            }
+          ],
+          "precision": 0.5454545454545454,
+          "recall": 0.6666666666666666,
+          "toleranceSeconds": 0.045
+        },
+        "tom": {
+          "matched": 3,
+          "expected": 6,
+          "detected": 9,
+          "misses": [
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 3840,
+              "sourceTick": 768,
+              "time": 4,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 4800,
+              "sourceTick": 960,
+              "time": 5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 5280,
+              "sourceTick": 1056,
+              "time": 5.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            }
+          ],
+          "extras": [
+            {
+              "type": "tom",
+              "tick": 2670,
+              "time": 2.7809999999999997,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 2885,
+              "time": 3.005,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 4605,
+              "time": 4.797,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 5045,
+              "time": 5.2556666666666665,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 6264,
+              "time": 6.5249999999999995,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 7790,
+              "time": 8.114333333333333,
+              "strength": 0.9958005043242475,
+              "duration": 0.07
+            }
+          ],
+          "precision": 0.3333333333333333,
+          "recall": 0.5,
+          "toleranceSeconds": 0.045
+        },
+        "snare": {
+          "matched": 3,
+          "expected": 8,
+          "detected": 6,
+          "misses": [
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 2400,
+              "sourceTick": 480,
+              "time": 2.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 6240,
+              "sourceTick": 1248,
+              "time": 6.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 6960,
+              "sourceTick": 1392,
+              "time": 7.25,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 7320,
+              "sourceTick": 1464,
+              "time": 7.625,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 7440,
+              "sourceTick": 1488,
+              "time": 7.75,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            }
+          ],
+          "extras": [
+            {
+              "type": "snare",
+              "tick": 519,
+              "time": 0.5409999999999999,
+              "strength": 0.9174384062603257,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "tick": 3376,
+              "time": 3.517,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "tick": 6305,
+              "time": 6.567666666666667,
+              "strength": 0.953862729317202,
+              "duration": 0.07
+            }
+          ],
+          "precision": 0.5,
+          "recall": 0.375,
+          "toleranceSeconds": 0.045
+        },
+        "hat": {
+          "matched": 0,
+          "expected": 6,
+          "detected": 5,
+          "misses": [
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 1440,
+              "sourceTick": 288,
+              "time": 1.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 2880,
+              "sourceTick": 576,
+              "time": 3,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 3360,
+              "sourceTick": 672,
+              "time": 3.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 4320,
+              "sourceTick": 864,
+              "time": 4.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 6720,
+              "sourceTick": 1344,
+              "time": 7,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 7200,
+              "sourceTick": 1440,
+              "time": 7.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            }
+          ],
+          "extras": [
+            {
+              "type": "hat",
+              "tick": 2066,
+              "time": 2.1516666666666664,
+              "strength": 0.8967574419020378,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2148,
+              "time": 2.2369999999999997,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2229,
+              "time": 2.3223333333333334,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2311,
+              "time": 2.4076666666666666,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 5803,
+              "time": 6.045,
+              "strength": 0.8277442838184645,
+              "duration": 0.045
+            }
+          ],
+          "precision": 0,
+          "recall": 0,
+          "toleranceSeconds": 0.045
+        },
+        "cymbal": {
+          "matched": 0,
+          "expected": 3,
+          "detected": 3,
+          "misses": [
+            {
+              "type": "cymbal",
+              "note": 49,
+              "tick": 1920,
+              "sourceTick": 384,
+              "time": 2,
+              "strength": 0.7874015748031497,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "note": 49,
+              "tick": 3840,
+              "sourceTick": 768,
+              "time": 4,
+              "strength": 0.7874015748031497,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "note": 49,
+              "tick": 7200,
+              "sourceTick": 1440,
+              "time": 7.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.18
+            }
+          ],
+          "extras": [
+            {
+              "type": "cymbal",
+              "tick": 1492,
+              "time": 1.5543333333333333,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "tick": 6766,
+              "time": 7.047666666666666,
+              "strength": 0.914879234262944,
+              "duration": 0.18
+            },
+            {
+              "type": "cymbal",
+              "tick": 7257,
+              "time": 7.559666666666667,
+              "strength": 1,
+              "duration": 0.18
+            }
+          ],
+          "precision": 0,
+          "recall": 0,
+          "toleranceSeconds": 0.045
+        }
+      },
+      "audioTempoByClass": null,
+      "bestAlignment": {
+        "bpm": 120,
+        "offsetSeconds": 0.015,
+        "score": 1.2867647058823528,
+        "comparison": {
+          "matched": 14,
+          "expected": 32,
+          "detected": 34,
+          "misses": [
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 0,
+              "sourceTick": 0,
+              "time": 0,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 1440,
+              "sourceTick": 288,
+              "time": 1.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "cymbal",
+              "note": 49,
+              "tick": 1920,
+              "sourceTick": 384,
+              "time": 2,
+              "strength": 0.7874015748031497,
+              "duration": 0.18
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 2400,
+              "sourceTick": 480,
+              "time": 2.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 2880,
+              "sourceTick": 576,
+              "time": 3,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 3360,
+              "sourceTick": 672,
+              "time": 3.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 3840,
+              "sourceTick": 768,
+              "time": 4,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "cymbal",
+              "note": 49,
+              "tick": 3840,
+              "sourceTick": 768,
+              "time": 4,
+              "strength": 0.7874015748031497,
+              "duration": 0.18
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 4320,
+              "sourceTick": 864,
+              "time": 4.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 4800,
+              "sourceTick": 960,
+              "time": 5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "note": 45,
+              "tick": 5280,
+              "sourceTick": 1056,
+              "time": 5.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 6000,
+              "sourceTick": 1200,
+              "time": 6.25,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 6720,
+              "sourceTick": 1344,
+              "time": 7,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "kick",
+              "note": 36,
+              "tick": 6840,
+              "sourceTick": 1368,
+              "time": 7.125,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 6960,
+              "sourceTick": 1392,
+              "time": 7.25,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "note": 42,
+              "tick": 7200,
+              "sourceTick": 1440,
+              "time": 7.5,
+              "strength": 0.7874015748031497,
+              "duration": 0.045
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 7320,
+              "sourceTick": 1464,
+              "time": 7.625,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "note": 38,
+              "tick": 7440,
+              "sourceTick": 1488,
+              "time": 7.75,
+              "strength": 0.7874015748031497,
+              "duration": 0.07
+            }
+          ],
+          "extras": [
+            {
+              "type": "kick",
+              "tick": 136,
+              "time": 0.14200000000000002,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 392,
+              "time": 0.4086666666666666,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "tick": 505,
+              "time": 0.5259999999999999,
+              "strength": 0.9174384062603257,
+              "duration": 0.07
+            },
+            {
+              "type": "cymbal",
+              "tick": 1478,
+              "time": 1.5393333333333334,
+              "strength": 1,
+              "duration": 0.18
+            },
+            {
+              "type": "hat",
+              "tick": 2051,
+              "time": 2.1366666666666663,
+              "strength": 0.8967574419020378,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2133,
+              "time": 2.2219999999999995,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2215,
+              "time": 2.3073333333333332,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "hat",
+              "tick": 2297,
+              "time": 2.3926666666666665,
+              "strength": 1,
+              "duration": 0.045
+            },
+            {
+              "type": "kick",
+              "tick": 2563,
+              "time": 2.67,
+              "strength": 0.9692924085617497,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 2655,
+              "time": 2.7659999999999996,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 2870,
+              "time": 2.9899999999999998,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "snare",
+              "tick": 3362,
+              "time": 3.502,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 4591,
+              "time": 4.782,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 5031,
+              "time": 5.240666666666667,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "hat",
+              "tick": 5789,
+              "time": 6.03,
+              "strength": 0.8277442838184645,
+              "duration": 0.045
+            },
+            {
+              "type": "kick",
+              "tick": 6219,
+              "time": 6.478,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "tom",
+              "tick": 6250,
+              "time": 6.51,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "kick",
+              "tick": 6741,
+              "time": 7.022,
+              "strength": 1,
+              "duration": 0.07
+            },
+            {
+              "type": "cymbal",
+              "tick": 6751,
+              "time": 7.032666666666667,
+              "strength": 0.914879234262944,
+              "duration": 0.18
+            },
+            {
+              "type": "tom",
+              "tick": 7775,
+              "time": 8.099333333333332,
+              "strength": 0.9958005043242475,
+              "duration": 0.07
+            }
+          ],
+          "precision": 0.4117647058823529,
+          "recall": 0.4375,
+          "toleranceSeconds": 0.055
+        }
+      },
+      "result": {
+        "name": "default-prog",
+        "expected": null,
+        "predicted": "kick",
+        "predictedFeature": "kick",
+        "predictedCount": "kick",
+        "pass": null,
+        "duration": 8,
+        "sampleRate": 48000,
+        "frameCount": 751,
+        "rmsAvg": 0.07764817932485756,
+        "peakAvg": 0.30595294905506504,
+        "peaks": {
+          "kick": 1,
+          "tom": 1,
+          "snare": 1,
+          "hat": 1,
+          "cymbal": 1
+        },
+        "peakFeatures": {
+          "kick": 2.481518035258885,
+          "tom": 1.5392902328008864,
+          "snare": 0.6575594419094185,
+          "hat": 0.7126252497111009,
+          "cymbal": 0.5111770193261821
+        },
+        "averages": {
+          "kick": 0.18788082311627194,
+          "tom": 0.09606902532632576,
+          "snare": 0.08100021199065306,
+          "hat": 0.0674471070248471,
+          "cymbal": 0.034971026708683794
+        },
+        "hitCounts": {
+          "kick": 11,
+          "tom": 9,
+          "snare": 6,
+          "hat": 5,
+          "cymbal": 3
+        },
+        "firstHit": {
+          "kick": 0.157,
+          "tom": 0.509,
+          "snare": 0.5409999999999999,
+          "hat": 2.1516666666666664,
+          "cymbal": 1.5543333333333333
+        },
+        "retriggersAfter250ms": {
+          "kick": 10,
+          "tom": 9,
+          "snare": 6,
+          "hat": 5,
+          "cymbal": 3
+        },
+        "targetDominance": 0,
+        "featureDominance": 0,
+        "diagnostics": {
+          "tonalLowTailMax": 0.9595238095238096,
+          "highWashMax": 0.24908419900848688,
+          "kickTransientGateMax": 1,
+          "tomGateMax": 1.06,
+          "fluxMax": 0.6422047334558857
+        },
+        "events": [
+          {
+            "time": 0.157,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 0.42366666666666664,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 0.509,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 0.5409999999999999,
+            "type": "snare",
+            "strength": 0.9174384062603257
+          },
+          {
+            "time": 1.0210000000000001,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 1.5543333333333333,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 2.1516666666666664,
+            "type": "hat",
+            "strength": 0.8967574419020378
+          },
+          {
+            "time": 2.2369999999999997,
+            "type": "hat",
+            "strength": 1
+          },
+          {
+            "time": 2.3223333333333334,
+            "type": "hat",
+            "strength": 1
+          },
+          {
+            "time": 2.4076666666666666,
+            "type": "hat",
+            "strength": 1
+          },
+          {
+            "time": 2.5036666666666667,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 2.685,
+            "type": "kick",
+            "strength": 0.9692924085617497
+          },
+          {
+            "time": 2.7809999999999997,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 3.005,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 3.026333333333333,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 3.506333333333333,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 3.517,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 4.5089999999999995,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 4.797,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 5.0103333333333335,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 5.2556666666666665,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 5.543666666666667,
+            "type": "snare",
+            "strength": 1
+          },
+          {
+            "time": 6.0023333333333335,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 6.045,
+            "type": "hat",
+            "strength": 0.8277442838184645
+          },
+          {
+            "time": 6.492999999999999,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 6.5249999999999995,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 6.567666666666667,
+            "type": "snare",
+            "strength": 0.953862729317202
+          },
+          {
+            "time": 6.759666666666667,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 7.037,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 7.047666666666666,
+            "type": "cymbal",
+            "strength": 0.914879234262944
+          },
+          {
+            "time": 7.389,
+            "type": "tom",
+            "strength": 1
+          },
+          {
+            "time": 7.559666666666667,
+            "type": "cymbal",
+            "strength": 1
+          },
+          {
+            "time": 7.890333333333333,
+            "type": "kick",
+            "strength": 1
+          },
+          {
+            "time": 8.114333333333333,
+            "type": "tom",
+            "strength": 0.9958005043242475
+          }
+        ]
+      }
+    }
+  ]
+}

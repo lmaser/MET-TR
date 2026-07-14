@@ -324,6 +324,14 @@
       </label>
 
       <label>
+        Character Map Shader
+        <select id="signalCharacterShaderSelect">
+          <option value="flat">Flat</option>
+          <option value="soft3d" selected>Soft 3D</option>
+        </select>
+      </label>
+
+      <label>
         Signal FFT Weight <span id="signalCharacterFftWeightValue">0.65</span>
         <input id="signalCharacterFftWeight" type="range" min="0" max="1" step="0.01" value="0.65">
       </label>
@@ -471,8 +479,8 @@
       </label>
 
       <label>
-        Wave Deform <span id="wavesGlowValue">1.00</span>
-        <input id="wavesGlow" type="range" min="0" max="2" step="0.01" value="1">
+        Input Gain <span id="wavesGlowValue">0.0dB</span>
+        <input id="wavesGlow" type="range" min="-24" max="24" step="0.5" value="0">
       </label>
 
       <section class="algorithm-local" aria-label="Pattern detector parameters">

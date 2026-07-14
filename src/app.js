@@ -49,6 +49,7 @@ const canvas = document.getElementById("blobCanvas");
     const signalCharacterWindowSelect = document.getElementById("signalCharacterWindowSelect");
     const signalCharacterDisplaySelect = document.getElementById("signalCharacterDisplaySelect");
     const signalCharacterBoundarySelect = document.getElementById("signalCharacterBoundarySelect");
+    const signalCharacterShaderSelect = document.getElementById("signalCharacterShaderSelect");
     const signalCharacterFftWeight = document.getElementById("signalCharacterFftWeight");
     const signalCharacterFftWeightValue = document.getElementById("signalCharacterFftWeightValue");
     const signalCharacterNoise = document.getElementById("signalCharacterNoise");
@@ -265,6 +266,12 @@ const canvas = document.getElementById("blobCanvas");
       density: 0,
       stable: false,
       detected: false,
+      displayFreq: 0,
+      displayNote: "--",
+      displayCents: 0,
+      displayVelocity: 0,
+      displayDetected: false,
+      lastDisplayAt: performance.now() / 1000,
       lastStableAt: -99,
       lastDetectedAt: -99,
       lastSignalAt: -99,
@@ -1153,6 +1160,7 @@ const canvas = document.getElementById("blobCanvas");
       moveControlById("signalCharacterWindowSelect", signalCharacterControlsMount);
       moveControlById("signalCharacterDisplaySelect", signalCharacterControlsMount);
       moveControlById("signalCharacterBoundarySelect", signalCharacterControlsMount);
+      moveControlById("signalCharacterShaderSelect", signalCharacterControlsMount);
       moveControlById("signalCharacterFftWeight", signalCharacterControlsMount);
       moveControlById("signalCharacterNoise", signalCharacterControlsMount);
       moveControlById("signalCharacterTransient", signalCharacterControlsMount);
@@ -4723,6 +4731,41 @@ const canvas = document.getElementById("blobCanvas");
       if (tunerState.stable) tunerState.lastStableAt = now;
     }
 
+    function updateTunerDisplayState(now) {
+      const dt = clampFinite(now - tunerState.lastDisplayAt, 0.001, 0.08, 0.016);
+      tunerState.lastDisplayAt = now;
+      const step = dt * 60;
+      const rawCents = clampFinite(tunerState.cents, -50, 50, 0);
+      const hasRecentDetection = tunerState.detected && now - tunerState.lastDetectedAt < 0.65 && tunerState.note !== "--";
+      const targetCents = hasRecentDetection ? rawCents : 0;
+      const distance = clamp(Math.abs(targetCents) / 50, 0, 1);
+      const confidence = clampFinite(tunerState.confidence, 0, 1, 0);
+      const stiffness = lerp(0.46, 0.16, distance) * lerp(0.72, 1.08, confidence);
+      const damping = lerp(0.66, 0.86, distance);
+      const force = (targetCents - tunerState.displayCents) * stiffness;
+      tunerState.displayVelocity = (tunerState.displayVelocity + force * step) * Math.pow(damping, step);
+      tunerState.displayCents = clampFinite(tunerState.displayCents + tunerState.displayVelocity * step, -52, 52, 0);
+
+      const freqTarget = hasRecentDetection && tunerState.freq > 0 ? tunerState.freq : 0;
+      const freqRate = hasRecentDetection ? lerp(0.36, 0.14, distance) * step : 0.08 * step;
+      tunerState.displayFreq = freqTarget > 0
+        ? lerp(tunerState.displayFreq > 0 ? tunerState.displayFreq : freqTarget, freqTarget, clamp(freqRate, 0.04, 0.62))
+        : lerp(tunerState.displayFreq, 0, clamp(freqRate, 0.03, 0.3));
+
+      if (hasRecentDetection) {
+        const currentDisplayNote = tunerState.displayNote || "--";
+        const changingNote = tunerState.note !== currentDisplayNote;
+        const nearEdge = Math.abs(rawCents) > 46;
+        const settledEnough = Math.abs(tunerState.displayCents - rawCents) < 18 || confidence > 0.72;
+        if (!changingNote || !nearEdge || settledEnough || currentDisplayNote === "--") {
+          tunerState.displayNote = tunerState.note;
+        }
+      } else if (now - tunerState.lastDetectedAt > 1.2) {
+        tunerState.displayNote = "--";
+      }
+      tunerState.displayDetected = hasRecentDetection || (now - tunerState.lastDetectedAt < 0.45 && tunerState.displayFreq > 0);
+    }
+
 
     function spectrogramNotes() {
       const notes = [];
@@ -5036,19 +5079,20 @@ const canvas = document.getElementById("blobCanvas");
 
     function drawTunerPanel(x, y, w, h) {
       updateTunerState();
+      const now = performance.now() / 1000;
+      updateTunerDisplayState(now);
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
       ctx.strokeRect(x, y, w, h);
-      const now = performance.now() / 1000;
       const stale = now - tunerState.lastDetectedAt > 1.5;
       const hasSignal = tunerState.rms > 0.006 || smoothed.rms > 0.01;
       const sustainedSignal = hasSignal && now - tunerState.lastSignalAt < 0.4 && now - tunerState.lastSignalAt > -0.001;
-      const safeCents = clampFinite(tunerState.cents, -50, 50, 0);
-      const safeFreq = Number.isFinite(tunerState.freq) && tunerState.freq > 0 ? tunerState.freq : 0;
-      const safeNote = typeof tunerState.note === "string" && tunerState.note !== "undefined" ? tunerState.note : "--";
+      const safeCents = clampFinite(tunerState.displayCents, -50, 50, 0);
+      const safeFreq = Number.isFinite(tunerState.displayFreq) && tunerState.displayFreq > 0 ? tunerState.displayFreq : 0;
+      const safeNote = typeof tunerState.displayNote === "string" && tunerState.displayNote !== "undefined" ? tunerState.displayNote : "--";
       const recentlyDetected = now - tunerState.lastDetectedAt < 0.55;
-      const detected = Boolean((tunerState.detected || recentlyDetected) && safeNote !== "--" && safeFreq > 0);
+      const detected = Boolean((tunerState.displayDetected || recentlyDetected) && safeNote !== "--" && safeFreq > 0);
       const atonal = sustainedSignal && stale && tunerState.density > 0.84 && tunerState.confidence < 0.18;
       const isInTune = detected && Math.abs(safeCents) <= 3;
       const centerX = x + w * 0.5;
@@ -5393,6 +5437,117 @@ const canvas = document.getElementById("blobCanvas");
       return signalCharacterPhysics;
     }
 
+    function drawSignalCharacterBlobSkin(renderCtx, points, body, color, alpha, baseRadius, stretch, style) {
+      const shaderStyle = style === "flat" ? "flat" : "soft3d";
+      const clippedShape = () => {
+        renderCtx.beginPath();
+        for (let i = 0; i < points.length; i += 1) {
+          const p0 = points[(i - 1 + points.length) % points.length];
+          const p1 = points[i];
+          const midX = (p0.x + p1.x) * 0.5;
+          const midY = (p0.y + p1.y) * 0.5;
+          if (i === 0) renderCtx.moveTo(midX, midY);
+          renderCtx.quadraticCurveTo(p1.x, p1.y, (p1.x + points[(i + 1) % points.length].x) * 0.5, (p1.y + points[(i + 1) % points.length].y) * 0.5);
+        }
+        renderCtx.closePath();
+      };
+      const transformedShape = (axis, alongScale, acrossScale, alongOffset, acrossOffset) => {
+        const ux = Math.cos(axis);
+        const uy = Math.sin(axis);
+        const vx = -uy;
+        const vy = ux;
+        renderCtx.beginPath();
+        for (let i = 0; i < points.length; i += 1) {
+          const p0 = points[(i - 1 + points.length) % points.length];
+          const p1 = points[i];
+          const p2 = points[(i + 1) % points.length];
+          const convert = (point) => {
+            const dx = point.x - body.x;
+            const dy = point.y - body.y;
+            const along = (dx * ux + dy * uy) * alongScale + alongOffset;
+            const across = (dx * vx + dy * vy) * acrossScale + acrossOffset;
+            return {
+              x: body.x + ux * along + vx * across,
+              y: body.y + uy * along + vy * across
+            };
+          };
+          const prev = convert(p0);
+          const current = convert(p1);
+          const next = convert(p2);
+          const midX = (prev.x + current.x) * 0.5;
+          const midY = (prev.y + current.y) * 0.5;
+          const nextMidX = (current.x + next.x) * 0.5;
+          const nextMidY = (current.y + next.y) * 0.5;
+          if (i === 0) renderCtx.moveTo(midX, midY);
+          renderCtx.quadraticCurveTo(current.x, current.y, nextMidX, nextMidY);
+        }
+        renderCtx.closePath();
+      };
+      const shapeRadius = baseRadius * 1.4 + stretch * 0.55;
+      const lightX = body.x - shapeRadius * (0.32 + signalCharacterState.lowAnchor * 0.08);
+      const lightY = body.y - shapeRadius * (0.42 + signalCharacterState.transientImpact * 0.05);
+      const shadowX = body.x + shapeRadius * 0.42;
+      const shadowY = body.y + shapeRadius * 0.42;
+
+      renderCtx.save();
+
+      clippedShape();
+      if (shaderStyle === "soft3d") {
+        const skin = renderCtx.createRadialGradient(lightX, lightY, 2, shadowX, shadowY, shapeRadius * 1.65);
+        skin.addColorStop(0, `rgba(${Math.min(255, color[0] + 74)},${Math.min(255, color[1] + 74)},${Math.min(255, color[2] + 74)},${0.98 * alpha})`);
+        skin.addColorStop(0.45, `rgba(${color[0]},${color[1]},${color[2]},${0.88 * alpha})`);
+        skin.addColorStop(1, `rgba(${Math.round(color[0] * 0.34)},${Math.round(color[1] * 0.3)},${Math.round(color[2] * 0.42)},${0.92 * alpha})`);
+        renderCtx.fillStyle = skin;
+      } else {
+        renderCtx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${0.9 * alpha})`;
+      }
+      renderCtx.fill();
+
+      if (shaderStyle === "soft3d") {
+        renderCtx.save();
+        clippedShape();
+        renderCtx.clip();
+        renderCtx.globalCompositeOperation = "screen";
+        const speed = Math.hypot(body.vx, body.vy);
+        const pressure = clamp(stretch / Math.max(1, shapeRadius) + signalCharacterState.transientImpact * 0.42 + speed * 0.012, 0, 1.35);
+        const axis = Math.atan2(body.vy, body.vx || 0.0001);
+        for (const lobe of [
+          { alongScale: 0.72, acrossScale: 0.58, alongOffset: -shapeRadius * 0.16 * pressure, acrossOffset: -shapeRadius * 0.08, alpha: 0.16 },
+          { alongScale: 0.48, acrossScale: 0.82, alongOffset: shapeRadius * 0.21 * pressure, acrossOffset: shapeRadius * 0.05, alpha: 0.09 },
+          { alongScale: 0.34, acrossScale: 0.38, alongOffset: -shapeRadius * 0.04, acrossOffset: 0, alpha: 0.1 }
+        ]) {
+          transformedShape(axis, lobe.alongScale, lobe.acrossScale, lobe.alongOffset, lobe.acrossOffset);
+          renderCtx.fillStyle = `rgba(${Math.min(255, color[0] + 76)},${Math.min(255, color[1] + 76)},${Math.min(255, color[2] + 76)},${lobe.alpha * alpha * (0.9 + pressure * 0.32)})`;
+          renderCtx.fill();
+        }
+        renderCtx.globalCompositeOperation = "multiply";
+        transformedShape(axis, 1.04, 0.94, shapeRadius * 0.11 * pressure, shapeRadius * 0.04);
+        renderCtx.fillStyle = `rgba(0,0,0,${0.16 * alpha})`;
+        renderCtx.fill();
+        renderCtx.restore();
+      }
+
+      if (shaderStyle === "flat") {
+        clippedShape();
+        renderCtx.strokeStyle = `rgba(245,245,245,${0.62 * alpha})`;
+        renderCtx.lineWidth = 1.6;
+        renderCtx.stroke();
+      }
+      if (shaderStyle === "soft3d") {
+        renderCtx.save();
+        clippedShape();
+        renderCtx.clip();
+        const rim = renderCtx.createRadialGradient(lightX, lightY, shapeRadius * 0.25, body.x, body.y, shapeRadius * 1.15);
+        rim.addColorStop(0, `rgba(245,245,245,${0.18 * alpha})`);
+        rim.addColorStop(0.52, "rgba(245,245,245,0)");
+        rim.addColorStop(1, `rgba(0,0,0,${0.18 * alpha})`);
+        renderCtx.fillStyle = rim;
+        renderCtx.fillRect(body.x - shapeRadius, body.y - shapeRadius, shapeRadius * 2, shapeRadius * 2);
+        renderCtx.restore();
+      }
+      renderCtx.restore();
+    }
+
     function drawSignalCharacterBlob(body, color, alpha, options = {}) {
       const nodeCount = options.nodeCount || 13;
       const angles = options.angles || signalCharacterPhysics.blobAngles;
@@ -5438,33 +5593,7 @@ const canvas = document.getElementById("blobCanvas");
         points.push({ x: node.x, y: node.y });
       }
 
-      renderCtx.save();
-      renderCtx.globalCompositeOperation = "screen";
-      const glow = renderCtx.createRadialGradient(body.x, body.y, 2, body.x, body.y, baseRadius * 2.6);
-      glow.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${0.26 * alpha})`);
-      glow.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
-      renderCtx.fillStyle = glow;
-      renderCtx.beginPath();
-      renderCtx.arc(body.x, body.y, baseRadius * 2.85 + stretch * 0.45, 0, Math.PI * 2);
-      renderCtx.fill();
-
-      renderCtx.globalCompositeOperation = "source-over";
-      renderCtx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${0.9 * alpha})`;
-      renderCtx.strokeStyle = `rgba(245,245,245,${0.62 * alpha})`;
-      renderCtx.lineWidth = 1.6;
-      renderCtx.beginPath();
-      for (let i = 0; i < points.length; i += 1) {
-        const p0 = points[(i - 1 + points.length) % points.length];
-        const p1 = points[i];
-        const midX = (p0.x + p1.x) * 0.5;
-        const midY = (p0.y + p1.y) * 0.5;
-        if (i === 0) renderCtx.moveTo(midX, midY);
-        renderCtx.quadraticCurveTo(p1.x, p1.y, (p1.x + points[(i + 1) % points.length].x) * 0.5, (p1.y + points[(i + 1) % points.length].y) * 0.5);
-      }
-      renderCtx.closePath();
-      renderCtx.fill();
-      renderCtx.stroke();
-      renderCtx.restore();
+      drawSignalCharacterBlobSkin(renderCtx, points, body, color, alpha, baseRadius, stretch, options.shader || "soft3d");
     }
 
     function drawSignalCharacterMap(x, y, w, h) {
@@ -5508,6 +5637,7 @@ const canvas = document.getElementById("blobCanvas");
         const headColor = physics.head.color || targetColor;
         const tailColor = physics.tailBlob.color || headColor;
         const boundaryMode = signalCharacterBoundarySelect?.value || "none";
+        const shaderMode = signalCharacterShaderSelect?.value || "soft3d";
         const blobBounds = boundaryMode === "none" ? null : { x, y, w, h };
         const blobContext = boundaryMode === "none" && characterOverlayCtx ? characterOverlayCtx : ctx;
         drawSignalCharacterBlob(
@@ -5524,6 +5654,7 @@ const canvas = document.getElementById("blobCanvas");
             frequencyDivisor: 5200,
             bounds: blobBounds,
             context: blobContext,
+            shader: shaderMode,
             nodeRestitution: boundaryMode === "everything" ? 0.18 : 0.28,
             nodeFriction: boundaryMode === "everything" ? 0.52 : 0.64
           }
@@ -5535,6 +5666,7 @@ const canvas = document.getElementById("blobCanvas");
           {
             bounds: blobBounds,
             context: blobContext,
+            shader: shaderMode,
             nodeRestitution: boundaryMode === "everything" ? 0.24 : 0.36,
             nodeFriction: boundaryMode === "everything" ? 0.58 : 0.68
           }
@@ -6151,9 +6283,11 @@ const canvas = document.getElementById("blobCanvas");
       return `rgba(${r},${g},${b},${alpha})`;
     }
 
-    function makeWavesColumn(rows, scale) {
+    function makeWavesColumn(rows, scale, gainDb = 0) {
       const source = meterState.spectrum.length ? meterState.spectrum : new Array(96).fill(0);
       const column = [];
+      const inputGain = Math.pow(10, clampFinite(gainDb, -24, 24, 0) / 20);
+      const renderGain = clamp(inputGain, 0.06, 4);
       let peak = 0;
       for (let row = 0; row < rows; row += 1) {
         const idx = wavesFrequencyIndex(row, rows, scale, source.length);
@@ -6166,7 +6300,7 @@ const canvas = document.getElementById("blobCanvas");
       }
       if (peak > 0.001) {
         for (let i = 0; i < column.length; i += 1) {
-          column[i] = clamp(Math.pow(column[i] / peak, 0.82), 0, 1);
+          column[i] = clamp(Math.pow(column[i] / peak, 0.82) * renderGain, 0, 2);
         }
       }
       return column;
@@ -6217,7 +6351,7 @@ const canvas = document.getElementById("blobCanvas");
           z: amp
         };
       }
-      const baseX = plotX + plotW * 0.12;
+      const baseX = plotX + plotW * 0.09;
       const baseY = plotY + plotH * 0.9;
       const timeX = plotW * 0.62;
       const timeY = -plotH * 0.18;
@@ -6361,7 +6495,8 @@ const canvas = document.getElementById("blobCanvas");
       const scale = wavesInputSelect?.value || "log";
       const rows = clampFinite(Number(wavesDensitySelect?.value || 52), 16, 64, 52);
       const persistence = clampFinite(Number(wavesPersistence?.value || 0.62), 0, 1, 0.62);
-      const strength = clampFinite(Number(wavesGlow?.value || 1), 0, 2, 1);
+      const gainDb = clampFinite(Number(wavesGlow?.value || 0), -24, 24, 0);
+      const strength = clamp(Math.pow(10, gainDb / 20), 0.18, 2);
       const maxColumns = Math.round(44 + persistence * 76);
 
       if (!hasSignal) {
@@ -6373,7 +6508,7 @@ const canvas = document.getElementById("blobCanvas");
       }
 
       updateWavesMotion(strength);
-      const column = makeWavesColumn(rows, scale);
+      const column = makeWavesColumn(rows, scale, gainDb);
       wavesState.trails.push(column);
       while (wavesState.trails.length > maxColumns) wavesState.trails.shift();
       wavesState.pointCount = wavesState.trails.length * rows;
@@ -6393,7 +6528,7 @@ const canvas = document.getElementById("blobCanvas");
       drawWavesSurface(wavesState.trails, plotX, plotY, plotW, plotH, rows, projection, strength, 0.9);
       ctx.restore();
 
-      const label = `${projection} · ${scale} · ${rows} bands · ${wavesState.trails.length} frames`;
+      const label = `${projection} · ${scale} · ${rows} bands · ${gainDb.toFixed(1)}dB · ${wavesState.trails.length} frames`;
       const labelSize = meterTextSize(10, 0, 13);
       drawMeterText(label, x + 14, meterTextBottomBaseline(y, h, labelSize, 10), labelSize, "rgba(166,188,210,0.78)");
     }
@@ -7934,6 +8069,9 @@ const canvas = document.getElementById("blobCanvas");
           max: Number(tunerReference?.max || 0),
           cents: tunerState.cents,
           note: tunerState.note,
+          displayCents: tunerState.displayCents,
+          displayNote: tunerState.displayNote,
+          displayDetected: tunerState.displayDetected,
           detected: tunerState.detected,
           stable: tunerState.stable
         }
@@ -7959,6 +8097,7 @@ const canvas = document.getElementById("blobCanvas");
           signalCharacterWindowSelect,
           signalCharacterDisplaySelect,
           signalCharacterBoundarySelect,
+          signalCharacterShaderSelect,
           signalCharacterFftWeight,
           signalCharacterNoise,
           signalCharacterTransient,
@@ -7980,6 +8119,7 @@ const canvas = document.getElementById("blobCanvas");
           flatBarsOnly: true,
           hidesPointWithoutSignal: true,
           boundaries: signalCharacterBoundarySelect?.value || "none",
+          shader: signalCharacterShaderSelect?.value || "soft3d",
           trailPoints: signalCharacterTrail.length
         },
         metrics: {
@@ -8108,7 +8248,7 @@ const canvas = document.getElementById("blobCanvas");
           scale: wavesInputSelect?.value || null,
           detail: Number(wavesDensitySelect?.value || 0),
           persistence: Number(wavesPersistence?.value || 0),
-          strength: Number(wavesGlow?.value || 0),
+          inputGainDb: Number(wavesGlow?.value || 0),
           frames: wavesState.trails.length,
           points: wavesState.pointCount,
           hasSignal
@@ -8299,6 +8439,7 @@ const canvas = document.getElementById("blobCanvas");
     });
     signalCharacterDisplaySelect.addEventListener("change", markLayoutControlsDirty);
     signalCharacterBoundarySelect.addEventListener("change", resetSignalCharacterPhysics);
+    signalCharacterShaderSelect.addEventListener("change", markLayoutControlsDirty);
     signalCharacterFftWeight.addEventListener("input", () => {
       signalCharacterFftWeightValue.textContent = Number(signalCharacterFftWeight.value).toFixed(2);
     });
@@ -8326,7 +8467,7 @@ const canvas = document.getElementById("blobCanvas");
       wavesPersistenceValue.textContent = Number(wavesPersistence.value).toFixed(2);
     });
     wavesGlow.addEventListener("input", () => {
-      wavesGlowValue.textContent = Number(wavesGlow.value).toFixed(2);
+      wavesGlowValue.textContent = `${Number(wavesGlow.value).toFixed(1)}dB`;
     });
     algorithmSelect.addEventListener("change", applyAlgorithmUi);
     floatingInspectorClose.addEventListener("click", closeFloatingInspector);

@@ -1,4 +1,4 @@
-﻿const canvas = document.getElementById("blobCanvas");
+const canvas = document.getElementById("blobCanvas");
     const stageEl = canvas.closest(".stage");
     const ctx = canvas.getContext("2d", { alpha: false });
     const characterOverlayCanvas = document.getElementById("characterOverlayCanvas");
@@ -63,13 +63,13 @@
     const phaseDungeonFogValue = document.getElementById("phaseDungeonFogValue");
     const phaseDungeonPressure = document.getElementById("phaseDungeonPressure");
     const phaseDungeonPressureValue = document.getElementById("phaseDungeonPressureValue");
-    const vectorLaserModeSelect = document.getElementById("vectorLaserModeSelect");
-    const vectorLaserInputSelect = document.getElementById("vectorLaserInputSelect");
-    const vectorLaserDensitySelect = document.getElementById("vectorLaserDensitySelect");
-    const vectorLaserPersistence = document.getElementById("vectorLaserPersistence");
-    const vectorLaserPersistenceValue = document.getElementById("vectorLaserPersistenceValue");
-    const vectorLaserGlow = document.getElementById("vectorLaserGlow");
-    const vectorLaserGlowValue = document.getElementById("vectorLaserGlowValue");
+    const wavesModeSelect = document.getElementById("wavesModeSelect");
+    const wavesInputSelect = document.getElementById("wavesInputSelect");
+    const wavesDensitySelect = document.getElementById("wavesDensitySelect");
+    const wavesPersistence = document.getElementById("wavesPersistence");
+    const wavesPersistenceValue = document.getElementById("wavesPersistenceValue");
+    const wavesGlow = document.getElementById("wavesGlow");
+    const wavesGlowValue = document.getElementById("wavesGlowValue");
     const scopeFollowSelect = document.getElementById("scopeFollowSelect");
     const waveformChannelSelect = document.getElementById("waveformChannelSelect");
     const waveformColorSelect = document.getElementById("waveformColorSelect");
@@ -89,7 +89,7 @@
     const tunerControlsMount = document.getElementById("tunerControlsMount");
     const signalCharacterControlsMount = document.getElementById("signalCharacterControlsMount");
     const phaseDungeonControlsMount = document.getElementById("phaseDungeonControlsMount");
-    const vectorLaserControlsMount = document.getElementById("vectorLaserControlsMount");
+    const wavesControlsMount = document.getElementById("wavesControlsMount");
     const oscilloscopeControlsMount = document.getElementById("oscilloscopeControlsMount");
     const waveformShortControlsMount = document.getElementById("waveformShortControlsMount");
     const waveformMediumControlsMount = document.getElementById("waveformMediumControlsMount");
@@ -333,10 +333,40 @@
       brake: 0,
       acceleration: 0
     };
-    const vectorLaserState = {
+    const kineticVocalState = {
+      f0Hz: 0,
+      f0Confidence: 0,
+      voiced: 0,
+      f1: 0,
+      f2: 0,
+      f3: 0,
+      f1Energy: 0,
+      f2Energy: 0,
+      f3Energy: 0,
+      formantConfidence: 0,
+      vowelOpen: 0,
+      vowelFront: 0,
+      rounding: 0,
+      plosiveClosure: 0,
+      plosiveBurst: 0,
+      fricativeNoise: 0,
+      breathNoise: 0,
+      tractPressure: 0,
+      glottalPhase: 0,
+      turbulencePhase: 0,
+      mouthPhase: 0,
+      lastUpdateAt: 0
+    };
+    const wavesState = {
       trails: [],
       lastSignalAt: -99,
-      pointCount: 0
+      pointCount: 0,
+      phase: 0,
+      sideFlow: 0,
+      lowFlow: 0,
+      midFlow: 0,
+      highFlow: 0,
+      shock: 0
     };
     const patternState = {
       previous: { kick: 0, tom: 0, snare: 0, hat: 0, cymbal: 0, global: 0 },
@@ -387,7 +417,7 @@
       drawTunerPanel,
       drawSignalCharacterPanel,
       drawPhaseDungeonPanel,
-      drawVectorLaserPanel,
+      drawWavesPanel,
       drawOscilloscopePanel,
       drawWaveformShortPanel,
       drawWaveformMediumPanel,
@@ -408,7 +438,7 @@
       tuner: "Tuner",
       signalCharacter: "Signal Character",
       phaseDungeon: "Kinetic",
-      vectorLaser: "Vector Laser",
+      waves: "Waves Spectrogram",
       oscilloscope: "Oscilloscope",
       waveformShort: "Waveform Short",
       waveformMedium: "Waveform Medium",
@@ -430,7 +460,7 @@
       tuner: true,
       signalCharacter: true,
       phaseDungeon: true,
-      vectorLaser: true,
+      waves: true,
       oscilloscope: true,
       waveformShort: true,
       waveformMedium: true,
@@ -570,7 +600,12 @@
       const responsive = contract.responsive || {};
       const minWidth = responsive.compactMinWidth || 360;
       const maxWidth = responsive.compactMaxWidth || 600;
-      const width = stageEl.clientWidth || window.innerWidth || maxWidth;
+      const widths = [
+        stageEl?.clientWidth || 0,
+        window.innerWidth || 0,
+        document.documentElement?.clientWidth || 0
+      ].filter((value) => Number.isFinite(value) && value > 0);
+      const width = widths.length ? Math.min(...widths) : maxWidth;
       const t = clamp((maxWidth - width) / Math.max(1, maxWidth - minWidth), 0, 1);
       return smoothstep(0, 1, t);
     }
@@ -581,10 +616,45 @@
       return lerp(1, moduleScale, getCompactResponsiveT());
     }
 
+    function getModuleContentMinHeight(module) {
+      if (!useCompactGraphLayout() || !module) return 0;
+      const pad = canvasPxForCss(16);
+      if (module.id === "loudness") {
+        const row = meterRowMetrics("compact");
+        return Math.ceil(pad * 2 + row.height * 5);
+      }
+      if (module.id === "pattern") {
+        const row = meterRowMetrics("primary");
+        const rhythm = canvasPxForCss(44);
+        const history = canvasPxForCss(120);
+        const nestedHeader = canvasPxForCss(contract.ui?.moduleHeader?.mobileHeightPx || 42);
+        const nestedGap = canvasPxForCss(contract.ui?.moduleHeader?.nestedBodyGapPx || 18);
+        const displayLabels = canvasPxForCss(44);
+        const displayGaps = canvasPxForCss(42);
+        const displayFields = canvasPxForCss(260);
+        return Math.ceil(pad * 2 + row.height * 5 + rhythm + history + nestedHeader + nestedGap + displayLabels + displayGaps + displayFields);
+      }
+      if (module.id === "signalCharacter") {
+        const row = meterRowMetrics("compact");
+        const section = meterTextSize(10, 0, 13);
+        const mapMin = canvasPxForCss(190);
+        const mapTitle = section + canvasPxForCss(12);
+        const decisionGap = Math.max(canvasPxForCss(22), section + 10);
+        const decisionTitle = section + Math.max(canvasPxForCss(14), section + 4);
+        return Math.ceil(pad * 2 + mapTitle + mapMin + decisionGap + decisionTitle + row.height * 5 + canvasPxForCss(28));
+      }
+      return 0;
+    }
+
     function getModuleHeight(module, compact = useCompactGraphLayout()) {
       const rect = getModuleRect(module);
+      if (!rect) return METER_LAYOUT.collapsedAdvance;
       const baseHeight = compact && rect.compactHeight ? rect.compactHeight : rect.height;
-      return Math.round(baseHeight * getModuleHeightScale(module));
+      const computed = Math.max(
+        Math.round(baseHeight * getModuleHeightScale(module)),
+        getModuleContentMinHeight(module)
+      );
+      return Number.isFinite(computed) && computed > 0 ? computed : baseHeight || METER_LAYOUT.minHeight;
     }
 
     function getMeteringTop() {
@@ -621,18 +691,27 @@
     function getOpenAdvance(module, compact = useCompactGraphLayout()) {
       const rect = getModuleRect(module);
       if (!rect) return METER_LAYOUT.collapsedAdvance;
+      const mobileAdvanceMin = (() => {
+        if (!useCompactGraphLayout()) return 0;
+        if (module.id === "signalCharacter") return getModuleContentMinHeight(module) + getCompactControlLaneGap() + canvasPxForCss(28);
+        if (module.id === "loudness") return canvasPxForCss(300);
+        if (module.id === "pattern") return canvasPxForCss(880);
+        return 0;
+      })();
       if (module.flow === "dual" && compact) {
         const compactBase = rect.compactHeight || rect.height;
         const heightDelta = getModuleHeight(module, compact) - compactBase;
-        return METER_LAYOUT.compactMeterAdvance
+        const advance = METER_LAYOUT.compactMeterAdvance
           + Math.max(0, heightDelta)
           + getCompactAdvanceClearance(module, compactBase, METER_LAYOUT.compactMeterAdvance);
+        return Math.max(advance, mobileAdvanceMin);
       }
       const heightDelta = getModuleHeight(module, compact) - rect.height;
       const baseAdvance = rect.advance || rect.height + 36;
-      return baseAdvance
+      const advance = baseAdvance
         + Math.max(0, heightDelta)
         + getCompactAdvanceClearance(module, rect.height, baseAdvance);
+      return Math.max(advance, mobileAdvanceMin);
     }
 
     function getModuleAdvance(module, compact = useCompactGraphLayout()) {
@@ -929,7 +1008,10 @@
         const moduleId = group.dataset.module;
         if (moduleId === "layoutAdd") return;
         if (moduleId === "patternNestedAdd") return;
-        if (!METERING_MODULE_BY_ID[moduleId]) return;
+        if (!METERING_MODULE_BY_ID[moduleId]) {
+          group.hidden = true;
+          return;
+        }
         group.hidden = !active.has(moduleId);
         const remove = group.querySelector(".module-remove");
         if (remove) remove.hidden = !active.has(moduleId);
@@ -1028,11 +1110,11 @@
       moveControlById("phaseDungeonMemorySelect", phaseDungeonControlsMount);
       moveControlById("phaseDungeonFog", phaseDungeonControlsMount);
       moveControlById("phaseDungeonPressure", phaseDungeonControlsMount);
-      moveControlById("vectorLaserModeSelect", vectorLaserControlsMount);
-      moveControlById("vectorLaserInputSelect", vectorLaserControlsMount);
-      moveControlById("vectorLaserDensitySelect", vectorLaserControlsMount);
-      moveControlById("vectorLaserPersistence", vectorLaserControlsMount);
-      moveControlById("vectorLaserGlow", vectorLaserControlsMount);
+      moveControlById("wavesModeSelect", wavesControlsMount);
+      moveControlById("wavesInputSelect", wavesControlsMount);
+      moveControlById("wavesDensitySelect", wavesControlsMount);
+      moveControlById("wavesPersistence", wavesControlsMount);
+      moveControlById("wavesGlow", wavesControlsMount);
       moveControlById("scopeFollowSelect", oscilloscopeControlsMount);
       moveControlById("waveformChannelSelect", waveformShortControlsMount);
       moveControlById("waveformColorSelect", waveformShortControlsMount);
@@ -1123,7 +1205,13 @@
       if (!slot || slot.hidden) return;
       const layout = METER_LAYOUT;
       const scale = graphControlScale;
-      slot.style.top = `${getControlLaneTop(slot, graphTop)}px`;
+      const rows = getLayoutRows().rows;
+      const lastRow = rows[rows.length - 1];
+      const naturalTop = getControlLaneTop(slot, graphTop);
+      const minTop = lastRow
+        ? (lastRow.y + getModuleHeight(lastRow.module)) * scale + layout.rowGap * scale
+        : naturalTop;
+      slot.style.top = `${Math.max(naturalTop, minTop)}px`;
       slot.style.left = `${layout.left * scale}px`;
       slot.style.width = `${layout.fullWidth * scale}px`;
     }
@@ -1141,7 +1229,13 @@
     }
 
     function useCompactGraphLayout() {
-      return stageEl.clientWidth < METER_LAYOUT.compactBreakpoint;
+      const widths = [
+        stageEl?.clientWidth || 0,
+        window.innerWidth || 0,
+        document.documentElement?.clientWidth || 0
+      ].filter((width) => Number.isFinite(width) && width > 0);
+      const effectiveWidth = widths.length ? Math.min(...widths) : METER_LAYOUT.canvasWidth;
+      return effectiveWidth < METER_LAYOUT.compactBreakpoint;
     }
 
     function calculateMeteringHeight() {
@@ -1155,11 +1249,17 @@
       if (rows.rows.length < MAX_LAYOUT_MODULES && getAvailableModulesToAdd().length) {
         y = rows.addY + getLayoutAddSlotAdvance();
       }
-      return Math.max(layout.minHeight, Math.ceil(y + layout.bottom));
+      const measured = Math.ceil(y + layout.bottom);
+      return Number.isFinite(measured) && measured > 0
+        ? Math.max(layout.minHeight, measured)
+        : layout.minHeight;
     }
 
     function setStageHeight(height) {
-      const nextHeight = Math.max(420, Math.ceil(height));
+      const measured = Math.ceil(height);
+      const nextHeight = Number.isFinite(measured) && measured > 0
+        ? Math.max(420, measured)
+        : Math.max(420, METER_LAYOUT.minHeight || H);
       if (activeStageHeight === nextHeight && canvas.height === nextHeight) return;
       activeStageHeight = nextHeight;
       canvas.height = nextHeight;
@@ -1332,7 +1432,8 @@
         : color.dominantHz > 0
           ? `${Math.round(color.dominantHz)}`
           : "--";
-      drawMeterText(`${hz}Hz  sat ${color.saturation.toFixed(2)}`, x + 8, y + h - 8, 9, "rgba(245,245,245,0.7)");
+      const labelSize = meterTextSize(9, 0, 12);
+      drawMeterText(`${hz}Hz  sat ${color.saturation.toFixed(2)}`, x + 8, meterTextBottomBaseline(y, h, labelSize), labelSize, "rgba(245,245,245,0.7)");
     }
 
     function shapeAudio(value, drive = 1) {
@@ -1389,12 +1490,49 @@
       phaseDungeonState.cells.length = 0;
       phaseDungeonState.lastSignalAt = -99;
       phaseDungeonState.recurrence = 0;
+      phaseDungeonState.tunnelTravel = 0;
+      phaseDungeonState.tunnelZoom = 1;
+      phaseDungeonState.tunnelHeading = 0;
+      phaseDungeonState.tunnelDrop = 0;
+      phaseDungeonState.previousEnergy = 0;
+      phaseDungeonState.energyHistory.length = 0;
+      phaseDungeonState.sectionPower = 0;
+      phaseDungeonState.brake = 0;
+      phaseDungeonState.acceleration = 0;
+      kineticVocalState.f0Hz = 0;
+      kineticVocalState.f0Confidence = 0;
+      kineticVocalState.voiced = 0;
+      kineticVocalState.f1 = 0;
+      kineticVocalState.f2 = 0;
+      kineticVocalState.f3 = 0;
+      kineticVocalState.f1Energy = 0;
+      kineticVocalState.f2Energy = 0;
+      kineticVocalState.f3Energy = 0;
+      kineticVocalState.formantConfidence = 0;
+      kineticVocalState.vowelOpen = 0;
+      kineticVocalState.vowelFront = 0;
+      kineticVocalState.rounding = 0;
+      kineticVocalState.plosiveClosure = 0;
+      kineticVocalState.plosiveBurst = 0;
+      kineticVocalState.fricativeNoise = 0;
+      kineticVocalState.breathNoise = 0;
+      kineticVocalState.tractPressure = 0;
+      kineticVocalState.glottalPhase = 0;
+      kineticVocalState.turbulencePhase = 0;
+      kineticVocalState.mouthPhase = 0;
+      kineticVocalState.lastUpdateAt = 0;
     }
 
-    function resetVectorLaserState() {
-      vectorLaserState.trails.length = 0;
-      vectorLaserState.lastSignalAt = -99;
-      vectorLaserState.pointCount = 0;
+    function resetWavesState() {
+      wavesState.trails.length = 0;
+      wavesState.lastSignalAt = -99;
+      wavesState.pointCount = 0;
+      wavesState.phase = 0;
+      wavesState.sideFlow = 0;
+      wavesState.lowFlow = 0;
+      wavesState.midFlow = 0;
+      wavesState.highFlow = 0;
+      wavesState.shock = 0;
     }
 
     function requestedSpectrumFftSize() {
@@ -3763,45 +3901,159 @@
       ctx.fillText(text, x, y);
     }
 
-    function drawDbBar(label, db, x, y, w, h, color) {
+    function meterTextTopBaseline(y, size, pad = 8) {
+      return y + Math.max(pad, size * 0.42) + size;
+    }
+
+    function meterTextBottomBaseline(y, h, size, pad = 8) {
+      return y + h - Math.max(pad, size * 0.42);
+    }
+
+    function meterTextClampedBaseline(targetY, y, h, size, pad = 6) {
+      return clamp(targetY, meterTextTopBaseline(y, size, pad), meterTextBottomBaseline(y, h, size, pad));
+    }
+
+    function canvasPxForCss(cssPx) {
+      const canvasRect = canvas?.getBoundingClientRect?.();
+      const widths = [
+        stageEl?.clientWidth || 0,
+        canvasRect?.width || 0,
+        window.innerWidth || 0,
+        document.documentElement?.clientWidth || 0
+      ].filter((width) => Number.isFinite(width) && width > 0);
+      const effectiveWidth = widths.length ? Math.min(...widths) : W;
+      const scale = effectiveWidth / W;
+      return cssPx / Math.max(0.001, scale);
+    }
+
+    function meterTextSize(base, compactBoost = 2, targetMobileCssPx = null) {
+      const primitive = contract.ui?.meterPrimitives || {};
+      if (!useCompactGraphLayout()) return base;
+      const boost = Number.isFinite(compactBoost) ? compactBoost : 0;
+      const targetCss = targetMobileCssPx || primitive.minMobileTextCssPx || 13;
+      return Math.max(base + boost, canvasPxForCss(targetCss));
+    }
+
+    function meterPrimaryTextSize(base) {
+      const primitive = contract.ui?.meterPrimitives || {};
+      return meterTextSize(base, 0, primitive.minMobilePrimaryTextCssPx || 15);
+    }
+
+    function meterBarHeight(base, compactBoost = 3, targetMobileCssPx = null) {
+      const primitive = contract.ui?.meterPrimitives || {};
+      if (!useCompactGraphLayout()) return base;
+      const boost = Number.isFinite(compactBoost) ? compactBoost : 0;
+      const targetCss = targetMobileCssPx || primitive.minMobileBarCssPx || 14;
+      return Math.max(base + boost, canvasPxForCss(targetCss));
+    }
+
+    function meterPrimaryBarHeight(base) {
+      const primitive = contract.ui?.meterPrimitives || {};
+      return meterBarHeight(base, 0, primitive.minMobilePrimaryBarCssPx || 16);
+    }
+
+    function drawMeterBar({ x, y, w, h, value = 0, color = "#f5f5f5", mode = "unipolar", enabled = true }) {
       ctx.fillStyle = "#050505";
       ctx.fillRect(x, y, w, h);
-      ctx.strokeStyle = "#2b2b2b";
+      ctx.strokeStyle = enabled ? "#2b2b2b" : "rgba(43,43,43,0.55)";
       ctx.strokeRect(x, y, w, h);
-      const amount = meterXForDb(db);
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, w * amount, h);
-      drawMeterText(label, x, y - 6, 11, "rgba(245,245,245,0.82)");
-      drawMeterText(`${db <= -119 ? "-inf" : db.toFixed(1)} dB`, x + w - 68, y - 6, 11, "rgba(166,166,166,0.95)");
+      if (mode === "bipolar") {
+        const mid = x + w * 0.5;
+        ctx.strokeStyle = enabled ? "rgba(245,245,245,0.35)" : "rgba(245,245,245,0.14)";
+        ctx.beginPath();
+        ctx.moveTo(mid, y);
+        ctx.lineTo(mid, y + h);
+        ctx.stroke();
+        if (enabled) {
+          const amount = clamp(value, -1, 1);
+          ctx.fillStyle = color;
+          if (amount >= 0) {
+            ctx.fillRect(mid, y, w * 0.5 * amount, h);
+          } else {
+            ctx.fillRect(mid + w * 0.5 * amount, y, -w * 0.5 * amount, h);
+          }
+        }
+      } else if (enabled) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, w * clamp(value, 0, 1), h);
+      }
+      if (!enabled) {
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(x, y, w, h);
+      }
+    }
+
+    function meterRowMetrics(density = "normal") {
+      const compact = useCompactGraphLayout();
+      const primary = density === "primary";
+      const small = density === "compact";
+      const labelSize = primary
+        ? meterPrimaryTextSize(12)
+        : meterTextSize(small ? 10 : 11, small ? 1 : 0, compact ? 13 : null);
+      const valueSize = labelSize;
+      const barH = primary
+        ? meterPrimaryBarHeight(12)
+        : meterBarHeight(small ? 8 : 10, 0, compact ? 14 : null);
+      const labelGap = compact ? canvasPxForCss(7) : 6;
+      const rowGap = compact ? canvasPxForCss(primary ? 14 : 12) : primary ? 12 : 10;
+      return { labelSize, valueSize, barH, labelGap, rowGap, height: labelSize + labelGap + barH + rowGap };
+    }
+
+    function drawMeterRow({
+      label,
+      valueText = "",
+      value = 0,
+      x,
+      y,
+      w,
+      color = "#f5f5f5",
+      mode = "unipolar",
+      enabled = true,
+      density = "normal"
+    }) {
+      const metricsRow = meterRowMetrics(density);
+      const labelBaseline = y + metricsRow.labelSize;
+      const barY = labelBaseline + metricsRow.labelGap;
+      const labelColor = enabled ? "rgba(245,245,245,0.86)" : "rgba(120,120,120,0.62)";
+      const valueColor = enabled ? "rgba(166,188,210,0.9)" : "rgba(95,95,95,0.58)";
+      drawMeterText(label, x, labelBaseline, metricsRow.labelSize, labelColor);
+      if (valueText) {
+        ctx.save();
+        ctx.textAlign = "right";
+        drawMeterText(valueText, x + w, labelBaseline, metricsRow.valueSize, valueColor);
+        ctx.restore();
+      }
+      drawMeterBar({
+        x,
+        y: barY,
+        w,
+        h: metricsRow.barH,
+        value,
+        color,
+        mode,
+        enabled
+      });
+      return {
+        height: metricsRow.labelSize + metricsRow.labelGap + metricsRow.barH + metricsRow.rowGap,
+        barY,
+        barH: metricsRow.barH
+      };
+    }
+
+    function drawDbBar(label, db, x, y, w, h, color) {
+      drawMeterBar({ x, y, w, h, value: meterXForDb(db), color });
+      const textSize = meterTextSize(11, 1);
+      drawMeterText(label, x, y - 6, textSize, "rgba(245,245,245,0.82)");
+      drawMeterText(`${db <= -119 ? "-inf" : db.toFixed(1)} dB`, x + w - 72, y - 6, textSize, "rgba(166,166,166,0.95)");
     }
 
     function drawCorrelationBar(label, value, x, y, w, h, color, enabled = true) {
       const labelColor = enabled ? "rgba(245,245,245,0.82)" : "rgba(120,120,120,0.62)";
       const valueColor = enabled ? "rgba(166,166,166,0.95)" : "rgba(95,95,95,0.58)";
-      ctx.fillStyle = "#050505";
-      ctx.fillRect(x, y, w, h);
-      ctx.strokeStyle = enabled ? "#2b2b2b" : "rgba(43,43,43,0.55)";
-      ctx.strokeRect(x, y, w, h);
-      const mid = x + w * 0.5;
-      ctx.strokeStyle = enabled ? "rgba(245,245,245,0.35)" : "rgba(245,245,245,0.14)";
-      ctx.beginPath();
-      ctx.moveTo(mid, y);
-      ctx.lineTo(mid, y + h);
-      ctx.stroke();
-      if (enabled) {
-        const amount = clamp(value, -1, 1);
-        ctx.fillStyle = color;
-        if (amount >= 0) {
-          ctx.fillRect(mid, y, w * 0.5 * amount, h);
-        } else {
-          ctx.fillRect(mid + w * 0.5 * amount, y, -w * 0.5 * amount, h);
-        }
-      } else {
-        ctx.fillStyle = "rgba(0,0,0,0.5)";
-        ctx.fillRect(x, y, w, h);
-      }
-      drawMeterText(label, x, y - 6, 11, labelColor);
-      drawMeterText(enabled ? value.toFixed(2) : "--", x + w - 34, y - 6, 11, valueColor);
+      drawMeterBar({ x, y, w, h, value, color, mode: "bipolar", enabled });
+      const textSize = meterTextSize(11, 1);
+      drawMeterText(label, x, y - 6, textSize, labelColor);
+      drawMeterText(enabled ? value.toFixed(2) : "--", x + w - 40, y - 6, textSize, valueColor);
     }
 
     function spectrumColor(value, alpha = 1) {
@@ -4425,7 +4677,7 @@
           ctx.moveTo(x, yy);
           ctx.lineTo(x + w, yy);
           ctx.stroke();
-          ctx.fillText(freq >= 1000 ? `${freq / 1000}k` : `${freq}`, x + 6, yy + 2);
+          ctx.fillText(freq >= 1000 ? `${freq / 1000}k` : `${freq}`, x + 6, clamp(yy + 2, y + 4, y + h - 12));
         } else {
           const xx = x + p * w;
           ctx.beginPath();
@@ -4676,17 +4928,16 @@
 
     function drawSignalDecisionBar(label, value, x, y, w, color) {
       const v = clampFinite(value, 0, 1, 0);
-      drawMeterText(label, x, y - 5, 10, "rgba(245,245,245,0.86)");
-      ctx.save();
-      ctx.textAlign = "right";
-      drawMeterText(v.toFixed(2), x + w, y - 5, 10, "rgba(166,188,210,0.82)");
-      ctx.restore();
-      ctx.fillStyle = "#050505";
-      ctx.fillRect(x, y, w, 8);
-      ctx.strokeStyle = "#2b2b2b";
-      ctx.strokeRect(x, y, w, 8);
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, Math.max(1, w * v), 8);
+      return drawMeterRow({
+        label,
+        valueText: v.toFixed(2),
+        value: v,
+        x,
+        y,
+        w,
+        color,
+        density: "compact"
+      });
     }
 
     function resetSignalCharacterPhysics() {
@@ -5078,12 +5329,13 @@
 
       ctx.save();
       ctx.textAlign = "center";
-      drawMeterText("STABLE", x + w * 0.5, y + 13, 9, "rgba(166,188,210,0.76)");
-      drawMeterText("TRANSIENT", x + w * 0.5, y + h - 7, 9, "rgba(166,188,210,0.76)");
+      const axisText = meterTextSize(9, 0, 12);
+      drawMeterText("STABLE", x + w * 0.5, y + axisText + 4, axisText, "rgba(166,188,210,0.76)");
+      drawMeterText("TRANSIENT", x + w * 0.5, meterTextBottomBaseline(y, h, axisText, axisText + 8), axisText, "rgba(166,188,210,0.76)");
       ctx.textAlign = "left";
-      drawMeterText("TONAL", x + 6, y + h * 0.5 - 4, 9, "rgba(166,188,210,0.72)");
+      drawMeterText("TONAL", x + 6, y + h * 0.5 - 4, axisText, "rgba(166,188,210,0.72)");
       ctx.textAlign = "right";
-      drawMeterText("NOISY", x + w - 6, y + h * 0.5 - 4, 9, "rgba(166,188,210,0.72)");
+      drawMeterText("NOISY", x + w - 6, y + h * 0.5 - 4, axisText, "rgba(166,188,210,0.72)");
       ctx.restore();
     }
 
@@ -5096,47 +5348,66 @@
       const display = signalCharacterDisplaySelect?.value || "both";
       const showMap = display === "both" || display === "map";
       const showBars = display === "both" || display === "bars";
-      const mapW = showBars ? Math.max(228, Math.floor(w * 0.52)) : w - pad * 2;
-      const mapH = showBars ? Math.max(100, h - 62) : h - 58;
+      const stackSignal = useCompactGraphLayout() && showMap && showBars;
+      const rawFooterReserve = useCompactGraphLayout() ? canvasPxForCss(54) : 42;
+      const contentBottom = Math.max(120, h - rawFooterReserve);
+      const mapW = stackSignal ? w - pad * 2 : showBars ? Math.max(228, Math.floor(w * 0.52)) : w - pad * 2;
+      const mapH = stackSignal
+        ? Math.max(canvasPxForCss(190), contentBottom * 0.34)
+        : showBars ? Math.max(100, contentBottom - 38) : Math.max(100, contentBottom - 34);
       const mapX = x + pad;
       const mapY = y + 30;
+      const sectionText = meterTextSize(10, 0, 13);
       if (showMap) {
-        drawMeterText("CHARACTER MAP", mapX, y + 17, 10, "rgba(245,245,245,0.82)");
+        drawMeterText("CHARACTER MAP", mapX, y + sectionText + 7, sectionText, "rgba(245,245,245,0.82)");
         drawSignalCharacterMap(mapX, mapY, mapW, mapH);
       }
 
       if (showBars) {
-        const decisionX = showMap ? mapX + mapW + 18 : x + pad;
-        const decisionY = showMap ? mapY + 4 : mapY;
-        const decisionW = showMap ? Math.max(180, x + w - pad - decisionX) : w - pad * 2;
+        const decisionX = stackSignal ? x + pad : showMap ? mapX + mapW + 18 : x + pad;
+        const stackTitleGap = Math.max(canvasPxForCss(22), sectionText + 10);
+        const decisionTitleY = stackSignal ? mapY + mapH + stackTitleGap : y + sectionText + 7;
+        const decisionY = stackSignal ? decisionTitleY + Math.max(canvasPxForCss(14), sectionText + 4) : showMap ? mapY + 4 : mapY;
+        const decisionW = stackSignal ? w - pad * 2 : showMap ? Math.max(180, x + w - pad - decisionX) : w - pad * 2;
         const hints = signalCharacterBackend.hints;
-        drawMeterText("DECISION STRIP", decisionX, y + 17, 10, "rgba(245,245,245,0.82)");
-        drawSignalDecisionBar("Tuner Trust", hints.tunerTrust, decisionX, decisionY, decisionW, "#bc30ec");
-        drawSignalDecisionBar("Pattern Trust", hints.patternTrust, decisionX, decisionY + 27, decisionW, "#ff3d1f");
-        drawSignalDecisionBar("Low Anchor", signalCharacterState.lowAnchor, decisionX, decisionY + 54, decisionW, "#39ff14");
-        drawSignalDecisionBar("Noise Risk", hints.noiseRisk, decisionX, decisionY + 81, decisionW, "#529eff");
-        drawSignalDecisionBar("Event Density", signalCharacterState.eventDensity, decisionX, decisionY + 108, decisionW, "#ffbe28");
+        drawMeterText("DECISION STRIP", decisionX, decisionTitleY, sectionText, "rgba(245,245,245,0.82)");
+        let rowY = decisionY;
+        [
+          ["Tuner Trust", hints.tunerTrust, "#bc30ec"],
+          ["Pattern Trust", hints.patternTrust, "#ff3d1f"],
+          ["Low Anchor", signalCharacterState.lowAnchor, "#39ff14"],
+          ["Noise Risk", hints.noiseRisk, "#529eff"],
+          ["Event Density", signalCharacterState.eventDensity, "#ffbe28"]
+        ].forEach(([label, value, color]) => {
+          const row = drawSignalDecisionBar(label, value, decisionX, rowY, decisionW, color);
+          rowY += row.height;
+        });
       }
 
-      const rawY = y + h - 22;
-      const rawX = x + pad;
-      const rawW = w - pad * 2;
-      ctx.fillStyle = "rgba(245,245,245,0.045)";
-      ctx.fillRect(rawX, rawY - 13, rawW, 21);
-      const raw = [
-        [signalCharacterBackend.profile.mode === "clinical" ? "Clinical" : "Musical", signalCharacterBackend.profile.fftWeight],
-        ["Flat", signalCharacterState.flatness],
-        ["Crest", signalCharacterState.spectralCrest],
-        ["Peak/RMS", signalCharacterState.crestFactor],
-        ["Impact", signalCharacterState.transientImpact],
-        ["Events", signalCharacterState.eventDensity]
-      ];
-      const colW = rawW / raw.length;
-      raw.forEach(([label, value], index) => {
-        const tx = rawX + index * colW + 7;
-        drawMeterText(label, tx, rawY - 2, 8, "rgba(166,188,210,0.7)");
-        drawMeterText(clampFinite(value, 0, 1, 0).toFixed(2), tx, rawY + 8, 9, "rgba(245,245,245,0.82)");
-      });
+      if (!stackSignal) {
+        const rawLabelSize = meterTextSize(8, 0, 11);
+        const rawValueSize = meterTextSize(9, 0, 12);
+        const rawBoxH = rawLabelSize + rawValueSize + 9;
+        const rawY = y + h - rawBoxH + rawLabelSize + 2;
+        const rawX = x + pad;
+        const rawW = w - pad * 2;
+        ctx.fillStyle = "rgba(245,245,245,0.045)";
+        ctx.fillRect(rawX, rawY - rawLabelSize - 4, rawW, rawBoxH);
+        const raw = [
+          [signalCharacterBackend.profile.mode === "clinical" ? "Clinical" : "Musical", signalCharacterBackend.profile.fftWeight],
+          ["Flat", signalCharacterState.flatness],
+          ["Crest", signalCharacterState.spectralCrest],
+          ["Peak/RMS", signalCharacterState.crestFactor],
+          ["Impact", signalCharacterState.transientImpact],
+          ["Events", signalCharacterState.eventDensity]
+        ];
+        const colW = rawW / raw.length;
+        raw.forEach(([label, value], index) => {
+          const tx = rawX + index * colW + 7;
+          drawMeterText(label, tx, rawY - 2, rawLabelSize, "rgba(166,188,210,0.7)");
+          drawMeterText(clampFinite(value, 0, 1, 0).toFixed(2), tx, rawY + rawValueSize + 1, rawValueSize, "rgba(245,245,245,0.82)");
+        });
+      }
     }
 
     function phaseDungeonMemoryProfile() {
@@ -5213,6 +5484,111 @@
       return { energy, fast, one, three, six, sustained, brake, acceleration };
     }
 
+    function kineticPeakInRange(minHz, maxHz, steps = 36) {
+      if (!audioContext || !floatFreqData.length) return { freq: 0, db: -120, contrast: 0, energy: 0 };
+      let bestFreq = 0;
+      let bestDb = -120;
+      let sumDb = 0;
+      let count = 0;
+      const minLog = Math.log(Math.max(1, minHz));
+      const maxLog = Math.log(Math.max(minHz + 1, maxHz));
+      for (let i = 0; i < steps; i += 1) {
+        const n = i / Math.max(1, steps - 1);
+        const freq = Math.exp(lerp(minLog, maxLog, n));
+        const prev = spectrumDbAtFrequency(freq / 1.075);
+        const current = spectrumDbAtFrequency(freq);
+        const next = spectrumDbAtFrequency(freq * 1.075);
+        const smoothDb = prev * 0.18 + current * 0.64 + next * 0.18;
+        sumDb += smoothDb;
+        count += 1;
+        if (smoothDb > bestDb) {
+          bestDb = smoothDb;
+          bestFreq = freq;
+        }
+      }
+      const meanDb = count ? sumDb / count : -120;
+      const contrast = bestDb - meanDb;
+      const energy = clamp(smoothstep(-78, -20, bestDb) * 0.64 + smoothstep(1.5, 16, contrast) * 0.36, 0, 1);
+      return { freq: bestFreq, db: bestDb, contrast, energy };
+    }
+
+    function updateKineticVocalState(hasSignal, pressure, motion) {
+      const now = audioContext ? audioContext.currentTime : performance.now() / 1000;
+      const dt = clamp(now - (kineticVocalState.lastUpdateAt || now), 0.008, 0.08);
+      kineticVocalState.lastUpdateAt = now;
+      if (!hasSignal) {
+        const fade = 0.18;
+        [
+          "f0Confidence", "voiced", "f1Energy", "f2Energy", "f3Energy", "formantConfidence",
+          "vowelOpen", "vowelFront", "rounding", "plosiveClosure", "plosiveBurst",
+          "fricativeNoise", "breathNoise", "tractPressure"
+        ].forEach((key) => {
+          kineticVocalState[key] = lerp(kineticVocalState[key], 0, fade);
+        });
+        return kineticVocalState;
+      }
+
+      const f1Peak = kineticPeakInRange(180, 1050, 34);
+      const f2Peak = kineticPeakInRange(650, 3200, 44);
+      const f3Peak = kineticPeakInRange(1600, 5200, 38);
+      const formantConfidence = clamp(
+        f1Peak.energy * 0.34
+          + f2Peak.energy * 0.34
+          + f3Peak.energy * 0.14
+          + signalCharacterState.tonal * 0.12
+          + (1 - signalCharacterState.noisy) * 0.06,
+        0,
+        1
+      );
+      const targetF0 = tunerState.detected && tunerState.freq > 20 ? tunerState.freq : 0;
+      const f0Confidence = clamp(tunerState.confidence * 0.72 + signalCharacterState.lowAnchor * 0.28, 0, 1);
+      const voiced = clamp(f0Confidence * 0.72 + formantConfidence * 0.18 + signalCharacterState.tonal * 0.1 - signalCharacterState.noisy * 0.28, 0, 1);
+      const vowelOpen = clamp((f1Peak.freq - 230) / 760, 0, 1) * formantConfidence;
+      const vowelFront = clamp((f2Peak.freq - 800) / 2300, 0, 1) * formantConfidence;
+      const rounding = clamp((1 - vowelFront) * 0.62 + clamp((1900 - f2Peak.freq) / 1300, 0, 1) * 0.28 + smoothed.low * 0.1, 0, 1) * formantConfidence;
+      const fricativeNoise = clamp(signalCharacterState.noisy * 0.28 + smoothed.high * 0.42 + metrics.flux * 0.2 + patternState.hits.hat * 0.1, 0, 1);
+      const breathNoise = clamp(signalCharacterState.flatness * 0.34 + smoothed.high * 0.22 + (1 - voiced) * smoothed.rms * 0.65, 0, 1);
+      const plosiveBurst = clamp(signalCharacterState.transientImpact * 0.46 + metrics.flux * 0.28 + Math.max(patternState.hits.kick, patternState.hits.snare) * 0.26, 0, 1);
+      const plosiveClosure = clamp(phaseDungeonState.brake * 0.46 + Math.max(0, phaseDungeonState.sectionPower - metrics.rms) * 0.42 + (1 - fricativeNoise) * plosiveBurst * 0.12, 0, 1);
+      const tractPressure = clamp(pressure * 0.38 + metrics.rms * 0.22 + smoothed.low * 0.18 + plosiveBurst * 0.22, 0, 1.6);
+
+      const attack = 0.18;
+      const release = 0.07;
+      function smoothKey(key, target) {
+        const rate = target > kineticVocalState[key] ? attack : release;
+        kineticVocalState[key] = lerp(kineticVocalState[key], target, rate);
+      }
+      if (targetF0 > 0) {
+        kineticVocalState.f0Hz = kineticVocalState.f0Hz > 0 ? lerp(kineticVocalState.f0Hz, targetF0, 0.16) : targetF0;
+      } else {
+        kineticVocalState.f0Hz = lerp(kineticVocalState.f0Hz, 0, 0.08);
+      }
+      kineticVocalState.f1 = kineticVocalState.f1 > 0 ? lerp(kineticVocalState.f1, f1Peak.freq, 0.14) : f1Peak.freq;
+      kineticVocalState.f2 = kineticVocalState.f2 > 0 ? lerp(kineticVocalState.f2, f2Peak.freq, 0.14) : f2Peak.freq;
+      kineticVocalState.f3 = kineticVocalState.f3 > 0 ? lerp(kineticVocalState.f3, f3Peak.freq, 0.12) : f3Peak.freq;
+      smoothKey("f0Confidence", f0Confidence);
+      smoothKey("voiced", voiced);
+      smoothKey("f1Energy", f1Peak.energy);
+      smoothKey("f2Energy", f2Peak.energy);
+      smoothKey("f3Energy", f3Peak.energy);
+      smoothKey("formantConfidence", formantConfidence);
+      smoothKey("vowelOpen", vowelOpen);
+      smoothKey("vowelFront", vowelFront);
+      smoothKey("rounding", rounding);
+      smoothKey("plosiveClosure", plosiveClosure);
+      smoothKey("plosiveBurst", plosiveBurst);
+      smoothKey("fricativeNoise", fricativeNoise);
+      smoothKey("breathNoise", breathNoise);
+      smoothKey("tractPressure", tractPressure);
+
+      const glottalHz = clamp(kineticVocalState.f0Hz || 0, 0, 520);
+      const glottalRate = glottalHz > 0 ? glottalHz / 55 : 0.08 + voiced * 0.22;
+      kineticVocalState.glottalPhase = (kineticVocalState.glottalPhase + dt * glottalRate * (0.18 + voiced * 0.52)) % 1;
+      kineticVocalState.turbulencePhase = (kineticVocalState.turbulencePhase + dt * (0.12 + fricativeNoise * 1.4 + plosiveBurst * 0.8)) % 1;
+      kineticVocalState.mouthPhase = (kineticVocalState.mouthPhase + dt * (0.08 + vowelOpen * 0.34 + motion * 0.18)) % 1;
+      return kineticVocalState;
+    }
+
     function updatePhaseDungeonField(cols, rows, samples, hasSignal) {
       const total = cols * rows;
       const profile = phaseDungeonMemoryProfile();
@@ -5230,14 +5606,15 @@
       const width = clamp(smoothed.side * 0.72 + Math.abs(smoothed.right - smoothed.left) * 0.46, 0, 1);
       const pressure = clamp((smoothed.low * 0.58 + smoothed.bassHit * 0.68 + patternState.hits.kick * 0.42) * Number(phaseDungeonPressure?.value || 1), 0, 1.8);
       const motion = clamp(signalCharacterState.transientImpact * 0.64 + smoothed.flux * 0.58 + patternState.hits.global * 0.34, 0, 1);
+      const vocal = kineticVocalState;
       const delay = profile.delay + Math.round(pressure * 5 + width * 3);
       const recurrence = phaseDungeonRecurrence(samples, Math.min(delay, samples.length - 3));
       phaseDungeonState.recurrence = lerp(phaseDungeonState.recurrence, recurrence, recurrence > phaseDungeonState.recurrence ? 0.42 : 0.12);
       phaseDungeonState.lastSignalAt = performance.now() / 1000;
 
       const fog = Number(phaseDungeonFog?.value || 0.55);
-      const centerRow = (rows - 1) * 0.5;
-      const caveHalf = rows * (0.18 + pressure * 0.18 + phaseDungeonState.recurrence * 0.11);
+      const centerRow = (rows - 1) * (0.5 + (vocal.vowelFront - 0.5) * 0.08);
+      const caveHalf = rows * (0.16 + pressure * 0.12 + vocal.vowelOpen * 0.2 + vocal.rounding * 0.08 + phaseDungeonState.recurrence * 0.08);
       for (let yCell = 0; yCell < rows; yCell += 1) {
         for (let xCell = 0; xCell < cols; xCell += 1) {
           const idx = yCell * cols + xCell;
@@ -5245,16 +5622,19 @@
           const mirror = samples[(samples.length - 1 - xCell + samples.length) % samples.length] || 0;
           const delayed = samples[(xCell + delay + yCell * 2) % samples.length] || 0;
           const recur = 1 - Math.abs(wave - delayed) * 1.35;
-          const sideBend = (xCell / Math.max(1, cols - 1) - 0.5) * width * rows * 0.24;
+          const cellNorm = xCell / Math.max(1, cols - 1);
+          const sideBend = (cellNorm - 0.5) * (width * 0.16 + vocal.vowelFront * 0.12 - vocal.rounding * 0.08) * rows;
+          const glottalPulse = Math.sin((cellNorm * 2.2 + vocal.glottalPhase) * Math.PI * 2) * vocal.voiced;
           const caveCenter = centerRow
-            + wave * rows * (0.2 + pressure * 0.11)
-            + mirror * rows * width * 0.08
+            + wave * rows * (0.12 + pressure * 0.07 + vocal.vowelOpen * 0.12)
+            + mirror * rows * (width * 0.05 + vocal.rounding * 0.08)
+            + glottalPulse * rows * 0.035
             + sideBend;
           const dist = Math.abs(yCell - caveCenter);
-          const wall = smoothstep(caveHalf + 3.4, caveHalf - 0.5, dist);
-          const grain = noise2(xCell * 0.37, yCell * 0.53, t * 0.06);
-          const fracture = smoothstep(0.22, 0.92, recur + grain * fog * 0.44 + motion * 0.18);
-          const target = clamp(wall * (0.42 + fracture * 0.68) + pressure * 0.12 + motion * 0.1, 0, 1);
+          const wall = smoothstep(caveHalf + 3.2, caveHalf - 0.45, dist);
+          const grain = noise2(xCell * 0.37 + vocal.turbulencePhase * 1.7, yCell * 0.53 + vocal.mouthPhase, vocal.fricativeNoise * 2.3);
+          const fracture = smoothstep(0.22, 0.92, recur + grain * fog * (0.16 + vocal.fricativeNoise * 0.34 + vocal.breathNoise * 0.22) + motion * 0.12 + vocal.plosiveBurst * 0.2);
+          const target = clamp(wall * (0.38 + fracture * 0.62) + pressure * 0.08 + motion * 0.06 + vocal.tractPressure * 0.08, 0, 1);
           const current = phaseDungeonState.cells[idx] || 0;
           phaseDungeonState.cells[idx] = lerp(current, target, target > current ? profile.attack : profile.release);
         }
@@ -5272,6 +5652,7 @@
       const width = clamp(smoothed.side * 0.72 + Math.abs(smoothed.right - smoothed.left) * 0.46, 0, 1);
       const motion = clamp(signalCharacterState.transientImpact * 0.64 + smoothed.flux * 0.58 + patternState.hits.global * 0.34, 0, 1);
       const recurrence = phaseDungeonState.recurrence;
+      const vocal = kineticVocalState;
       const energyWindows = phaseDungeonEnergyWindows(pressure, motion);
       const tunnelEnergy = energyWindows.fast;
       const suddenDrop = energyWindows.brake;
@@ -5284,38 +5665,51 @@
       phaseDungeonState.sectionPower = lerp(phaseDungeonState.sectionPower, energyWindows.sustained, energyWindows.sustained > phaseDungeonState.sectionPower ? 0.08 : 0.035);
       phaseDungeonState.brake = lerp(phaseDungeonState.brake, phaseDungeonState.tunnelDrop, 0.36);
       phaseDungeonState.acceleration = lerp(phaseDungeonState.acceleration, hardAcceleration, hardAcceleration > phaseDungeonState.acceleration ? 0.42 : 0.12);
-      const travelSpeed = 0.004
+      const vocalTravel = vocal.voiced * clamp((vocal.f0Hz || 0) / 420, 0, 1) * 0.018
+        + vocal.plosiveBurst * 0.055
+        + vocal.tractPressure * 0.012;
+      const travelSpeed = 0
         + phaseDungeonState.sectionPower * 0.018
         + phaseDungeonState.acceleration * 0.07
-        + motion * 0.028
+        + motion * 0.02
         + recurrence * 0.012
+        + vocalTravel
         - phaseDungeonState.brake * 0.026;
-      phaseDungeonState.tunnelTravel = (phaseDungeonState.tunnelTravel + Math.max(0.0015, travelSpeed)) % 1;
-      const headingNoise = noise2(smoothed.centroid + energyWindows.three, pressure + energyWindows.six, t * 0.008);
+      phaseDungeonState.tunnelTravel = (phaseDungeonState.tunnelTravel + Math.max(0, travelSpeed)) % 1;
+      const headingNoise = noise2(
+        smoothed.centroid + energyWindows.three + vocal.vowelFront * 0.7,
+        pressure + energyWindows.six + vocal.rounding,
+        vocal.turbulencePhase + vocal.mouthPhase
+      );
       const headingTarget = (smoothed.right - smoothed.left) * 0.68
-        + (smoothed.mid - smoothed.high) * 0.32
-        + headingNoise * (0.2 + motion * 0.24 + phaseDungeonState.acceleration * 0.18)
-        + Math.sin(phaseDungeonState.tunnelTravel * Math.PI * 2) * phaseDungeonState.sectionPower * 0.16;
-      phaseDungeonState.tunnelHeading = lerp(phaseDungeonState.tunnelHeading, headingTarget, 0.045 + motion * 0.08 + phaseDungeonState.acceleration * 0.08);
+        + (vocal.vowelFront - 0.5) * 0.42
+        - vocal.rounding * 0.18
+        + headingNoise * (0.12 + motion * 0.12 + phaseDungeonState.acceleration * 0.14 + vocal.fricativeNoise * 0.12)
+        + Math.sin(vocal.mouthPhase * Math.PI * 2) * phaseDungeonState.sectionPower * 0.08;
+      phaseDungeonState.tunnelHeading = lerp(phaseDungeonState.tunnelHeading, headingTarget, 0.038 + motion * 0.052 + phaseDungeonState.acceleration * 0.07 + vocal.plosiveBurst * 0.08);
       const zoomTarget = clamp(
         0.58
           + phaseDungeonState.sectionPower * 0.42
           + phaseDungeonState.acceleration * 0.72
           + tunnelEnergy * 0.22
           + recurrence * 0.08
+          + vocal.vowelOpen * 0.2
+          + vocal.plosiveBurst * 0.22
+          - vocal.plosiveClosure * 0.18
           - phaseDungeonState.brake * 0.64,
         0.38,
-        1.82
+        2.02
       );
       phaseDungeonState.tunnelZoom = lerp(phaseDungeonState.tunnelZoom, zoomTarget, phaseDungeonState.brake > 0.12 || phaseDungeonState.acceleration > 0.18 ? 0.28 : 0.075);
       const heading = phaseDungeonState.tunnelHeading;
-      const tension = clamp(phaseDungeonState.sectionPower * 0.5 + phaseDungeonState.acceleration * 0.35 + phaseDungeonState.brake * 0.25 + width * 0.2, 0, 1.4);
-      const centerX = plotX + plotW * (0.5 + Math.sin(heading) * (0.16 + tension * 0.1) + (smoothed.right - smoothed.left) * 0.08);
-      const centerY = plotY + plotH * (0.5 + Math.cos(heading * 0.86) * (0.08 + tension * 0.06) - smoothed.low * 0.05 + smoothed.high * 0.04);
-      const ringCount = Math.round(clamp(12 + recurrence * 8 + pressure * 4 + phaseDungeonState.brake * 7 + phaseDungeonState.acceleration * 4, 10, 28));
+      const tension = clamp(phaseDungeonState.sectionPower * 0.42 + phaseDungeonState.acceleration * 0.3 + phaseDungeonState.brake * 0.25 + width * 0.14 + vocal.tractPressure * 0.38 + vocal.plosiveClosure * 0.22, 0, 1.6);
+      const centerX = plotX + plotW * (0.5 + Math.sin(heading) * (0.1 + tension * 0.075) + (smoothed.right - smoothed.left) * 0.06 + (vocal.vowelFront - 0.5) * 0.04);
+      const centerY = plotY + plotH * (0.5 + Math.cos(heading * 0.86) * (0.055 + tension * 0.045) - vocal.rounding * 0.035 + vocal.vowelOpen * 0.04);
+      const pitchNorm = clamp((Math.log2(Math.max(40, vocal.f0Hz || 80)) - Math.log2(55)) / (Math.log2(880) - Math.log2(55)), 0, 1);
+      const ringCount = Math.round(clamp(9 + pitchNorm * 14 + recurrence * 5 + vocal.fricativeNoise * 5 + vocal.plosiveBurst * 5, 8, 30));
       const segments = Math.round(clamp(28 + cols * 0.8, 28, 64));
-      const maxRadius = Math.min(plotW, plotH) * (0.48 + pressure * 0.11) * phaseDungeonState.tunnelZoom;
-      const tunnelTwist = (smoothed.side - 0.35) * 0.46 + smoothed.centroid * 0.32 + Math.sin(t * 0.009) * (0.18 + tension * 0.28) + heading * (0.74 + tension * 0.35);
+      const maxRadius = Math.min(plotW, plotH) * (0.42 + vocal.vowelOpen * 0.16 + vocal.rounding * 0.08 + pressure * 0.06) * phaseDungeonState.tunnelZoom;
+      const tunnelTwist = (smoothed.side - 0.35) * 0.28 + vocal.vowelFront * 0.36 - vocal.rounding * 0.22 + Math.sin(vocal.mouthPhase * Math.PI * 2) * (0.08 + tension * 0.16) + heading * (0.6 + tension * 0.28);
       const ringPoints = [];
 
       ctx.save();
@@ -5338,31 +5732,35 @@
         const depth = (baseDepth + phaseDungeonState.tunnelTravel) % 1;
         const perspective = Math.pow(depth, 1.18 + phaseDungeonState.brake * 0.42);
         const hole = 0.035 + phaseDungeonState.acceleration * 0.24 + phaseDungeonState.sectionPower * 0.08 - phaseDungeonState.brake * 0.025;
-        const radius = maxRadius * (hole + perspective * (1.02 - hole)) * (1 + pressure * (1 - depth) * 0.24 - phaseDungeonState.brake * (1 - depth) * 0.16);
-        const zPush = pressure * (1 - depth) * 0.22 + smoothed.peak * 0.08;
-        const angleOffset = tunnelTwist * (1 - depth) + t * 0.002 * (ring + 1) + phaseDungeonState.tunnelTravel * Math.PI * 2;
-        const ovalX = 1.08 + width * 0.28 - depth * 0.08 + Math.sin(heading + depth * 3.4) * (0.09 + tension * 0.13);
-        const ovalY = 0.54 + pressure * 0.14 + depth * 0.28 + Math.cos(heading * 0.7 + depth * 4.1) * (0.07 + tension * 0.1);
+        const throatDepth = 1 - depth;
+        const radius = maxRadius * (hole + perspective * (1.02 - hole)) * (1 + vocal.vowelOpen * throatDepth * 0.28 + vocal.rounding * depth * 0.18 + pressure * throatDepth * 0.12 - vocal.plosiveClosure * throatDepth * 0.2);
+        const zPush = vocal.tractPressure * throatDepth * 0.22 + vocal.plosiveBurst * 0.16 + smoothed.peak * 0.04;
+        const angleOffset = tunnelTwist * throatDepth
+          + vocal.glottalPhase * Math.PI * 2 * (0.12 + vocal.voiced * 0.38) * throatDepth
+          + vocal.mouthPhase * Math.PI * 2 * (0.08 + depth * 0.22)
+          + phaseDungeonState.tunnelTravel * Math.PI * 2;
+        const ovalX = 0.95 + width * 0.16 + vocal.vowelFront * 0.28 + vocal.rounding * 0.18 - depth * 0.06 + Math.sin(heading + depth * (2.2 + vocal.vowelFront * 1.4) + vocal.mouthPhase * Math.PI * 2) * (0.045 + tension * 0.075);
+        const ovalY = 0.48 + vocal.vowelOpen * 0.36 + pressure * 0.08 + depth * 0.22 + Math.cos(heading * 0.7 + depth * (2.4 + vocal.rounding * 1.5) + vocal.glottalPhase * Math.PI * 2) * (0.04 + tension * 0.065);
         const points = [];
         for (let seg = 0; seg < segments; seg += 1) {
           const p = seg / segments;
           const angle = p * Math.PI * 2 + angleOffset;
           const sample = samples[Math.floor(p * (samples.length - 1))] || 0;
-          const fractal = Math.sin(angle * (3 + Math.round(recurrence * 4)) + depth * 9 + t * 0.028)
-            * Math.sin(angle * (7 + Math.round(width * 5)) - pressure * 2.8)
-            * (0.032 + motion * 0.05 + recurrence * 0.035 + tension * 0.045);
-          const erosion = noise2(seg * 0.19, ring * 0.41, t * 0.035) * (0.045 + fog * 0.06 + smoothed.high * 0.045);
-          const transientDent = (motion * 0.06 + phaseDungeonState.acceleration * 0.08 - phaseDungeonState.brake * 0.035) * Math.sin(angle * 3 + t * 0.045 + ring);
-          const lock = recurrence * 0.035 * Math.sin(angle * 2 - ring * 0.7);
-          const r = radius * (1 + sample * (0.09 + pressure * 0.05) + erosion + transientDent + lock + fractal + zPush * 0.16);
+          const formantRipple = Math.sin(angle * (2 + Math.round(vocal.f1Energy * 4 + vocal.vowelOpen * 3)) + depth * (4 + vocal.f2Energy * 5) + vocal.glottalPhase * Math.PI * 2)
+            * Math.sin(angle * (5 + Math.round(vocal.fricativeNoise * 7 + vocal.f3Energy * 4)) - vocal.rounding * 2.8 + vocal.turbulencePhase * Math.PI * 2)
+            * (0.018 + vocal.formantConfidence * 0.035 + vocal.fricativeNoise * 0.032 + tension * 0.025);
+          const erosion = noise2(seg * 0.19 + vocal.turbulencePhase * 2.1, ring * 0.41 + vocal.mouthPhase, vocal.breathNoise + vocal.fricativeNoise * 1.7) * (0.018 + fog * 0.035 + vocal.fricativeNoise * 0.07 + vocal.breathNoise * 0.045);
+          const transientDent = (vocal.plosiveBurst * 0.12 + phaseDungeonState.acceleration * 0.05 - vocal.plosiveClosure * 0.075) * Math.sin(angle * (2.5 + vocal.vowelOpen * 3) + vocal.glottalPhase * Math.PI * 2 + ring * 0.37);
+          const lock = recurrence * 0.024 * Math.sin(angle * 2 - ring * 0.7 + vocal.mouthPhase * Math.PI * 2);
+          const r = radius * (1 + sample * (0.06 + pressure * 0.035 + vocal.voiced * 0.045) + erosion + transientDent + lock + formantRipple + zPush * 0.16);
           const drift = (1 - depth) * maxRadius * (0.18 + motion * 0.08 + tension * 0.08);
-          const curveX = Math.sin(heading + depth * (4.8 + tension * 2.2) + angle * (0.18 + phaseDungeonState.brake * 0.1)) * drift * (width + 0.18);
-          const curveY = Math.cos(heading * 0.7 + depth * (3.6 + tension * 1.8) - angle * (0.12 + phaseDungeonState.acceleration * 0.12)) * drift * (smoothed.high + pressure * 0.18 + 0.08);
+          const curveX = Math.sin(heading + depth * (3.2 + tension * 1.4 + vocal.vowelFront) + angle * (0.11 + phaseDungeonState.brake * 0.08)) * drift * (width * 0.5 + vocal.vowelFront * 0.44 + 0.12);
+          const curveY = Math.cos(heading * 0.7 + depth * (2.6 + tension * 1.2 + vocal.rounding) - angle * (0.08 + phaseDungeonState.acceleration * 0.08)) * drift * (vocal.vowelOpen * 0.45 + vocal.fricativeNoise * 0.12 + pressure * 0.1 + 0.06);
           points.push({
             x: centerX + Math.cos(angle) * r * ovalX + curveX,
             y: centerY + Math.sin(angle) * r * ovalY + curveY,
             depth,
-            energy: clamp(Math.abs(sample) * 0.5 + pressure * 0.22 + motion * 0.18 + recurrence * 0.18, 0, 1)
+            energy: clamp(Math.abs(sample) * 0.36 + vocal.tractPressure * 0.28 + vocal.formantConfidence * 0.2 + vocal.plosiveBurst * 0.2 + recurrence * 0.12, 0, 1)
           });
         }
         ringPoints.push(points);
@@ -5377,7 +5775,7 @@
         const perspectiveLines = 11 + Math.round(width * 4 + motion * 3);
         const lineOffset = Math.floor((phaseDungeonState.tunnelTravel * segments + heading * 7) % segments);
         for (let line = 0; line < perspectiveLines; line += 1) {
-          const jitter = Math.floor(noise2(line * 0.73, phaseDungeonState.tunnelTravel, t * 0.006) * segments * 0.028);
+          const jitter = Math.floor(noise2(line * 0.73 + vocal.turbulencePhase, phaseDungeonState.tunnelTravel, vocal.mouthPhase + vocal.fricativeNoise) * segments * (0.01 + vocal.fricativeNoise * 0.022));
           const rawSeg = Math.floor(((line + 0.37) / perspectiveLines) * segments + lineOffset + jitter);
           const seg = ((rawSeg % segments) + segments) % segments;
           const lineEnergy = 0.08 + recurrence * 0.12 + pressure * 0.08 + motion * 0.06;
@@ -5422,7 +5820,7 @@
             ctx.strokeStyle = `rgba(245,245,245,${0.035 + recurrence * 0.1 + motion * 0.06})`;
             ctx.lineWidth = 0.5 + motion * 0.8;
             ctx.beginPath();
-            const echoScale = 0.72 + Math.sin(ring + t * 0.02) * 0.06;
+            const echoScale = 0.72 + Math.sin(ring + vocal.glottalPhase * Math.PI * 2 + vocal.mouthPhase * Math.PI) * (0.025 + vocal.voiced * 0.035);
             for (let seg = 0; seg <= segments; seg += 2) {
               const point = points[seg % segments];
               const ex = centerX + (point.x - centerX) * echoScale;
@@ -5459,8 +5857,12 @@
             const radial = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx);
             const band = 1 - Math.abs(((radial * ringCount - phaseDungeonState.tunnelTravel * ringCount) % 1 + 1) % 1 - 0.5) * 2;
-            const noise = noise2(xx * 0.013 + Math.cos(angle) * phaseDungeonState.tunnelTravel, yy * 0.017 + Math.sin(angle) * phaseDungeonState.tunnelTravel, t * 0.02) * 0.5 + 0.5;
-            const shade = clamp(band * 0.38 + noise * fog * 0.24 + pressure * 0.08 + recurrence * 0.1, 0, 1);
+            const noise = noise2(
+              xx * 0.013 + Math.cos(angle) * phaseDungeonState.tunnelTravel + vocal.turbulencePhase,
+              yy * 0.017 + Math.sin(angle) * phaseDungeonState.tunnelTravel + vocal.mouthPhase,
+              vocal.fricativeNoise * 1.7 + vocal.breathNoise
+            ) * 0.5 + 0.5;
+            const shade = clamp(band * 0.32 + noise * fog * (0.08 + vocal.fricativeNoise * 0.18 + vocal.breathNoise * 0.12) + vocal.tractPressure * 0.08 + recurrence * 0.08, 0, 1);
             if (shade < 0.08) continue;
             const alpha = clamp(0.015 + shade * 0.12, 0, 0.18);
             ctx.fillStyle = phaseDungeonCellColor(shade, pressure, width, fog, alpha);
@@ -5482,379 +5884,294 @@
       const cols = clampFinite(Number(phaseDungeonDetailSelect?.value || 32), 16, 48, 32);
       const rows = Math.max(12, Math.round(cols * 0.48));
       const samples = phaseDungeonWaveSamples(Math.max(cols * 2, 64));
+      const pressure = clamp((smoothed.low * 0.58 + smoothed.bassHit * 0.68 + patternState.hits.kick * 0.42) * Number(phaseDungeonPressure?.value || 1), 0, 1.8);
+      const motion = clamp(signalCharacterState.transientImpact * 0.64 + smoothed.flux * 0.58 + patternState.hits.global * 0.34, 0, 1);
+      updateKineticVocalState(hasSignal, pressure, motion);
       updatePhaseDungeonField(cols, rows, samples, hasSignal);
       const result = drawPhaseDungeonRibs(x, y, w, h, cols, rows, samples, hasSignal);
+      const statusSize = meterTextSize(10, 0, 13);
+      const statusY = meterTextBottomBaseline(y, h, statusSize, 10);
 
       if (!hasSignal) {
-        drawMeterText("waiting for signal", x + 14, y + h - 12, 10, "rgba(166,166,166,0.58)");
+        drawMeterText("waiting for signal", x + 14, statusY, statusSize, "rgba(166,166,166,0.58)");
       } else {
         const label = `kinetic · rec ${phaseDungeonState.recurrence.toFixed(2)} · width ${result.width.toFixed(2)} · pressure ${result.pressure.toFixed(2)}`;
-        drawMeterText(label, x + 14, y + h - 12, 10, "rgba(166,188,210,0.78)");
+        drawMeterText(label, x + 14, statusY, statusSize, "rgba(166,188,210,0.78)");
       }
     }
 
-    function vectorLaserSamples(count) {
-      const points = [];
-      const stereoReady = Boolean(leftAnalyser && rightAnalyser && leftTime.length && rightTime.length);
-      const sourceLength = stereoReady ? Math.min(leftTime.length, rightTime.length) : timeData.length;
-      if (!sourceLength) return points;
-      const input = vectorLaserInputSelect?.value || "lr";
-      const start = Math.max(0, sourceLength - count * 5);
-      const span = Math.max(1, sourceLength - start - 1);
-      for (let i = 0; i < count; i += 1) {
-        const idx = Math.min(sourceLength - 1, start + Math.floor((i / Math.max(1, count - 1)) * span));
-        const l = stereoReady ? (leftTime[idx] - 128) / 128 : (timeData[idx] - 128) / 128;
-        const r = stereoReady ? (rightTime[idx] - 128) / 128 : l;
-        const mid = (l + r) * 0.5;
-        const side = (l - r) * 0.5;
-        let px = l;
-        let py = r;
-        if (input === "ms") {
-          px = mid;
-          py = side;
-        } else if (input === "mid") {
-          px = mid;
-          py = samplesSin(i, count, 0.72) * mid;
-        } else if (input === "side") {
-          px = side;
-          py = samplesSin(i, count, 1.37) * side;
+    function wavesFrequencyIndex(row, rows, scale, length) {
+      const n = clamp(row / Math.max(1, rows - 1), 0, 1);
+      const shaped = scale === "musical" ? Math.pow(n, 1.42) : Math.pow(n, 1.72);
+      return clamp(Math.round(shaped * Math.max(0, length - 1)), 0, Math.max(0, length - 1));
+    }
+
+    function wavesColorFor(rowNorm, amp, alpha = 1) {
+      const stops = [
+        { at: 0, color: [255, 24, 18] },
+        { at: 0.16, color: [255, 94, 16] },
+        { at: 0.32, color: [255, 222, 30] },
+        { at: 0.5, color: [56, 255, 44] },
+        { at: 0.66, color: [30, 222, 255] },
+        { at: 0.82, color: [54, 98, 255] },
+        { at: 1, color: [188, 50, 236] }
+      ];
+      let lowerStop = stops[0];
+      let upperStop = stops[stops.length - 1];
+      for (let i = 1; i < stops.length; i += 1) {
+        if (rowNorm <= stops[i].at) {
+          lowerStop = stops[i - 1];
+          upperStop = stops[i];
+          break;
         }
-        points.push({ x: clamp(px, -1, 1), y: clamp(py, -1, 1), mid, side, amp: clamp(Math.max(Math.abs(l), Math.abs(r), Math.abs(mid), Math.abs(side)), 0, 1) });
       }
-      return points;
+      const mix = clamp((rowNorm - lowerStop.at) / Math.max(0.0001, upperStop.at - lowerStop.at), 0, 1);
+      const color = lowerStop.color.map((channel, index) => lerp(channel, upperStop.color[index], mix));
+      const white = clamp(Math.max(0, amp - 0.9) * 1.4 + signalCharacterState.transientImpact * 0.08, 0, 0.24);
+      const r = Math.round(lerp(color[0], 245, white));
+      const g = Math.round(lerp(color[1], 245, white));
+      const b = Math.round(lerp(color[2], 245, white));
+      return `rgba(${r},${g},${b},${alpha})`;
     }
 
-    function samplesSin(index, count, phase) {
-      return Math.sin((index / Math.max(1, count - 1)) * Math.PI * 2 + phase);
-    }
-
-    function shapeVectorLaserPath(points) {
-      if (points.length < 2) return points;
-      let meanX = 0;
-      let meanY = 0;
-      for (const point of points) {
-        meanX += point.x;
-        meanY += point.y;
+    function makeWavesColumn(rows, scale) {
+      const source = meterState.spectrum.length ? meterState.spectrum : new Array(96).fill(0);
+      const column = [];
+      for (let row = 0; row < rows; row += 1) {
+        const idx = wavesFrequencyIndex(row, rows, scale, source.length);
+        const prev = source[Math.max(0, idx - 1)] || 0;
+        const current = source[idx] || 0;
+        const next = source[Math.min(source.length - 1, idx + 1)] || 0;
+        column.push(clamp((prev * 0.2 + current * 0.6 + next * 0.2) * 1.28, 0, 1));
       }
-      meanX /= points.length;
-      meanY /= points.length;
-      let maxX = 0;
-      let maxY = 0;
-      const centered = points.map((point, index) => {
-        const previous = points[Math.max(0, index - 1)];
-        const next = points[Math.min(points.length - 1, index + 1)];
-        const derivative = (next.mid - previous.mid) * 0.5;
-        const x = point.x - meanX;
-        let y = point.y - meanY;
-        if (Math.abs(point.side) < Math.abs(point.mid) * 0.08) {
-          y += derivative * 0.82 + samplesSin(index, points.length, 0.35) * Math.abs(point.mid) * 0.16;
-        }
-        maxX = Math.max(maxX, Math.abs(x));
-        maxY = Math.max(maxY, Math.abs(y));
-        return { ...point, x, y };
-      });
-      const maxAxis = Math.max(maxX, maxY, 0.001);
-      const target = 0.82 + clamp(smoothed.peak * 0.18 + smoothed.side * 0.12, 0, 0.22);
-      const gain = clamp(target / maxAxis, 1.2, 7.5);
-      return centered.map((point) => ({
-        ...point,
-        x: clamp(point.x * gain, -1.15, 1.15),
-        y: clamp(point.y * gain, -1.15, 1.15)
-      }));
+      return column;
     }
 
-    function rotateVectorLaserPath(path, angle, scaleX = 1, scaleY = 1) {
-      const c = Math.cos(angle);
-      const s = Math.sin(angle);
-      return path.map((point) => ({
-        ...point,
-        x: (point.x * c - point.y * s) * scaleX,
-        y: (point.x * s + point.y * c) * scaleY
-      }));
+    function updateWavesMotion(strength) {
+      const sideTarget = clamp(smoothed.right - smoothed.left, -1, 1);
+      const lowTarget = clamp(smoothed.low * 0.9 + smoothed.bassHit * 0.6, 0, 1);
+      const midTarget = clamp(smoothed.mid * 0.75 + smoothed.midHit * 0.35, 0, 1);
+      const highTarget = clamp(smoothed.high * 0.7 + smoothed.flux * 0.28, 0, 1);
+      const shockTarget = clamp(signalCharacterState.transientImpact * 0.65 + metrics.peak * 0.12, 0, 1);
+      wavesState.sideFlow = lerp(wavesState.sideFlow, sideTarget, 0.035);
+      wavesState.lowFlow = lerp(wavesState.lowFlow, lowTarget, 0.028);
+      wavesState.midFlow = lerp(wavesState.midFlow, midTarget, 0.032);
+      wavesState.highFlow = lerp(wavesState.highFlow, highTarget, 0.025);
+      const shockRate = shockTarget > wavesState.shock ? 0.08 : 0.018;
+      wavesState.shock = lerp(wavesState.shock, shockTarget, shockRate);
+      const drift = 0.011 + strength * 0.006 + wavesState.highFlow * 0.004 + wavesState.lowFlow * 0.003;
+      wavesState.phase += drift;
     }
 
-    function vectorLaserSpectrumProfile() {
-      const low = clamp(smoothed.low * 0.42 + averageSpectrumRange(0, 44) * 0.58, 0, 1);
-      const mid = clamp(smoothed.mid * 0.36 + averageSpectrumRange(45, 145) * 0.64, 0, 1);
-      const high = clamp(smoothed.high * 0.34 + averageSpectrumRange(146, 239) * 0.66, 0, 1);
-      const total = Math.max(0.001, low + mid + high);
+    function wavesSurfaceWarp(plotW, plotH, u, v, amp, projection, strength, ageNorm = 0, slope = 0) {
+      if (projection !== "waves") return { x: 0, y: 0, z: 0 };
+      const sideTilt = wavesState.sideFlow * Math.PI * 1.4;
+      const lowCurrent = wavesState.lowFlow;
+      const midCurrent = wavesState.midFlow;
+      const highCurrent = wavesState.highFlow;
+      const temporal = wavesState.phase + ageNorm * Math.PI * (1.25 + midCurrent * 0.45);
+      const xAngle = sideTilt + temporal + u * Math.PI * (1.55 + midCurrent * 0.8);
+      const yAngle = temporal * 0.48 + v * Math.PI * (2.15 + highCurrent * 0.95);
+      const orbit = strength * (3.5 + amp * 10 + lowCurrent * 5 + highCurrent * 2.5);
+      const pulse = Math.sin((u * 1.55 + v * 1.2 - wavesState.phase * 0.8) * Math.PI * 2);
+      const shock = wavesState.shock;
       return {
-        low: low / total,
-        mid: mid / total,
-        high: high / total,
-        energy: clamp(total / 2.1, 0, 1),
-        transient: clamp(signalCharacterState.transientImpact * 0.52 + patternState.hits.global * 0.32 + smoothed.flux * 0.28, 0, 1)
+        x: Math.cos(xAngle + amp * Math.PI * 0.8) * orbit * (0.28 + v * 0.22) + slope * plotW * 0.006,
+        y: Math.sin(yAngle + amp * Math.PI * 0.55) * orbit * (0.18 + (1 - v) * 0.12) - pulse * shock * strength * plotH * 0.008,
+        z: (Math.sin(xAngle - yAngle) * 0.11 + pulse * shock * 0.14) * strength * amp
       };
     }
 
-    function averageSpectrumRange(start, end) {
-      if (!meterState.spectrum.length) return 0;
-      const a = clamp(Math.floor(start), 0, meterState.spectrum.length - 1);
-      const b = clamp(Math.floor(end), a, meterState.spectrum.length - 1);
-      let sum = 0;
-      let count = 0;
-      for (let i = a; i <= b; i += 1) {
-        sum += meterState.spectrum[i] || 0;
-        count += 1;
+    function projectWavesPoint(plotX, plotY, plotW, plotH, u, v, amp, projection, strength, ageNorm = 0, slope = 0) {
+      const warp = wavesSurfaceWarp(plotW, plotH, u, v, amp, projection, strength, ageNorm, slope);
+      const warpedAmp = clamp(amp + warp.z, 0, 1.3);
+      if (projection === "flat") {
+        return {
+          x: plotX + u * plotW,
+          y: plotY + plotH - v * plotH - amp * plotH * 0.18 * strength,
+          z: amp
+        };
       }
-      return count ? sum / count : 0;
-    }
-
-    function mixLaserRgb(profile, point, indexRatio = 0) {
-      const amp = clampFinite(point?.amp, 0, 1, 0);
-      const lowAccent = clamp(profile.low * 1.45 + amp * 0.12, 0, 1);
-      const midAccent = clamp(profile.mid * 1.36 + (1 - Math.abs(indexRatio - 0.5) * 2) * 0.1, 0, 1);
-      const highAccent = clamp(profile.high * 1.52 + indexRatio * 0.14, 0, 1);
-      const white = clamp(profile.transient * amp * 1.35 + Math.max(0, amp - 0.82) * 1.7, 0, 1);
-      const r = 28 + lowAccent * 218 + midAccent * 78 + white * 220;
-      const g = 18 + highAccent * 230 + lowAccent * 38 + white * 220;
-      const b = 36 + midAccent * 215 + highAccent * 126 + white * 210;
+      const baseX = plotX + plotW * 0.08;
+      const baseY = plotY + plotH * 0.86;
+      const timeX = plotW * 0.72;
+      const timeY = -plotH * 0.28;
+      const freqX = plotW * 0.28;
+      const freqY = -plotH * 0.54;
+      const zY = plotH * (0.18 + strength * 0.2);
       return {
-        r: Math.round(clamp(r, 0, 255)),
-        g: Math.round(clamp(g, 0, 255)),
-        b: Math.round(clamp(b, 0, 255)),
-        white
+        x: baseX + u * timeX + v * freqX + warp.x,
+        y: baseY + u * timeY + v * freqY - warpedAmp * zY + warp.y,
+        z: warpedAmp
       };
     }
 
-    function vectorLaserColor(point, alpha, indexRatio = 0, profile = vectorLaserSpectrumProfile()) {
-      const rgb = mixLaserRgb(profile, point, indexRatio);
-      return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
-    }
-
-    function drawVectorLaserGrid(cx, cy, radius) {
-      ctx.strokeStyle = "rgba(245,245,245,0.09)";
+    function drawWavesAxes(plotX, plotY, plotW, plotH, projection) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(245,245,245,0.08)";
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(245,245,245,0.06)";
-      ctx.beginPath();
-      ctx.moveTo(cx - radius, cy);
-      ctx.lineTo(cx + radius, cy);
-      ctx.moveTo(cx, cy - radius);
-      ctx.lineTo(cx, cy + radius);
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(245,245,245,0.11)";
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - radius);
-      ctx.lineTo(cx + radius, cy);
-      ctx.lineTo(cx, cy + radius);
-      ctx.lineTo(cx - radius, cy);
-      ctx.closePath();
-      ctx.stroke();
-    }
-
-    function drawVectorLaserScope(path, cx, cy, radius, alpha, glow, profile = vectorLaserSpectrumProfile()) {
-      if (path.length < 2) return;
-      ctx.save();
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-      if (glow > 0.01) {
-        ctx.globalCompositeOperation = "screen";
-        ctx.lineWidth = 5 + glow * 9;
-        const glowColor = mixLaserRgb(profile, { amp: profile.energy }, 0.5);
-        ctx.strokeStyle = `rgba(${glowColor.r},${glowColor.g},${glowColor.b},${alpha * 0.18 * glow})`;
-        ctx.beginPath();
-        for (let i = 0; i < path.length; i += 1) {
-          const point = path[i];
-          const px = cx + point.x * radius;
-          const py = cy - point.y * radius;
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        }
-        ctx.stroke();
-        ctx.globalCompositeOperation = "source-over";
-      }
-      ctx.lineWidth = 1.1 + glow * 0.7;
-      for (let i = 1; i < path.length; i += 1) {
-        const p0 = path[i - 1];
-        const p1 = path[i];
-        const a = i / Math.max(1, path.length - 1);
-        ctx.strokeStyle = vectorLaserColor(p1, alpha * (0.45 + a * 0.55), a, profile);
-        ctx.beginPath();
-        ctx.moveTo(cx + p0.x * radius, cy - p0.y * radius);
-        ctx.lineTo(cx + p1.x * radius, cy - p1.y * radius);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    function drawVectorLaserCircuit(path, cx, cy, radius, alpha, glow, profile = vectorLaserSpectrumProfile()) {
-      if (path.length < 4) return;
-      const nodeCount = 18;
-      const nodes = [];
-      const width = clamp(smoothed.side * 0.6 + Math.abs(smoothed.right - smoothed.left) * 0.5, 0, 1);
-      const snap = clamp(signalCharacterState.spectralCrest * 0.55 + signalCharacterState.tonal * 0.35, 0, 1);
-      for (let i = 0; i < nodeCount; i += 1) {
-        const source = path[Math.floor((i / nodeCount) * path.length)] || path[0];
-        const angle = (i / nodeCount) * Math.PI * 2 + snap * 0.18;
-        const orbit = radius * (0.24 + source.amp * 0.52 + smoothed.low * 0.12);
-        const px = cx + source.x * radius * (0.36 + width * 0.28) + Math.cos(angle) * orbit * 0.26;
-        const py = cy - source.y * radius * 0.42 + Math.sin(angle * 1.7) * orbit * 0.18;
-        nodes.push({ x: px, y: py, amp: source.amp });
-      }
-      ctx.save();
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.globalCompositeOperation = glow > 0.01 ? "screen" : "source-over";
-      for (let i = 0; i < nodes.length; i += 1) {
-        const node = nodes[i];
-        const next = nodes[(i + 1) % nodes.length];
-        const jump = nodes[(i + 5) % nodes.length];
-        const localAlpha = alpha * clamp(0.24 + node.amp * 0.9, 0.18, 1);
-        ctx.lineWidth = 0.8 + node.amp * 1.5;
-        ctx.strokeStyle = vectorLaserColor(node, localAlpha, i / nodes.length, profile);
-        ctx.beginPath();
-        ctx.moveTo(node.x, node.y);
-        ctx.lineTo(next.x, next.y);
-        if (i % 3 === 0) {
-          ctx.moveTo(node.x, node.y);
-          ctx.lineTo(jump.x, jump.y);
-        }
-        ctx.stroke();
-      }
-      for (let i = 0; i < nodes.length; i += 1) {
-        const node = nodes[i];
-        const r = 1.6 + node.amp * 3.2;
-        ctx.fillStyle = vectorLaserColor(node, alpha * clamp(0.42 + node.amp, 0.3, 1), i / nodes.length, profile);
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    function drawVectorLaserOrbital(path, cx, cy, radius, alpha, glow, profile = vectorLaserSpectrumProfile()) {
-      const spin = t * 0.012 + smoothed.centroid * 0.8;
-      const orbitSpread = 0.18 + smoothed.side * 0.22 + smoothed.high * 0.12;
-      const copies = [
-        { angle: spin, scaleX: 1, scaleY: 0.72 + smoothed.low * 0.18, alpha: 1 },
-        { angle: spin + Math.PI * (0.36 + orbitSpread), scaleX: 0.82, scaleY: 1.06, alpha: 0.58 },
-        { angle: spin - Math.PI * (0.42 + orbitSpread * 0.7), scaleX: 1.08, scaleY: 0.58, alpha: 0.44 }
-      ];
-      for (const copy of copies) {
-        drawVectorLaserScope(
-          rotateVectorLaserPath(path, copy.angle, copy.scaleX, copy.scaleY),
-          cx,
-          cy,
-          radius,
-          alpha * copy.alpha,
-          glow,
-          profile
-        );
-      }
-    }
-
-    function drawVectorLaserTunnel(path, cx, cy, radius, alpha, glow, profile = vectorLaserSpectrumProfile()) {
-      const depth = 5;
-      const twist = t * 0.01 + smoothed.side * 0.6;
-      for (let i = depth - 1; i >= 0; i -= 1) {
-        const z = i / Math.max(1, depth - 1);
-        const scale = 0.42 + z * 0.72;
-        const shift = (1 - z) * radius * (0.18 + smoothed.low * 0.12);
-        const layer = rotateVectorLaserPath(path, twist + z * 0.9, scale, scale * (0.78 + z * 0.24));
-        drawVectorLaserScope(layer, cx + shift * Math.sin(t * 0.015 + i), cy - shift * Math.cos(t * 0.011 + i), radius, alpha * (0.28 + z * 0.72), glow, profile);
-      }
-    }
-
-    function drawVectorLaserBandLayer(path, cx, cy, radius, alpha, profile) {
-      const layers = [
-        { key: "low", angle: t * 0.004, scaleX: 1.14, scaleY: 0.72, color: [255, 61, 31] },
-        { key: "mid", angle: -t * 0.006 + 1.1, scaleX: 0.84, scaleY: 1.08, color: [188, 48, 236] },
-        { key: "high", angle: t * 0.011 - 0.8, scaleX: 1.02, scaleY: 0.92, color: [57, 255, 20] }
-      ];
-      ctx.save();
-      ctx.globalCompositeOperation = "screen";
-      for (const layer of layers) {
-        const amount = clamp(profile[layer.key] * 1.75, 0, 1);
-        if (amount < 0.08) continue;
-        const transformed = rotateVectorLaserPath(path, layer.angle, layer.scaleX, layer.scaleY);
-        ctx.lineWidth = layer.key === "low" ? 2.2 + amount * 3.4 : 1 + amount * 1.9;
-        ctx.strokeStyle = `rgba(${layer.color[0]},${layer.color[1]},${layer.color[2]},${alpha * amount * 0.42})`;
-        ctx.beginPath();
-        const skip = layer.key === "high" ? 3 : 1;
-        for (let i = 0; i < transformed.length; i += skip) {
-          const point = transformed[i];
-          const spread = layer.key === "high" ? 1.18 : layer.key === "low" ? 0.9 : 1;
-          const px = cx + point.x * radius * spread;
-          const py = cy - point.y * radius * spread;
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        }
-        ctx.stroke();
-      }
-      if (profile.transient > 0.12) {
-        ctx.strokeStyle = `rgba(245,245,245,${alpha * profile.transient * 0.72})`;
-        ctx.lineWidth = 1.2 + profile.transient * 4;
-        for (let i = 4; i < path.length; i += 19) {
-          const point = path[i];
-          const length = radius * (0.08 + profile.transient * 0.16);
-          const angle = Math.atan2(point.y, point.x);
+      if (projection === "flat") {
+        for (let i = 1; i < 5; i += 1) {
+          const gy = plotY + (plotH * i) / 5;
           ctx.beginPath();
-          ctx.moveTo(cx + point.x * radius, cy - point.y * radius);
-          ctx.lineTo(cx + point.x * radius + Math.cos(angle) * length, cy - point.y * radius - Math.sin(angle) * length);
+          ctx.moveTo(plotX, gy);
+          ctx.lineTo(plotX + plotW, gy);
+          ctx.stroke();
+        }
+      } else {
+        const a = projectWavesPoint(plotX, plotY, plotW, plotH, 0, 0, 0, projection, 1);
+        const b = projectWavesPoint(plotX, plotY, plotW, plotH, 1, 0, 0, projection, 1);
+        const c = projectWavesPoint(plotX, plotY, plotW, plotH, 0, 1, 0, projection, 1);
+        const d = projectWavesPoint(plotX, plotY, plotW, plotH, 1, 1, 0, projection, 1);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.lineTo(d.x, d.y);
+        ctx.lineTo(c.x, c.y);
+        ctx.closePath();
+        ctx.stroke();
+        for (let i = 1; i < 5; i += 1) {
+          const u0 = projectWavesPoint(plotX, plotY, plotW, plotH, i / 5, 0, 0, projection, 1);
+          const u1 = projectWavesPoint(plotX, plotY, plotW, plotH, i / 5, 1, 0, projection, 1);
+          const v0 = projectWavesPoint(plotX, plotY, plotW, plotH, 0, i / 5, 0, projection, 1);
+          const v1 = projectWavesPoint(plotX, plotY, plotW, plotH, 1, i / 5, 0, projection, 1);
+          ctx.beginPath();
+          ctx.moveTo(u0.x, u0.y);
+          ctx.lineTo(u1.x, u1.y);
+          ctx.moveTo(v0.x, v0.y);
+          ctx.lineTo(v1.x, v1.y);
           ctx.stroke();
         }
       }
       ctx.restore();
     }
 
-    function drawVectorLaserPanel(x, y, w, h) {
+    function drawWavesSurface(history, plotX, plotY, plotW, plotH, rows, projection, strength, alphaScale) {
+      if (history.length < 2) return;
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.globalCompositeOperation = "screen";
+      const historyDenom = Math.max(1, history.length - 1);
+      if (projection !== "flat") {
+        const colStep = Math.max(1, Math.floor(history.length / 72));
+        for (let col = 0; col < history.length - colStep; col += colStep) {
+          const nextCol = Math.min(history.length - 1, col + colStep);
+          const u0 = col / historyDenom;
+          const u1 = nextCol / historyDenom;
+          for (let row = 0; row < rows - 1; row += 1) {
+            const v0 = row / Math.max(1, rows - 1);
+            const v1 = (row + 1) / Math.max(1, rows - 1);
+            const a0 = history[col][row] || 0;
+            const a1 = history[nextCol][row] || 0;
+            const a2 = history[nextCol][row + 1] || 0;
+            const a3 = history[col][row + 1] || 0;
+            const amp = (a0 + a1 + a2 + a3) * 0.25;
+            if (amp < 0.025 && smoothed.rms < 0.04) continue;
+            const p0 = projectWavesPoint(plotX, plotY, plotW, plotH, u0, v0, a0, projection, strength, u0, a1 - a0);
+            const p1 = projectWavesPoint(plotX, plotY, plotW, plotH, u1, v0, a1, projection, strength, u1, a1 - a0);
+            const p2 = projectWavesPoint(plotX, plotY, plotW, plotH, u1, v1, a2, projection, strength, u1, a2 - a3);
+            const p3 = projectWavesPoint(plotX, plotY, plotW, plotH, u0, v1, a3, projection, strength, u0, a2 - a3);
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.closePath();
+            ctx.fillStyle = wavesColorFor((v0 + v1) * 0.5, amp, alphaScale * (0.018 + amp * 0.105));
+            ctx.fill();
+          }
+        }
+      }
+      for (let row = rows - 1; row >= 0; row -= 1) {
+        const rowNorm = row / Math.max(1, rows - 1);
+        ctx.lineWidth = projection === "flat" ? 1.1 : 1.15 + rowNorm * 0.56;
+        ctx.beginPath();
+        for (let col = 0; col < history.length; col += 1) {
+          const u = col / historyDenom;
+          const amp = history[col][row] || 0;
+          const prev = history[Math.max(0, col - 1)]?.[row] || 0;
+          const next = history[Math.min(history.length - 1, col + 1)]?.[row] || 0;
+          const point = projectWavesPoint(plotX, plotY, plotW, plotH, u, rowNorm, amp, projection, strength, u, next - prev);
+          if (col === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        }
+        const latest = history[history.length - 1][row] || 0;
+        ctx.strokeStyle = wavesColorFor(rowNorm, latest, alphaScale * (0.13 + latest * 0.42));
+        ctx.stroke();
+      }
+      if (projection !== "flat") {
+        for (let col = 0; col < history.length; col += Math.max(1, Math.floor(history.length / 26))) {
+          const u = col / historyDenom;
+          ctx.beginPath();
+          for (let row = 0; row < rows; row += 1) {
+            const rowNorm = row / Math.max(1, rows - 1);
+            const amp = history[col][row] || 0;
+            const prev = history[Math.max(0, col - 1)]?.[row] || 0;
+            const next = history[Math.min(history.length - 1, col + 1)]?.[row] || 0;
+            const point = projectWavesPoint(plotX, plotY, plotW, plotH, u, rowNorm, amp, projection, strength, u, next - prev);
+            if (row === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+          }
+          ctx.strokeStyle = `rgba(245,245,245,${0.016 + alphaScale * 0.045})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawWavesPanel(x, y, w, h) {
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
       ctx.strokeRect(x, y, w, h);
       const hasSignal = metrics.rms > 0.006 || smoothed.rms > 0.012 || metrics.peak > 0.016;
+      const pad = 14;
+      const plotX = x + pad;
+      const plotY = y + pad;
+      const plotW = w - pad * 2;
+      const plotH = h - pad * 2;
+      const projection = wavesModeSelect?.value || "waves";
+      const scale = wavesInputSelect?.value || "log";
+      const rows = clampFinite(Number(wavesDensitySelect?.value || 36), 16, 64, 36);
+      const persistence = clampFinite(Number(wavesPersistence?.value || 0.62), 0, 1, 0.62);
+      const strength = clampFinite(Number(wavesGlow?.value || 0.7), 0, 1, 0.7);
+      const maxColumns = Math.round(44 + persistence * 76);
+
       if (!hasSignal) {
-        resetVectorLaserState();
-        const cx = x + w * 0.5;
-        const cy = y + h * 0.5;
-        drawVectorLaserGrid(cx, cy, Math.min(w, h) * 0.34);
-        drawMeterText("waiting for signal", x + 14, y + h - 12, 10, "rgba(166,166,166,0.58)");
+        resetWavesState();
+        drawWavesAxes(plotX, plotY, plotW, plotH, projection);
+        const statusSize = meterTextSize(10, 0, 13);
+        drawMeterText("waiting for signal", x + 14, meterTextBottomBaseline(y, h, statusSize, 10), statusSize, "rgba(166,166,166,0.58)");
         return;
       }
 
-      const density = clampFinite(Number(vectorLaserDensitySelect?.value || 160), 48, 280, 160);
-      const points = shapeVectorLaserPath(vectorLaserSamples(density));
-      vectorLaserState.pointCount = points.length;
-      vectorLaserState.lastSignalAt = performance.now() / 1000;
-      if (points.length > 1) {
-        vectorLaserState.trails.push(points);
-      }
-      const persistence = clampFinite(Number(vectorLaserPersistence?.value || 0.62), 0, 1, 0.62);
-      const maxTrails = Math.max(1, Math.round(2 + persistence * 18));
-      while (vectorLaserState.trails.length > maxTrails) {
-        vectorLaserState.trails.shift();
-      }
+      updateWavesMotion(strength);
+      const column = makeWavesColumn(rows, scale);
+      wavesState.trails.push(column);
+      while (wavesState.trails.length > maxColumns) wavesState.trails.shift();
+      wavesState.pointCount = wavesState.trails.length * rows;
+      wavesState.lastSignalAt = performance.now() / 1000;
 
-      const cx = x + w * 0.5;
-      const cy = y + h * 0.5;
-      const radius = Math.min(w - 40, h - 34) * (0.45 + smoothed.low * 0.1 + smoothed.side * 0.08);
-      const glow = clampFinite(Number(vectorLaserGlow?.value || 0.7), 0, 1, 0.7);
-      const spectrumProfile = vectorLaserSpectrumProfile();
-      drawVectorLaserGrid(cx, cy, radius);
-      const mode = vectorLaserModeSelect?.value || "orbital";
-      for (let i = 0; i < vectorLaserState.trails.length; i += 1) {
-        const age = (i + 1) / Math.max(1, vectorLaserState.trails.length);
-        const alpha = Math.pow(age, 1.65) * (0.12 + persistence * 0.46);
-        if (mode === "orbital") {
-          drawVectorLaserOrbital(vectorLaserState.trails[i], cx, cy, radius, alpha, glow, spectrumProfile);
-          drawVectorLaserBandLayer(vectorLaserState.trails[i], cx, cy, radius, alpha, spectrumProfile);
-        } else if (mode === "tunnel") {
-          drawVectorLaserTunnel(vectorLaserState.trails[i], cx, cy, radius, alpha, glow, spectrumProfile);
-          drawVectorLaserBandLayer(vectorLaserState.trails[i], cx, cy, radius, alpha * 0.68, spectrumProfile);
-        } else if (mode === "circuit") {
-          drawVectorLaserCircuit(vectorLaserState.trails[i], cx, cy, radius, alpha, glow, spectrumProfile);
-        } else {
-          drawVectorLaserScope(vectorLaserState.trails[i], cx, cy, radius, alpha, glow, spectrumProfile);
-          drawVectorLaserBandLayer(vectorLaserState.trails[i], cx, cy, radius, alpha * 0.42, spectrumProfile);
-        }
-      }
-      const label = `${mode} · ${vectorLaserInputSelect?.value || "lr"} · points ${points.length}`;
-      drawMeterText(label, x + 14, y + h - 12, 10, "rgba(166,188,210,0.78)");
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(plotX, plotY, plotW, plotH);
+      ctx.clip();
+      const fade = ctx.createLinearGradient(plotX, plotY, plotX, plotY + plotH);
+      fade.addColorStop(0, "rgba(188,48,236,0.035)");
+      fade.addColorStop(0.6, "rgba(255,61,31,0.025)");
+      fade.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = fade;
+      ctx.fillRect(plotX, plotY, plotW, plotH);
+      drawWavesAxes(plotX, plotY, plotW, plotH, projection);
+      drawWavesSurface(wavesState.trails, plotX, plotY, plotW, plotH, rows, projection, strength, 0.9);
+      ctx.restore();
+
+      const label = `${projection} · ${scale} · ${rows} bands · ${wavesState.trails.length} frames`;
+      const labelSize = meterTextSize(10, 0, 13);
+      drawMeterText(label, x + 14, meterTextBottomBaseline(y, h, labelSize, 10), labelSize, "rgba(166,188,210,0.78)");
     }
-
     function drawSpectrumPanel(x, y, w, h) {
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
@@ -6035,7 +6352,8 @@
       const hasSignal = metrics.rms > 0.001 || metrics.peak > 0.004 || state.current.some((value) => value > 0.012);
       drawSpectrumFrequencyMarks(x, y, w, h);
       if (!hasSignal) {
-        drawMeterText("waiting for signal", x + 8, y + h - 8, 10, "rgba(166,166,166,0.48)");
+        const statusSize = meterTextSize(10, 0, 13);
+        drawMeterText("waiting for signal", x + 8, meterTextBottomBaseline(y, h, statusSize), statusSize, "rgba(166,166,166,0.48)");
         return;
       }
 
@@ -6110,7 +6428,8 @@
       }
 
       const avgRange = state.range.reduce((sum, value) => sum + value, 0) / Math.max(1, state.range.length);
-      drawMeterText(`${spectralDynamicsWindowSelect.options[spectralDynamicsWindowSelect.selectedIndex]?.text || "Medium"}  ${rangeMode === "peak" ? "peak hold" : rangeMode === "delta" ? "delta" : "min/max"}  dyn ${avgRange.toFixed(2)}`, x + 8, y + h - 8, 10, "rgba(166,166,166,0.78)");
+      const legendSize = meterTextSize(10, 0, 13);
+      drawMeterText(`${spectralDynamicsWindowSelect.options[spectralDynamicsWindowSelect.selectedIndex]?.text || "Medium"}  ${rangeMode === "peak" ? "peak hold" : rangeMode === "delta" ? "delta" : "min/max"}  dyn ${avgRange.toFixed(2)}`, x + 8, meterTextBottomBaseline(y, h, legendSize), legendSize, "rgba(166,166,166,0.78)");
     }
 
     function drawStereoScopeGrid(cx, cy, r, compact) {
@@ -6314,7 +6633,7 @@
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
       ctx.strokeRect(x, y, w, h);
-      const compact = h < 120;
+      const compact = useCompactGraphLayout() || h < 120;
       const mode = stereoModeSelect.value;
       const showCorr = stereoCorrToggle.checked;
       const showLow = stereoLowToggle.checked;
@@ -6425,16 +6744,33 @@
       ctx.restore();
       if (showCorr && hasStereoSignal) drawStereoCorrelationCloud(left, right, cx, cy, r, compact, mode);
 
-      const bx = x + (compact ? w * 0.58 : w * 0.58);
+      const bx = x + w * 0.58;
       const bw = w * 0.36;
-      const by = y + (compact ? 30 : 34);
-      const bs = compact ? 23 : Math.max(26, (h - 52) / 3.4);
-      drawCorrelationBar("Corr", meterState.correlation, bx, by, bw, compact ? 7 : 9, "#f5f5f5", showCorr);
-      drawCorrelationBar("Low", meterState.lowCorrelation, bx, by + bs, bw, 7, "#ff3d1f", showLow);
-      drawCorrelationBar("Mid", meterState.midCorrelation, bx, by + bs * 2, bw, 7, "#39ff14", showMid);
-      drawCorrelationBar("High", meterState.highCorrelation, bx, by + bs * 3, bw, 7, "#529eff", showHigh);
-      drawMeterText("L/R", x + 12, y + h - 8, 9, "rgba(166,166,166,0.7)");
-      drawMeterText("M/S rotated", x + 38, y + h - 8, 9, "rgba(166,166,166,0.7)");
+      let stereoRowY = y + (compact ? 18 : 24);
+      [
+        ["Corr", meterState.correlation, "#f5f5f5", showCorr],
+        ["Low", meterState.lowCorrelation, "#ff3d1f", showLow],
+        ["Mid", meterState.midCorrelation, "#39ff14", showMid],
+        ["High", meterState.highCorrelation, "#529eff", showHigh]
+      ].forEach(([label, value, color, enabled]) => {
+        const row = drawMeterRow({
+          label,
+          valueText: enabled ? value.toFixed(2) : "--",
+          value,
+          x: bx,
+          y: stereoRowY,
+          w: bw,
+          color,
+          mode: "bipolar",
+          enabled,
+          density: "compact"
+        });
+        stereoRowY += row.height;
+      });
+      const stereoLegendSize = meterTextSize(9, 2);
+      const stereoLegendY = meterTextBottomBaseline(y, h, stereoLegendSize);
+      drawMeterText("L/R", x + 12, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
+      drawMeterText("M/S rotated", x + 42, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
     }
 
     function findRisingZeroCrossing(values) {
@@ -6627,7 +6963,8 @@
       const scopeLabel = scopeFollowSelect.value === "on"
         ? `follow pitch ${detectedHz ? Math.round(detectedHz) : "--"}Hz / ${cycles} cycles`
         : "free run";
-      drawMeterText(scopeLabel, x + 10, y + h - 10, 10, "rgba(166,166,166,0.78)");
+      const scopeLabelSize = meterTextSize(10, 0, 13);
+      drawMeterText(scopeLabel, x + 10, meterTextBottomBaseline(y, h, scopeLabelSize, 10), scopeLabelSize, "rgba(166,166,166,0.78)");
     }
 
     function getWaveformDisplayProfile(kind) {
@@ -6636,7 +6973,7 @@
     }
 
     function getWaveformLaneRect(y, h) {
-      const reserve = contract.ui?.waveformDisplay?.labelReservePx || 12;
+      const reserve = Math.max(contract.ui?.waveformDisplay?.labelReservePx || 12, meterTextSize(10, 0, 13) + 6);
       const usableH = Math.max(12, h - reserve);
       return {
         y,
@@ -6678,7 +7015,8 @@
           ctx.fillRect(px, lane.y, Math.max(1, colW * 0.42), lane.usableH);
         }
       }
-      drawMeterText(label, x + 8, y + h - 8, 10, "rgba(166,166,166,0.76)");
+      const labelSize = meterTextSize(10, 0, 13);
+      drawMeterText(label, x + 8, meterTextBottomBaseline(y, h, labelSize), labelSize, "rgba(166,166,166,0.76)");
     }
 
     function drawStaticWaveformLane(x, y, w, h, key, label, profile = getWaveformDisplayProfile("long")) {
@@ -6706,7 +7044,8 @@
         else ctx.lineTo(px, py);
       }
       ctx.stroke();
-      drawMeterText(label, x + 8, y + h - 8, 10, "rgba(166,166,166,0.76)");
+      const labelSize = meterTextSize(10, 0, 13);
+      drawMeterText(label, x + 8, meterTextBottomBaseline(y, h, labelSize), labelSize, "rgba(166,166,166,0.76)");
     }
 
     function buildShortWaveformSignal(key) {
@@ -6795,7 +7134,8 @@
         else ctx.lineTo(x + px, py);
       }
       ctx.stroke();
-      drawMeterText(label, x + 8, y + h - 8, 10, "rgba(166,166,166,0.76)");
+      const labelSize = meterTextSize(10, 0, 13);
+      drawMeterText(label, x + 8, meterTextBottomBaseline(y, h, labelSize), labelSize, "rgba(166,166,166,0.76)");
     }
 
     function drawWaveformPanel(x, y, w, h) {
@@ -6855,7 +7195,8 @@
       } else {
         drawWaveformShortLane(buildShortWaveformSignal(channel), x, y, w, h, `${channel} / ~180ms`);
       }
-      drawMeterText("~180ms", x + w - 48, y + h - 8, 10, "rgba(166,166,166,0.76)");
+      const shortLegendSize = meterTextSize(10, 0, 13);
+      drawMeterText("~180ms", x + w - 48, meterTextBottomBaseline(y, h, shortLegendSize), shortLegendSize, "rgba(166,166,166,0.76)");
     }
 
     function drawWaveformMediumPanel(x, y, w, h) {
@@ -6882,7 +7223,8 @@
       } else {
         drawWaveformLane(columns, x, y, w, h, channel, `${channel} / ~1s`, profile);
       }
-      drawMeterText("~1s", x + w - 28, y + h - 8, 10, "rgba(166,166,166,0.76)");
+      const mediumLegendSize = meterTextSize(10, 0, 13);
+      drawMeterText("~1s", x + w - 28, meterTextBottomBaseline(y, h, mediumLegendSize), mediumLegendSize, "rgba(166,166,166,0.76)");
     }
 
     function drawPatternPanel(x, y, w, h) {
@@ -6907,28 +7249,31 @@
         : 1;
       const displayGap = displayOpen ? Math.round(compact ? clamp(h * 0.026, 22, 38) : 30 * displayBoost) : 0;
       const historyH = Math.round(compact ? clamp(h * 0.135, 96, 180) : 48);
-      const rowsBlockH = Math.round(compact ? clamp(h * 0.24, 124, 220) : clamp(h * 0.24, 92, 150));
+      const desiredPatternBarH = compact ? meterPrimaryBarHeight(12) : 9;
+      const minRowsBlockH = desiredPatternBarH * rows.length + (compact ? 9 : 5) * (rows.length - 1) + 18;
+      const rowsBlockH = Math.round(compact
+        ? clamp(h * 0.24, Math.max(124, minRowsBlockH), 260)
+        : clamp(h * 0.24, 92, 150));
       const usableH = Math.max(58, rowsBlockH);
-      const rowGap = Math.max(4, Math.min(9, usableH * 0.055));
-      const rowH = Math.max(14, (usableH - rowGap * (rows.length - 1)) / rows.length);
-      const barH = Math.max(9, Math.min(16, rowH * 0.62));
-      const labelY = Math.max(9, Math.min(11, rowH * 0.5));
-      const barX = x + 66;
-      const barW = w - 88;
+      let detectorRowY = y + topPad;
+      const detectorX = x + 10;
+      const detectorW = w - 20;
       for (let i = 0; i < rows.length; i += 1) {
         const [label, key, color] = rows[i];
-        const yy = y + topPad + i * (rowH + rowGap);
-        const barY = yy + (rowH - barH) * 0.5;
-        drawMeterText(label, x + 10, yy + labelY, 10, "rgba(245,245,245,0.78)");
-        ctx.fillStyle = "#050505";
-        ctx.fillRect(barX, barY, barW, barH);
-        ctx.strokeStyle = "rgba(255,255,255,0.12)";
-        ctx.strokeRect(barX, barY, barW, barH);
-        ctx.fillStyle = color;
-        ctx.fillRect(barX, barY + 2, barW * clamp(patternState.hits[key], 0, 1), Math.max(3, barH - 4));
+        const row = drawMeterRow({
+          label,
+          valueText: clamp(patternState.hits[key], 0, 1).toFixed(2),
+          value: clamp(patternState.hits[key], 0, 1),
+          x: detectorX,
+          y: detectorRowY,
+          w: detectorW,
+          color,
+          density: "primary"
+        });
+        detectorRowY += row.height;
       }
 
-      const rhythmY = y + topPad + usableH + Math.max(18, compact ? h * 0.025 : 16);
+      const rhythmY = Math.max(y + topPad + usableH, detectorRowY) + Math.max(18, compact ? h * 0.025 : 16);
       const historyY = rhythmY + Math.max(14, compact ? h * 0.018 : 16);
       const displayHeaderY = historyY + historyH + Math.max(28, compact ? h * 0.035 : 30);
       const headerSpec = contract.ui?.moduleHeader || {};
@@ -6958,7 +7303,7 @@
       const bpm = patternState.bpm ? Math.round(patternState.bpm) : "--";
       const conf = Math.round(patternState.confidence * 100);
       const rate = patternState.onsetRate.toFixed(1);
-      drawMeterText(`Rhythm ${bpm} BPM  Conf ${conf}%  Rate ${rate}/s`, x + 10, rhythmY, 10, "rgba(166,166,166,0.86)");
+      drawMeterText(`Rhythm ${bpm} BPM  Conf ${conf}%  Rate ${rate}/s`, x + 10, rhythmY, meterTextSize(10, 2), "rgba(166,166,166,0.86)");
 
       const now = audioContext ? audioContext.currentTime : performance.now() / 1000;
       ctx.fillStyle = "#050505";
@@ -6982,9 +7327,9 @@
       if (displayOpen) {
         const fieldX = x + 10;
         const fieldW = w - 20;
-        drawMeterText("ELEMENTS OUT", fieldX, elementsLabelY, 10, "rgba(245,245,245,0.76)");
+        drawMeterText("ELEMENTS OUT", fieldX, elementsLabelY, meterTextSize(10, 2), "rgba(245,245,245,0.76)");
         drawPatternFlashField(fieldX, elementsY, fieldW, displayFieldH);
-        drawMeterText("SPECTRAL OUT", fieldX, spectralLabelY, 10, "rgba(245,245,245,0.76)");
+        drawMeterText("SPECTRAL OUT", fieldX, spectralLabelY, meterTextSize(10, 2), "rgba(245,245,245,0.76)");
         drawSpectralOutField(fieldX, spectralY, fieldW, displayFieldH);
       }
       const addY = displayPresent
@@ -6998,41 +7343,31 @@
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
       ctx.strokeRect(x, y, w, h);
-      if (h < 160) {
-        const rows = [
-          ["Peak", meterState.peakDb, "#f5f5f5"],
-          ["RMS fast", meterState.rmsFastDb, "#ff3d1f"],
-          ["RMS slow", meterState.rmsSlowDb, "#8f46ff"],
-          ["LUFS-M", meterState.momentaryDb, "#61f28a"],
-          ["LUFS-S", meterState.shortDb, "#f3f3d8"]
-        ];
-        const rowH = (h - 22) / rows.length;
-        for (let i = 0; i < rows.length; i += 1) {
-          const [label, db, color] = rows[i];
-          const yy = y + 18 + i * rowH;
-          drawMeterText(label, x + 14, yy, 10, "rgba(245,245,245,0.82)");
-          drawMeterText(`${db <= -119 ? "-inf" : db.toFixed(1)}`, x + w - 48, yy, 10, "rgba(166,166,166,0.92)");
-          const bx = x + 74;
-          const bw = w - 132;
-          const by = yy + 4;
-          ctx.fillStyle = "#050505";
-          ctx.fillRect(bx, by, bw, 7);
-          ctx.strokeStyle = "#2b2b2b";
-          ctx.strokeRect(bx, by, bw, 7);
-          ctx.fillStyle = color;
-          ctx.fillRect(bx, by, bw * meterXForDb(db), 7);
-        }
-        return;
+      const rows = [
+        ["Peak", meterState.peakDb, "#f5f5f5"],
+        ["RMS fast 0.3s", meterState.rmsFastDb, "#ff3d1f"],
+        ["RMS slow 1.0s", meterState.rmsSlowDb, "#8f46ff"],
+        ["LUFS-M approx 0.4s", meterState.momentaryDb, "#61f28a"],
+        ["LUFS-S approx 3.0s", meterState.shortDb, "#f3f3d8"]
+      ];
+      const pad = useCompactGraphLayout() ? 16 : 18;
+      const density = h < 170 ? "compact" : "normal";
+      let rowY = y + (useCompactGraphLayout() ? 16 : 14);
+      const rowW = w - pad * 2;
+      for (const [label, db, color] of rows) {
+        const safeDb = db <= -119 ? "-inf" : db.toFixed(1);
+        const row = drawMeterRow({
+          label,
+          valueText: `${safeDb} dB`,
+          value: meterXForDb(db),
+          x: x + pad,
+          y: rowY,
+          w: rowW,
+          color,
+          density
+        });
+        rowY += row.height;
       }
-      const barX = x + 18;
-      const barW = w - 36;
-      const top = y + 30;
-      const step = Math.max(16, (h - 42) / 4.4);
-      drawDbBar("Peak", meterState.peakDb, barX, top, barW, 10, "#f5f5f5");
-      drawDbBar("RMS fast 0.3s", meterState.rmsFastDb, barX, top + step, barW, 10, "#ff3d1f");
-      drawDbBar("RMS slow 1.0s", meterState.rmsSlowDb, barX, top + step * 2, barW, 10, "#8f46ff");
-      drawDbBar("LUFS-M approx 0.4s", meterState.momentaryDb, barX, top + step * 3, barW, 10, "#61f28a");
-      drawDbBar("LUFS-S approx 3.0s", meterState.shortDb, barX, top + step * 4, barW, 10, "#f3f3d8");
     }
 
     function getMeteringRenderRange() {
@@ -7224,6 +7559,49 @@
       });
     }
 
+    function auditMeterPrimitiveContract() {
+      const primitive = contract.ui?.meterPrimitives || {};
+      const breakpoints = [390, 420, 500, 552, 700];
+      const requiredTextCss = primitive.minMobileTextCssPx || 13;
+      const requiredPrimaryTextCss = primitive.minMobilePrimaryTextCssPx || 15;
+      const requiredBarCss = primitive.minMobileBarCssPx || 14;
+      const requiredPrimaryBarCss = primitive.minMobilePrimaryBarCssPx || 16;
+      const samples = breakpoints.map((width) => {
+        const scale = width / W;
+        const toCss = (canvasPx) => Number((canvasPx * scale).toFixed(2));
+        const textCanvas = Math.max(10, requiredTextCss / scale);
+        const primaryTextCanvas = Math.max(10, requiredPrimaryTextCss / scale);
+        const barCanvas = Math.max(8, requiredBarCss / scale);
+        const primaryBarCanvas = Math.max(12, requiredPrimaryBarCss / scale);
+        return {
+          width,
+          scale: Number(scale.toFixed(3)),
+          textCss: toCss(textCanvas),
+          primaryTextCss: toCss(primaryTextCanvas),
+          barCss: toCss(barCanvas),
+          primaryBarCss: toCss(primaryBarCanvas),
+          pass: toCss(textCanvas) >= requiredTextCss
+            && toCss(primaryTextCanvas) >= requiredPrimaryTextCss
+            && toCss(barCanvas) >= requiredBarCss
+            && toCss(primaryBarCanvas) >= requiredPrimaryBarCss
+        };
+      });
+      return {
+        mobileTextOk: samples.every((sample) => sample.textCss >= requiredTextCss),
+        mobilePrimaryTextOk: samples.every((sample) => sample.primaryTextCss >= requiredPrimaryTextCss),
+        mobileBarOk: samples.every((sample) => sample.barCss >= requiredBarCss),
+        mobilePrimaryBarOk: samples.every((sample) => sample.primaryBarCss >= requiredPrimaryBarCss),
+        metrics: {
+          requiredTextCss,
+          requiredPrimaryTextCss,
+          requiredBarCss,
+          requiredPrimaryBarCss,
+          currentScale: Number((graphControlScale || 1).toFixed(3))
+        },
+        breakpoints: samples
+      };
+    }
+
     function auditLayoutAddSlotSpacing() {
       const slot = graphControls?.querySelector('[data-module="layoutAdd"]');
       if (!slot || slot.hidden) {
@@ -7234,18 +7612,27 @@
       const tolerance = spec.addSlotGapTolerancePx ?? 3;
       const slotRect = slot.getBoundingClientRect();
       const stageRect = stageEl.getBoundingClientRect();
-      const expectedTop = stageRect.top + getControlLaneTop(slot, rows.addY);
       const lastRow = rows.rows[rows.rows.length - 1];
+      const naturalTop = getControlLaneTop(slot, rows.addY);
+      const minTop = lastRow
+        ? (lastRow.y + getModuleHeight(lastRow.module)) * graphControlScale + METER_LAYOUT.rowGap * graphControlScale
+        : naturalTop;
+      const expectedTop = stageRect.top + Math.max(naturalTop, minTop);
       const lastGraphBottom = lastRow
         ? stageRect.top + (lastRow.y + getModuleHeight(lastRow.module)) * graphControlScale
         : null;
       const gapFromLastGraph = lastGraphBottom == null ? null : slotRect.top - lastGraphBottom;
-      const expectedGraphGap = useCompactGraphLayout() ? 5 : 3;
+      const naturalGraphGap = lastRow
+        ? (rows.addY - (lastRow.y + getModuleHeight(lastRow.module))) * graphControlScale - getControlBlockHeight(slot) - (useCompactGraphLayout() ? 5 : 3)
+        : 0;
+      const expectedGraphGap = Math.max(naturalGraphGap, METER_LAYOUT.rowGap * graphControlScale);
+      const gapOk = gapFromLastGraph == null
+        || (gapFromLastGraph >= -tolerance && Math.abs(gapFromLastGraph - expectedGraphGap) <= tolerance);
       return {
         visible: true,
         positionOk: Math.abs(slotRect.top - expectedTop) <= tolerance,
         noLastGraphOverlap: gapFromLastGraph == null || gapFromLastGraph >= -tolerance,
-        graphGapOk: gapFromLastGraph == null || Math.abs(gapFromLastGraph - expectedGraphGap) <= tolerance,
+        graphGapOk: gapOk,
         metrics: {
           slotTop: Math.round(slotRect.top),
           expectedTop: Math.round(expectedTop),
@@ -7394,7 +7781,24 @@
         phaseDungeonFog,
         phaseDungeonPressure
       ];
-      const values = phaseDungeonState.cells.slice(0, 48);
+      const values = phaseDungeonState.cells.slice(0, 48).concat([
+        kineticVocalState.f0Hz,
+        kineticVocalState.f0Confidence,
+        kineticVocalState.voiced,
+        kineticVocalState.f1,
+        kineticVocalState.f2,
+        kineticVocalState.f3,
+        kineticVocalState.formantConfidence,
+        kineticVocalState.vowelOpen,
+        kineticVocalState.vowelFront,
+        kineticVocalState.rounding,
+        kineticVocalState.plosiveBurst,
+        kineticVocalState.fricativeNoise,
+        kineticVocalState.tractPressure,
+        kineticVocalState.glottalPhase,
+        kineticVocalState.turbulencePhase,
+        kineticVocalState.mouthPhase
+      ]);
       const hasSignal = metrics.rms > 0.006 || smoothed.rms > 0.012 || metrics.peak > 0.016;
       return {
         available: availableLayoutModules.includes("phaseDungeon"),
@@ -7405,7 +7809,12 @@
         displayContract: {
           hidesWithoutSignal: true,
           usesExistingAudioAnalysis: true,
-          caveModeOnly: true
+          caveModeOnly: true,
+          vocalTractModel: true,
+          formantDriven: true,
+          pitchDrivenGlottalPhase: true,
+          plosiveResponse: true,
+          noAutonomousTimeLfo: true
         },
         metrics: {
           detail: Number(phaseDungeonDetailSelect?.value || 0),
@@ -7414,46 +7823,69 @@
           fog: Number(phaseDungeonFog?.value || 0),
           pressure: Number(phaseDungeonPressure?.value || 0),
           recurrence: phaseDungeonState.recurrence,
+          f0Hz: kineticVocalState.f0Hz,
+          f0Confidence: kineticVocalState.f0Confidence,
+          voiced: kineticVocalState.voiced,
+          f1: kineticVocalState.f1,
+          f2: kineticVocalState.f2,
+          f3: kineticVocalState.f3,
+          formantConfidence: kineticVocalState.formantConfidence,
+          vowelOpen: kineticVocalState.vowelOpen,
+          vowelFront: kineticVocalState.vowelFront,
+          rounding: kineticVocalState.rounding,
+          plosiveBurst: kineticVocalState.plosiveBurst,
+          fricativeNoise: kineticVocalState.fricativeNoise,
           visibleCells: phaseDungeonState.cells.filter((value) => value > 0.05).length,
           hasSignal
         }
       };
     }
 
-    function auditVectorLaserContract() {
+    function auditWavesContract() {
       const controls = [
-        vectorLaserModeSelect,
-        vectorLaserInputSelect,
-        vectorLaserDensitySelect,
-        vectorLaserPersistence,
-        vectorLaserGlow
+        wavesModeSelect,
+        wavesInputSelect,
+        wavesDensitySelect,
+        wavesPersistence,
+        wavesGlow
       ];
       const hasSignal = metrics.rms > 0.006 || smoothed.rms > 0.012 || metrics.peak > 0.016;
       return {
-        available: availableLayoutModules.includes("vectorLaser"),
-        active: currentLayoutModules.includes("vectorLaser"),
+        available: availableLayoutModules.includes("waves"),
+        active: currentLayoutModules.includes("waves"),
         controlsPresent: controls.every(Boolean),
-        rendererPresent: typeof METERING_MODULE_BY_ID.vectorLaser?.renderer === "function",
+        rendererPresent: typeof METERING_MODULE_BY_ID.waves?.renderer === "function",
         valuesFinite: [
-          vectorLaserState.lastSignalAt,
-          vectorLaserState.pointCount,
-          Number(vectorLaserPersistence?.value || 0),
-          Number(vectorLaserGlow?.value || 0)
+          wavesState.lastSignalAt,
+          wavesState.pointCount,
+          wavesState.phase,
+          wavesState.sideFlow,
+          wavesState.lowFlow,
+          wavesState.midFlow,
+          wavesState.highFlow,
+          wavesState.shock,
+          Number(wavesPersistence?.value || 0),
+          Number(wavesGlow?.value || 0)
         ].every(Number.isFinite),
         displayContract: {
           hidesWithoutSignal: true,
-          usesExistingStereoBuffers: true,
-          modes: ["scope", "orbital", "tunnel", "circuit"],
-          fftColorLayers: true
+          usesSpectrumHistory: true,
+          modes: ["waves", "iso", "flat"],
+          isoProjection: true,
+          visibleSpectrumPalette: true,
+          spectralSurfaceCells: true,
+          wavemakerSurfaceWarp: true,
+          heavyInertiaWarp: true,
+          floatingParticles: false
         },
         metrics: {
-          mode: vectorLaserModeSelect?.value || null,
-          input: vectorLaserInputSelect?.value || null,
-          density: Number(vectorLaserDensitySelect?.value || 0),
-          persistence: Number(vectorLaserPersistence?.value || 0),
-          glow: Number(vectorLaserGlow?.value || 0),
-          trails: vectorLaserState.trails.length,
-          points: vectorLaserState.pointCount,
+          mode: wavesModeSelect?.value || null,
+          scale: wavesInputSelect?.value || null,
+          detail: Number(wavesDensitySelect?.value || 0),
+          persistence: Number(wavesPersistence?.value || 0),
+          strength: Number(wavesGlow?.value || 0),
+          frames: wavesState.trails.length,
+          points: wavesState.pointCount,
           hasSignal
         }
       };
@@ -7626,22 +8058,22 @@
     signalCharacterSmoothing.addEventListener("input", () => {
       signalCharacterSmoothingValue.textContent = Number(signalCharacterSmoothing.value).toFixed(2);
     });
-    phaseDungeonDetailSelect.addEventListener("change", resetPhaseDungeonState);
-    phaseDungeonMemorySelect.addEventListener("change", resetPhaseDungeonState);
-    phaseDungeonFog.addEventListener("input", () => {
-      phaseDungeonFogValue.textContent = Number(phaseDungeonFog.value).toFixed(2);
+    phaseDungeonDetailSelect?.addEventListener("change", resetPhaseDungeonState);
+    phaseDungeonMemorySelect?.addEventListener("change", resetPhaseDungeonState);
+    phaseDungeonFog?.addEventListener("input", () => {
+      if (phaseDungeonFogValue) phaseDungeonFogValue.textContent = Number(phaseDungeonFog.value).toFixed(2);
     });
-    phaseDungeonPressure.addEventListener("input", () => {
-      phaseDungeonPressureValue.textContent = Number(phaseDungeonPressure.value).toFixed(2);
+    phaseDungeonPressure?.addEventListener("input", () => {
+      if (phaseDungeonPressureValue) phaseDungeonPressureValue.textContent = Number(phaseDungeonPressure.value).toFixed(2);
     });
-    vectorLaserModeSelect.addEventListener("change", resetVectorLaserState);
-    vectorLaserInputSelect.addEventListener("change", resetVectorLaserState);
-    vectorLaserDensitySelect.addEventListener("change", resetVectorLaserState);
-    vectorLaserPersistence.addEventListener("input", () => {
-      vectorLaserPersistenceValue.textContent = Number(vectorLaserPersistence.value).toFixed(2);
+    wavesModeSelect.addEventListener("change", resetWavesState);
+    wavesInputSelect.addEventListener("change", resetWavesState);
+    wavesDensitySelect.addEventListener("change", resetWavesState);
+    wavesPersistence.addEventListener("input", () => {
+      wavesPersistenceValue.textContent = Number(wavesPersistence.value).toFixed(2);
     });
-    vectorLaserGlow.addEventListener("input", () => {
-      vectorLaserGlowValue.textContent = Number(vectorLaserGlow.value).toFixed(2);
+    wavesGlow.addEventListener("input", () => {
+      wavesGlowValue.textContent = Number(wavesGlow.value).toFixed(2);
     });
     algorithmSelect.addEventListener("change", applyAlgorithmUi);
     floatingInspectorClose.addEventListener("click", closeFloatingInspector);
@@ -7659,6 +8091,7 @@
     window.METTR_AUDIT = {
       ...(window.METTR_AUDIT || {}),
       moduleHeaders: auditModuleHeaders,
+      meterPrimitives: auditMeterPrimitiveContract,
       displayRenderSpacing: auditDisplayRenderSpacing,
       waveformDisplay: auditWaveformDisplayContract,
       layoutAddSlotSpacing: auditLayoutAddSlotSpacing,
@@ -7667,7 +8100,7 @@
       tuner: auditTunerContract,
       signalCharacter: auditSignalCharacterContract,
       phaseDungeon: auditPhaseDungeonContract,
-      vectorLaser: auditVectorLaserContract
+      waves: auditWavesContract
     };
     window.addEventListener("resize", () => {
       updateGraphControlScale();
@@ -7692,4 +8125,16 @@
     setInputSource("system");
     algorithmSelect.value = getInitialLayoutId();
     applyAlgorithmUi();
+    requestAnimationFrame(() => {
+      updateGraphControlScale();
+      markLayoutControlsDirty();
+      setStageHeight(calculateMeteringHeight());
+      syncGraphControlsForLayout();
+    });
+    setTimeout(() => {
+      updateGraphControlScale();
+      markLayoutControlsDirty();
+      setStageHeight(calculateMeteringHeight());
+      syncGraphControlsForLayout();
+    }, 80);
     drawFrame();

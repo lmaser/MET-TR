@@ -23,8 +23,7 @@ window.METTR_CONTRACT = {
     spectrogram: { height: 292, advance: 328 },
     tuner: { height: 178, advance: 212 },
     signalCharacter: { height: 250, advance: 286 },
-    phaseDungeon: { height: 228, advance: 264 },
-    vectorLaser: { height: 228, advance: 264 },
+    waves: { height: 292, advance: 328 },
     oscilloscope: { height: 70, advance: 100 },
     waveformShort: { height: 70, advance: 100 },
     waveformMedium: { height: 70, advance: 100 },
@@ -46,15 +45,14 @@ window.METTR_CONTRACT = {
       spectralDynamics: { compactScale: 2.8 },
       spectrogram: { compactScale: 1.75 },
       tuner: { compactScale: 2.1 },
-      signalCharacter: { compactScale: 2.05 },
-      phaseDungeon: { compactScale: 2.05 },
-      vectorLaser: { compactScale: 2.05 },
+      signalCharacter: { compactScale: 3.6 },
+      waves: { compactScale: 1.75 },
       oscilloscope: { compactScale: 3.05 },
       waveformShort: { compactScale: 2.75 },
       waveformMedium: { compactScale: 2.55 },
       waveformLong: { compactScale: 2.55 },
       stereo: { compactScale: 1.75 },
-      loudness: { compactScale: 1.75 },
+      loudness: { compactScale: 3.5 },
       pattern: { compactScale: 2.55 }
     },
     patternDisplay: {
@@ -72,7 +70,7 @@ window.METTR_CONTRACT = {
       desktopTitleLineHeightPx: 24,
       mobileTitleLineHeightPx: 30,
       desktopWidthRatio: 1,
-      mobileWidthRatio: 0.5,
+      mobileWidthRatio: 1,
       desktopFontSizePx: 14,
       mobileFontSizePx: 15,
       iconStartRatio: 0.56,
@@ -87,6 +85,15 @@ window.METTR_CONTRACT = {
       short: { targetPeak: 0.72, maxGain: 2.6, fill: 0.5 },
       medium: { targetPeak: 0.68, maxGain: 2.0, fill: 0.49 },
       long: { targetPeak: 0.56, maxGain: 1.35, fill: 0.47 }
+    },
+    meterPrimitives: {
+      minMobileTextCssPx: 13,
+      minMobilePrimaryTextCssPx: 15,
+      minMobileBarCssPx: 14,
+      minMobilePrimaryBarCssPx: 16,
+      desktopTextCssPx: 10,
+      desktopBarCssPx: 8,
+      desktopPrimaryBarCssPx: 12
     }
   },
   legacyAlgorithms: window.METTR_LEGACY_ALGORITHMS || {},
@@ -99,8 +106,7 @@ window.METTR_CONTRACT = {
       "spectrogram",
       "tuner",
       "signalCharacter",
-      "phaseDungeon",
-      "vectorLaser",
+      "waves",
       "oscilloscope",
       "waveformShort",
       "waveformMedium",
@@ -139,20 +145,13 @@ window.METTR_CONTRACT = {
         "loudness"
       ]
     },
-    gfx: {
-      id: "GFX",
-      modules: [
-        "pattern",
-        "phaseDungeon",
-        "vectorLaser"
-      ]
-    },
     spectral: {
       id: "Spectral",
       modules: [
         "spectrum",
         "spectralDynamics",
         "spectrogram",
+        "waves",
         "tuner",
         "signalCharacter"
       ]
@@ -168,8 +167,7 @@ window.METTR_CONTRACT = {
     { id: "spectrogram", renderer: "drawSpectrogramPanel", rect: "spectrogram", flow: "full" },
     { id: "tuner", renderer: "drawTunerPanel", rect: "tuner", flow: "full" },
     { id: "signalCharacter", renderer: "drawSignalCharacterPanel", rect: "signalCharacter", flow: "full" },
-    { id: "phaseDungeon", renderer: "drawPhaseDungeonPanel", rect: "phaseDungeon", flow: "full" },
-    { id: "vectorLaser", renderer: "drawVectorLaserPanel", rect: "vectorLaser", flow: "full" },
+    { id: "waves", renderer: "drawWavesPanel", rect: "waves", flow: "full" },
     { id: "oscilloscope", renderer: "drawOscilloscopePanel", rect: "oscilloscope", flow: "full" },
     { id: "waveformShort", renderer: "drawWaveformShortPanel", rect: "waveformShort", flow: "full", beforeGap: true },
     { id: "waveformMedium", renderer: "drawWaveformMediumPanel", rect: "waveformMedium", flow: "full", beforeGap: true },
@@ -188,8 +186,7 @@ window.METTR_CONTRACT = {
     { type: "module", id: "spectrogram" },
     { type: "module", id: "tuner" },
     { type: "module", id: "signalCharacter" },
-    { type: "module", id: "phaseDungeon" },
-    { type: "module", id: "vectorLaser" },
+    { type: "module", id: "waves" },
     { type: "dual", ids: ["stereo", "loudness"] },
     { type: "module", id: "pattern" }
   ]

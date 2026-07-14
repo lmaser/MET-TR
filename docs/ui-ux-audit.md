@@ -219,6 +219,43 @@ The audit must fail when Add Module:
 - leaves a visibly larger gap than a normal module-to-module transition;
 - overlaps the previous module body.
 
+## Audio Presence / Silence Contract
+
+Meters may keep internal technical state while the user hears no audio, but user-facing dynamic overlays must not draw meaningful values on first app load or after sustained silence.
+
+Professional motion references used for this rule:
+
+- Nielsen Norman Group: common UI animation duration should generally live around `100-500 ms`, with short purposeful transitions.
+- Material Design 3: enter and exit transitions should use distinct timing; exit can be quicker, but should still be legible.
+- Apple HIG: feedback motion should be brief, precise, and purposeful.
+
+MET-TR presence envelope:
+
+```text
+attack = 80 ms
+hold_after_last_audio = 3.0 s
+release = 1.0 s
+initial_alpha = 0
+```
+
+Required implementation:
+
+- A single shared `visualPresenceState` controls silence-aware overlays.
+- Audio presence is based on raw incoming level, not on stale smoothed display state.
+- Dynamic overlays must fade in quickly, remain while audio is active, hold briefly after silence, then fade out.
+- Internal backend values are allowed to remain available to other modules, but visible bars/readouts must be gated by presence when they would otherwise imply live signal.
+
+Current shared consumers:
+
+- Signal Character `DECISION STRIP` and its trust/risk bars.
+- Spectrogram piano roll overlay and its reserved piano-roll width.
+
+Audit failure examples:
+
+- `Tuner Trust` or similar confidence bars visible on first app load.
+- Piano roll visible on first app load with no signal.
+- A module implementing its own silence fade instead of using the shared presence primitive.
+
 ## Current Component Inventory
 
 ### Header Controls

@@ -270,6 +270,14 @@ const canvas = document.getElementById("blobCanvas");
       lastSignalAt: -99,
       lastAnalysisAt: 0
     };
+    const visualPresenceState = {
+      alpha: 0,
+      lastSignalAt: -99,
+      lastUpdateAt: performance.now() / 1000,
+      attackSeconds: 0.08,
+      holdSeconds: 3.0,
+      releaseSeconds: 1.0
+    };
     const signalCharacterState = {
       flatness: 0,
       spectralCrest: 0,
@@ -2940,6 +2948,46 @@ const canvas = document.getElementById("blobCanvas");
       return clamp((db - floor) / (ceiling - floor), 0, 1);
     }
 
+    function hasAudibleUiSignal() {
+      return Boolean(analyser && (
+        metrics.rms > 0.006
+        || metrics.peak > 0.014
+        || metrics.low > 0.012
+        || metrics.mid > 0.012
+        || metrics.high > 0.012
+      ));
+    }
+
+    function updateVisualPresence(hasSignal) {
+      const now = performance.now() / 1000;
+      const dt = clamp(now - visualPresenceState.lastUpdateAt, 0, 0.12);
+      visualPresenceState.lastUpdateAt = now;
+      if (hasSignal) visualPresenceState.lastSignalAt = now;
+      const holding = now - visualPresenceState.lastSignalAt <= visualPresenceState.holdSeconds;
+      const target = hasSignal || holding ? 1 : 0;
+      const seconds = target > visualPresenceState.alpha
+        ? visualPresenceState.attackSeconds
+        : visualPresenceState.releaseSeconds;
+      const rate = seconds <= 0 ? 1 : 1 - Math.exp(-dt / seconds);
+      visualPresenceState.alpha = lerp(visualPresenceState.alpha, target, rate);
+      if (!hasSignal && !holding && visualPresenceState.alpha < 0.004) visualPresenceState.alpha = 0;
+      return visualPresenceState.alpha;
+    }
+
+    function visualPresenceAlpha() {
+      return clampFinite(visualPresenceState.alpha, 0, 1, 0);
+    }
+
+    function withVisualPresence(alpha, draw) {
+      const safeAlpha = clampFinite(alpha, 0, 1, 0);
+      if (safeAlpha <= 0.004) return false;
+      ctx.save();
+      ctx.globalAlpha *= safeAlpha;
+      draw(safeAlpha);
+      ctx.restore();
+      return true;
+    }
+
     function interpolateFloatSpectrum(freqIndex) {
       if (!floatFreqData.length) return -140;
       const i0 = clamp(Math.floor(freqIndex), 0, floatFreqData.length - 1);
@@ -3361,6 +3409,7 @@ const canvas = document.getElementById("blobCanvas");
         rmsEnvelope = metrics.rms;
       }
       beatFlash = Math.max(beatFlash * 0.72, metrics.bassHit, metrics.flux * 0.8);
+      updateVisualPresence(hasAudibleUiSignal());
       updatePatternDetector(hasLiveAudio);
       updateSignalCharacterState(hasLiveAudio, spectral, timeData, freqData);
 
@@ -4691,7 +4740,8 @@ const canvas = document.getElementById("blobCanvas");
     }
 
     function drawSpectrogramPianoOverlay(x, y, w, h) {
-      if (spectrogramPianoOverlaySelect.value !== "on" || spectrogramOrientationSelect.value !== "horizontal") {
+      const presence = visualPresenceAlpha();
+      if (spectrogramPianoOverlaySelect.value !== "on" || spectrogramOrientationSelect.value !== "horizontal" || presence <= 0.004) {
         spectrogramHover.note = null;
         return;
       }
@@ -4701,6 +4751,7 @@ const canvas = document.getElementById("blobCanvas");
       const keyAreaW = keyW - labelW;
       const notes = spectrogramNotes();
       ctx.save();
+      ctx.globalAlpha *= presence;
       ctx.fillStyle = "rgba(0,0,0,0.9)";
       ctx.fillRect(x, y, keyW, h);
       ctx.strokeStyle = "rgba(188,218,255,0.15)";
@@ -4783,7 +4834,8 @@ const canvas = document.getElementById("blobCanvas");
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = "#282828";
       ctx.strokeRect(x, y, w, h);
-      const pianoW = spectrogramPianoOverlaySelect.value === "on" && spectrogramOrientationSelect.value === "horizontal" ? 44 : 0;
+      const pianoPresence = visualPresenceAlpha();
+      const pianoW = spectrogramPianoOverlaySelect.value === "on" && spectrogramOrientationSelect.value === "horizontal" ? 44 * pianoPresence : 0;
       const plotX = x + 1 + pianoW;
       const plotY = y + 1;
       const plotW = w - 2 - pianoW;
@@ -5370,17 +5422,19 @@ const canvas = document.getElementById("blobCanvas");
         const decisionY = stackSignal ? decisionTitleY + Math.max(canvasPxForCss(14), sectionText + 4) : showMap ? mapY + 4 : mapY;
         const decisionW = stackSignal ? w - pad * 2 : showMap ? Math.max(180, x + w - pad - decisionX) : w - pad * 2;
         const hints = signalCharacterBackend.hints;
-        drawMeterText("DECISION STRIP", decisionX, decisionTitleY, sectionText, "rgba(245,245,245,0.82)");
-        let rowY = decisionY;
-        [
-          ["Tuner Trust", hints.tunerTrust, "#bc30ec"],
-          ["Pattern Trust", hints.patternTrust, "#ff3d1f"],
-          ["Low Anchor", signalCharacterState.lowAnchor, "#39ff14"],
-          ["Noise Risk", hints.noiseRisk, "#529eff"],
-          ["Event Density", signalCharacterState.eventDensity, "#ffbe28"]
-        ].forEach(([label, value, color]) => {
-          const row = drawSignalDecisionBar(label, value, decisionX, rowY, decisionW, color);
-          rowY += row.height;
+        withVisualPresence(visualPresenceAlpha(), () => {
+          drawMeterText("DECISION STRIP", decisionX, decisionTitleY, sectionText, "rgba(245,245,245,0.82)");
+          let rowY = decisionY;
+          [
+            ["Tuner Trust", hints.tunerTrust, "#bc30ec"],
+            ["Pattern Trust", hints.patternTrust, "#ff3d1f"],
+            ["Low Anchor", signalCharacterState.lowAnchor, "#39ff14"],
+            ["Noise Risk", hints.noiseRisk, "#529eff"],
+            ["Event Density", signalCharacterState.eventDensity, "#ffbe28"]
+          ].forEach(([label, value, color]) => {
+            const row = drawSignalDecisionBar(label, value, decisionX, rowY, decisionW, color);
+            rowY += row.height;
+          });
         });
       }
 
@@ -7891,6 +7945,34 @@ const canvas = document.getElementById("blobCanvas");
       };
     }
 
+    function auditVisualPresenceContract() {
+      const alpha = visualPresenceAlpha();
+      const now = performance.now() / 1000;
+      const hasSignal = hasAudibleUiSignal();
+      const silentLongEnough = !hasSignal && now - visualPresenceState.lastSignalAt > visualPresenceState.holdSeconds + visualPresenceState.releaseSeconds + 0.15;
+      return {
+        alpha,
+        initialOrSilentHidden: !silentLongEnough || alpha <= 0.01,
+        timingOk: visualPresenceState.attackSeconds >= 0.01
+          && visualPresenceState.attackSeconds <= 0.1
+          && visualPresenceState.holdSeconds >= 2
+          && visualPresenceState.holdSeconds <= 5
+          && visualPresenceState.releaseSeconds >= 0.5
+          && visualPresenceState.releaseSeconds <= 1.5,
+        consumers: {
+          signalDecisionStrip: true,
+          spectrogramPianoRoll: true
+        },
+        metrics: {
+          attackSeconds: visualPresenceState.attackSeconds,
+          holdSeconds: visualPresenceState.holdSeconds,
+          releaseSeconds: visualPresenceState.releaseSeconds,
+          lastSignalAge: Number((now - visualPresenceState.lastSignalAt).toFixed(2)),
+          hasSignal
+        }
+      };
+    }
+
     function drawFrame() {
       const frameStart = performance.now();
       t += 1;
@@ -8100,7 +8182,8 @@ const canvas = document.getElementById("blobCanvas");
       tuner: auditTunerContract,
       signalCharacter: auditSignalCharacterContract,
       phaseDungeon: auditPhaseDungeonContract,
-      waves: auditWavesContract
+      waves: auditWavesContract,
+      visualPresence: auditVisualPresenceContract
     };
     window.addEventListener("resize", () => {
       updateGraphControlScale();

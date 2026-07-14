@@ -128,8 +128,7 @@ window.METTR_CONTRACT = {
         "waveformLong",
         "spectralDynamics",
         "spectrogram",
-        "tuner",
-        "signalCharacter",
+        "waves",
         "stereo",
         "loudness",
         "pattern"

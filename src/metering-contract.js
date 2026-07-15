@@ -20,9 +20,10 @@ window.METTR_CONTRACT = {
     rightColumnX: 358,
     spectrum: { height: 118, advance: 150 },
     spectralDynamics: { height: 142, advance: 176 },
+    harmonicTension: { height: 202, advance: 236 },
     spectrogram: { height: 292, advance: 328 },
     tuner: { height: 178, advance: 212 },
-    signalCharacter: { height: 250, advance: 286 },
+    signalCharacter: { height: 292, advance: 328 },
     waves: { height: 292, advance: 328 },
     oscilloscope: { height: 70, advance: 100 },
     waveformShort: { height: 70, advance: 100 },
@@ -43,6 +44,7 @@ window.METTR_CONTRACT = {
     modules: {
       spectrum: { compactScale: 3.2 },
       spectralDynamics: { compactScale: 2.8 },
+      harmonicTension: { compactScale: 3.35 },
       spectrogram: { compactScale: 1.75 },
       tuner: { compactScale: 2.1 },
       signalCharacter: { compactScale: 3.6 },
@@ -103,6 +105,7 @@ window.METTR_CONTRACT = {
     modules: [
       "spectrum",
       "spectralDynamics",
+      "harmonicTension",
       "spectrogram",
       "tuner",
       "signalCharacter",
@@ -149,6 +152,7 @@ window.METTR_CONTRACT = {
       modules: [
         "spectrum",
         "spectralDynamics",
+        "harmonicTension",
         "spectrogram",
         "waves",
         "tuner",
@@ -163,6 +167,7 @@ window.METTR_CONTRACT = {
   modules: [
     { id: "spectrum", renderer: "drawSpectrumPanel", rect: "spectrum", flow: "full" },
     { id: "spectralDynamics", renderer: "drawSpectralDynamicsPanel", rect: "spectralDynamics", flow: "full" },
+    { id: "harmonicTension", renderer: "drawHarmonicTensionPanel", rect: "harmonicTension", flow: "full" },
     { id: "spectrogram", renderer: "drawSpectrogramPanel", rect: "spectrogram", flow: "full" },
     { id: "tuner", renderer: "drawTunerPanel", rect: "tuner", flow: "full" },
     { id: "signalCharacter", renderer: "drawSignalCharacterPanel", rect: "signalCharacter", flow: "full" },
@@ -182,6 +187,7 @@ window.METTR_CONTRACT = {
     { type: "module", id: "waveformMedium", beforeGap: true },
     { type: "module", id: "waveformLong", beforeGap: true },
     { type: "module", id: "spectralDynamics" },
+    { type: "module", id: "harmonicTension" },
     { type: "module", id: "spectrogram" },
     { type: "module", id: "tuner" },
     { type: "module", id: "signalCharacter" },

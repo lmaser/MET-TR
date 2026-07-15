@@ -26,6 +26,10 @@
         <summary><span class="module-title">Spectral Dynamics</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Spectral Dynamics graph"></button></summary>
         <div id="spectralDynamicsControlsMount" class="control-body"></div>
       </details>
+      <details class="control-group" data-module="harmonicTension">
+        <summary><span class="module-title">Harmonic Tension</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Harmonic Tension graph"></button></summary>
+        <div id="harmonicTensionControlsMount" class="control-body"></div>
+      </details>
       <details class="control-group" data-module="spectrogram">
         <summary><span class="module-title">Spectrogram</span><span class="param-icon" aria-hidden="true"></span><button class="graph-toggle" type="button" aria-label="Toggle Spectrogram graph"></button></summary>
         <div id="spectrogramControlsMount" class="control-body"></div>
@@ -190,6 +194,43 @@
       </label>
 
       <label>
+        Harmonic Tension Mode
+        <select id="harmonicTensionModeSelect">
+          <option value="hybrid" selected>Hybrid</option>
+          <option value="acoustic">Acoustic</option>
+          <option value="musical">Musical</option>
+        </select>
+      </label>
+
+      <label>
+        Harmonic Tension View
+        <select id="harmonicTensionViewSelect">
+          <option value="radar" selected>Radar</option>
+          <option value="radarCurve">Radar + Curve</option>
+          <option value="curve">Curve</option>
+        </select>
+      </label>
+
+      <label>
+        Harmonic Peak Count
+        <select id="harmonicTensionPeakSelect">
+          <option value="8">8</option>
+          <option value="16" selected>16</option>
+          <option value="32">32</option>
+        </select>
+      </label>
+
+      <label>
+        Harmonic Low Cut <span id="harmonicTensionLowCutValue">55Hz</span>
+        <input id="harmonicTensionLowCut" type="range" min="20" max="220" step="5" value="55">
+      </label>
+
+      <label>
+        Harmonic Sensitivity <span id="harmonicTensionSensitivityValue">1.00</span>
+        <input id="harmonicTensionSensitivity" type="range" min="0.25" max="2" step="0.01" value="1">
+      </label>
+
+      <label>
         Spectrogram FFT
         <select id="spectrogramFftSelect">
           <option value="1024">1024</option>
@@ -332,6 +373,35 @@
       </label>
 
       <label>
+        Character Physics Debug
+        <select id="signalCharacterDebugSelect">
+          <option value="off" selected>Off</option>
+          <option value="particles">Particles</option>
+          <option value="constraints">Constraints</option>
+        </select>
+      </label>
+
+      <label>
+        Character Depth <span id="signalCharacterDepthValue">1.00</span>
+        <input id="signalCharacterDepth" type="range" min="0" max="2" step="0.01" value="1">
+      </label>
+
+      <label>
+        Character Glow Viscosity <span id="signalCharacterGlowViscosityValue">0.70</span>
+        <input id="signalCharacterGlowViscosity" type="range" min="0" max="1" step="0.01" value="0.7">
+      </label>
+
+      <label>
+        Character Color Depth <span id="signalCharacterColorDepthValue">0.80</span>
+        <input id="signalCharacterColorDepth" type="range" min="0" max="2" step="0.01" value="0.8">
+      </label>
+
+      <label>
+        Character Iridescence <span id="signalCharacterIridescenceValue">0.55</span>
+        <input id="signalCharacterIridescence" type="range" min="0" max="1" step="0.01" value="0.55">
+      </label>
+
+      <label>
         Signal FFT Weight <span id="signalCharacterFftWeightValue">0.65</span>
         <input id="signalCharacterFftWeight" type="range" min="0" max="1" step="0.01" value="0.65">
       </label>
@@ -410,6 +480,7 @@
         <select id="stereoModeSelect">
           <option value="classic" selected>Classic</option>
           <option value="tangle">Tangle</option>
+          <option value="arc">Arc</option>
         </select>
       </label>
 

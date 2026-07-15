@@ -31,6 +31,13 @@ const canvas = document.getElementById("blobCanvas");
     const spectralDynamicsDisplaySelect = document.getElementById("spectralDynamicsDisplaySelect");
     const spectralDynamicsTilt = document.getElementById("spectralDynamicsTilt");
     const spectralDynamicsTiltValue = document.getElementById("spectralDynamicsTiltValue");
+    const harmonicTensionModeSelect = document.getElementById("harmonicTensionModeSelect");
+    const harmonicTensionViewSelect = document.getElementById("harmonicTensionViewSelect");
+    const harmonicTensionPeakSelect = document.getElementById("harmonicTensionPeakSelect");
+    const harmonicTensionLowCut = document.getElementById("harmonicTensionLowCut");
+    const harmonicTensionLowCutValue = document.getElementById("harmonicTensionLowCutValue");
+    const harmonicTensionSensitivity = document.getElementById("harmonicTensionSensitivity");
+    const harmonicTensionSensitivityValue = document.getElementById("harmonicTensionSensitivityValue");
     const spectrogramFftSelect = document.getElementById("spectrogramFftSelect");
     const spectrogramDetailSelect = document.getElementById("spectrogramDetailSelect");
     const spectrogramScaleSelect = document.getElementById("spectrogramScaleSelect");
@@ -50,6 +57,15 @@ const canvas = document.getElementById("blobCanvas");
     const signalCharacterDisplaySelect = document.getElementById("signalCharacterDisplaySelect");
     const signalCharacterBoundarySelect = document.getElementById("signalCharacterBoundarySelect");
     const signalCharacterShaderSelect = document.getElementById("signalCharacterShaderSelect");
+    const signalCharacterDebugSelect = document.getElementById("signalCharacterDebugSelect");
+    const signalCharacterDepth = document.getElementById("signalCharacterDepth");
+    const signalCharacterDepthValue = document.getElementById("signalCharacterDepthValue");
+    const signalCharacterGlowViscosity = document.getElementById("signalCharacterGlowViscosity");
+    const signalCharacterGlowViscosityValue = document.getElementById("signalCharacterGlowViscosityValue");
+    const signalCharacterColorDepth = document.getElementById("signalCharacterColorDepth");
+    const signalCharacterColorDepthValue = document.getElementById("signalCharacterColorDepthValue");
+    const signalCharacterIridescence = document.getElementById("signalCharacterIridescence");
+    const signalCharacterIridescenceValue = document.getElementById("signalCharacterIridescenceValue");
     const signalCharacterFftWeight = document.getElementById("signalCharacterFftWeight");
     const signalCharacterFftWeightValue = document.getElementById("signalCharacterFftWeightValue");
     const signalCharacterNoise = document.getElementById("signalCharacterNoise");
@@ -86,6 +102,7 @@ const canvas = document.getElementById("blobCanvas");
     const graphControls = document.querySelector(".graph-controls");
     const spectrumControlsMount = document.getElementById("spectrumControlsMount");
     const spectralDynamicsControlsMount = document.getElementById("spectralDynamicsControlsMount");
+    const harmonicTensionControlsMount = document.getElementById("harmonicTensionControlsMount");
     const spectrogramControlsMount = document.getElementById("spectrogramControlsMount");
     const tunerControlsMount = document.getElementById("tunerControlsMount");
     const signalCharacterControlsMount = document.getElementById("signalCharacterControlsMount");
@@ -222,6 +239,19 @@ const canvas = document.getElementById("blobCanvas");
         range: [],
         lastUpdatedAt: 0
       },
+      harmonicTension: {
+        peaks: [],
+        intervals: [],
+        curve: [],
+        consonance: 0,
+        acousticConsonance: 0,
+        musicalConsonance: 0,
+        tension: 0,
+        acousticTension: 0,
+        musicalTension: 0,
+        roughness: 0,
+        harmonicity: 0
+      },
       loudnessFrames: [],
       peakDb: -120,
       momentaryDb: -120,
@@ -241,6 +271,8 @@ const canvas = document.getElementById("blobCanvas");
     const spectrogramCtx = spectrogramCanvas.getContext("2d", { alpha: false });
     spectrogramCanvas.width = 620;
     spectrogramCanvas.height = 180;
+    const signalCharacterFieldCanvas = document.createElement("canvas");
+    const signalCharacterFieldCtx = signalCharacterFieldCanvas.getContext("2d", { alpha: true });
     const spectrogramState = {
       write: 0,
       subPixel: 0,
@@ -321,8 +353,8 @@ const canvas = document.getElementById("blobCanvas");
       lastSignalAt: -99,
       headAlpha: 0,
       trailAlpha: 0,
-      head: { x: 0, y: 0, vx: 0, vy: 0, color: [140, 40, 110] },
-      tailBlob: { x: 0, y: 0, vx: 0, vy: 0, color: [140, 40, 110], angles: [], freq: [], nodes: [] },
+      head: { x: 0, y: 0, vx: 0, vy: 0, color: [140, 40, 110], glow: null, clumps: [], impacts: [], inner: [] },
+      tailBlob: { x: 0, y: 0, vx: 0, vy: 0, color: [140, 40, 110], glow: null, clumps: [], impacts: [], inner: [], angles: [], freq: [], nodes: [] },
       blobAngles: [],
       blobFreq: [],
       blobNodes: []
@@ -454,6 +486,7 @@ const canvas = document.getElementById("blobCanvas");
     const METERING_RENDERERS = {
       drawSpectrumPanel,
       drawSpectralDynamicsPanel,
+      drawHarmonicTensionPanel,
       drawSpectrogramPanel,
       drawTunerPanel,
       drawSignalCharacterPanel,
@@ -475,6 +508,7 @@ const canvas = document.getElementById("blobCanvas");
     const METERING_MODULE_LABELS = {
       spectrum: "Spectrum",
       spectralDynamics: "Spectral Dynamics",
+      harmonicTension: "Harmonic Tension",
       spectrogram: "Spectrogram",
       tuner: "Tuner",
       signalCharacter: "Signal Character",
@@ -497,6 +531,7 @@ const canvas = document.getElementById("blobCanvas");
     const graphOpenState = {
       spectrum: true,
       spectralDynamics: true,
+      harmonicTension: true,
       spectrogram: true,
       tuner: true,
       signalCharacter: true,
@@ -678,11 +713,19 @@ const canvas = document.getElementById("blobCanvas");
       if (module.id === "signalCharacter") {
         const row = meterRowMetrics("compact");
         const section = meterTextSize(10, 0, 13);
-        const mapMin = canvasPxForCss(190);
+        const mapMin = canvasPxForCss(330);
         const mapTitle = section + canvasPxForCss(12);
         const decisionGap = Math.max(canvasPxForCss(22), section + 10);
         const decisionTitle = section + Math.max(canvasPxForCss(14), section + 4);
         return Math.ceil(pad * 2 + mapTitle + mapMin + decisionGap + decisionTitle + row.height * 5 + canvasPxForCss(28));
+      }
+      if (module.id === "harmonicTension") {
+        const row = meterRowMetrics("compact");
+        const labelRadiusReserve = canvasPxForCss(34);
+        const radialDiameter = canvasPxForCss(250);
+        const footer = meterTextSize(10, 0, 13) + canvasPxForCss(18);
+        const verticalGaps = canvasPxForCss(54);
+        return Math.ceil(pad * 2 + row.height * 4 + labelRadiusReserve + radialDiameter + footer + verticalGaps);
       }
       return 0;
     }
@@ -1074,6 +1117,9 @@ const canvas = document.getElementById("blobCanvas");
         const remove = group.querySelector(".module-remove");
         if (remove) remove.hidden = !active.has(moduleId);
       });
+      for (const row of getLayoutRows().rows) {
+        positionModuleControl(row.module.id, row.y);
+      }
       updateLayoutAddSlot();
       layoutControlsDirty = false;
     }
@@ -1144,6 +1190,11 @@ const canvas = document.getElementById("blobCanvas");
       moveControlById("spectralDynamicsRangeSelect", spectralDynamicsControlsMount);
       moveControlById("spectralDynamicsDisplaySelect", spectralDynamicsControlsMount);
       moveControlById("spectralDynamicsTilt", spectralDynamicsControlsMount);
+      moveControlById("harmonicTensionModeSelect", harmonicTensionControlsMount);
+      moveControlById("harmonicTensionViewSelect", harmonicTensionControlsMount);
+      moveControlById("harmonicTensionPeakSelect", harmonicTensionControlsMount);
+      moveControlById("harmonicTensionLowCut", harmonicTensionControlsMount);
+      moveControlById("harmonicTensionSensitivity", harmonicTensionControlsMount);
       moveControlById("spectrogramFftSelect", spectrogramControlsMount);
       moveControlById("spectrogramDetailSelect", spectrogramControlsMount);
       moveControlById("spectrogramScaleSelect", spectrogramControlsMount);
@@ -1161,6 +1212,11 @@ const canvas = document.getElementById("blobCanvas");
       moveControlById("signalCharacterDisplaySelect", signalCharacterControlsMount);
       moveControlById("signalCharacterBoundarySelect", signalCharacterControlsMount);
       moveControlById("signalCharacterShaderSelect", signalCharacterControlsMount);
+      moveControlById("signalCharacterDebugSelect", signalCharacterControlsMount);
+      moveControlById("signalCharacterDepth", signalCharacterControlsMount);
+      moveControlById("signalCharacterGlowViscosity", signalCharacterControlsMount);
+      moveControlById("signalCharacterColorDepth", signalCharacterControlsMount);
+      moveControlById("signalCharacterIridescence", signalCharacterControlsMount);
       moveControlById("signalCharacterFftWeight", signalCharacterControlsMount);
       moveControlById("signalCharacterNoise", signalCharacterControlsMount);
       moveControlById("signalCharacterTransient", signalCharacterControlsMount);
@@ -2984,6 +3040,312 @@ const canvas = document.getElementById("blobCanvas");
       state.lastUpdatedAt = audioContext ? audioContext.currentTime : performance.now() / 1000;
     }
 
+    function spectrumFrequencyForBand(index, bars) {
+      if (!audioContext) return 0;
+      const nyquist = audioContext.sampleRate / 2;
+      const a = (index + 0.5) / Math.max(1, bars);
+      return 16 * Math.pow(nyquist / 16, Math.pow(a, 1.34));
+    }
+
+    const harmonicIntervalTargets = [
+      { id: "min2", label: "m2", semitone: 1, ratio: 16 / 15, musicalConsonance: 0.04, acousticConsonance: 0.08, color: "#ff3a18" },
+      { id: "maj2", label: "M2", semitone: 2, ratio: 9 / 8, musicalConsonance: 0.2, acousticConsonance: 0.28, color: "#ff8b2b" },
+      { id: "min3", label: "m3", semitone: 3, ratio: 6 / 5, musicalConsonance: 0.58, acousticConsonance: 0.52, color: "#b642ff" },
+      { id: "maj3", label: "M3", semitone: 4, ratio: 5 / 4, musicalConsonance: 0.66, acousticConsonance: 0.62, color: "#52a6ff" },
+      { id: "fourth", label: "P4", semitone: 5, ratio: 4 / 3, musicalConsonance: 0.78, acousticConsonance: 0.78, color: "#57ff14" },
+      { id: "tritone", label: "TT", semitone: 6, ratio: Math.SQRT2, musicalConsonance: 0.08, acousticConsonance: 0.18, color: "#ff3a18" },
+      { id: "fifth", label: "P5", semitone: 7, ratio: 3 / 2, musicalConsonance: 0.93, acousticConsonance: 0.91, color: "#57ff14" },
+      { id: "min6", label: "m6", semitone: 8, ratio: 8 / 5, musicalConsonance: 0.52, acousticConsonance: 0.52, color: "#b642ff" },
+      { id: "maj6", label: "M6", semitone: 9, ratio: 5 / 3, musicalConsonance: 0.7, acousticConsonance: 0.62, color: "#52a6ff" },
+      { id: "min7", label: "m7", semitone: 10, ratio: 16 / 9, musicalConsonance: 0.24, acousticConsonance: 0.34, color: "#ff8b2b" },
+      { id: "maj7", label: "M7", semitone: 11, ratio: 15 / 8, musicalConsonance: 0.1, acousticConsonance: 0.2, color: "#ff3a18" },
+      { id: "octave", label: "Oct", semitone: 12, ratio: 2, musicalConsonance: 1, acousticConsonance: 1, color: "#f5f5f5" }
+    ].map((target, index, all) => ({ ...target, angle: -Math.PI * 0.5 + Math.PI * 2 * index / all.length }));
+
+    function nearestHarmonicInterval(ratio) {
+      if (!Number.isFinite(ratio) || ratio <= 0) return null;
+      const totalCents = 1200 * Math.log2(ratio);
+      let octaveCents = totalCents % 1200;
+      if (octaveCents < 0) octaveCents += 1200;
+      if (octaveCents < 50 || octaveCents > 1150) octaveCents = 1200;
+      let best = null;
+      for (const target of harmonicIntervalTargets) {
+        const cents = Math.abs(octaveCents - target.semitone * 100);
+        const tolerance = target.id === "tritone" ? 72 : target.id === "octave" ? 52 : 82;
+        const closeness = clamp(1 - cents / tolerance, 0, 1);
+        if (!best || closeness > best.closeness) best = { ...target, cents, closeness };
+      }
+      return best;
+    }
+
+    function harmonicRoughnessForPair(f1, f2, a1, a2) {
+      if (!Number.isFinite(f1) || !Number.isFinite(f2) || f1 <= 0 || f2 <= 0) return 0;
+      const minFreq = Math.min(f1, f2);
+      const maxFreq = Math.max(f1, f2);
+      const s = 0.24 / (0.021 * minFreq + 19);
+      const x = (maxFreq - minFreq) * s;
+      const plomp = Math.exp(-3.5 * x) - Math.exp(-5.75 * x);
+      return Math.max(0, a1 * a2 * plomp * 4.8);
+    }
+
+    function harmonicDefaultCurve() {
+      return harmonicIntervalTargets.map((target) => ({ ...target, value: 0, roughness: 0, harmonicity: 0 }));
+    }
+
+    function findHarmonicTensionPeaks(maxPeaks, lowCut, sensitivity) {
+      if (!audioContext || !floatFreqData.length) return [];
+      const nyquist = audioContext.sampleRate * 0.5;
+      const binHz = nyquist / Math.max(1, floatFreqData.length - 1);
+      const candidates = [];
+      for (let i = 3; i < floatFreqData.length - 3; i += 1) {
+        const freq = i * binHz;
+        if (freq < lowCut || freq > 16000) continue;
+        const db = Number.isFinite(floatFreqData[i]) ? floatFreqData[i] : -140;
+        if (db < -88 || db < floatFreqData[i - 1] || db < floatFreqData[i + 1]) continue;
+        const shoulder = Math.max(
+          floatFreqData[Math.max(0, i - 5)],
+          floatFreqData[Math.max(0, i - 3)],
+          floatFreqData[Math.min(floatFreqData.length - 1, i + 3)],
+          floatFreqData[Math.min(floatFreqData.length - 1, i + 5)]
+        );
+        const prominence = db - shoulder;
+        if (prominence < 0.8 && db < -54) continue;
+        const left = Number.isFinite(floatFreqData[i - 1]) ? floatFreqData[i - 1] : db;
+        const right = Number.isFinite(floatFreqData[i + 1]) ? floatFreqData[i + 1] : db;
+        const denominator = left - 2 * db + right;
+        const offset = Math.abs(denominator) > 0.000001 ? clamp(0.5 * (left - right) / denominator, -0.5, 0.5) : 0;
+        const refinedFreq = clamp((i + offset) * binHz, lowCut, nyquist);
+        const level = clamp(dbToMeter(db, -90, -16) * sensitivity, 0, 1);
+        const score = clamp(smoothstep(-82, -28, db) * 0.68 + smoothstep(0.5, 12, prominence) * 0.32, 0, 1) * Math.sqrt(Math.max(0.0001, level));
+        candidates.push({ freq: refinedFreq, value: level, db, score, prominence });
+      }
+      candidates.sort((a, b) => b.score - a.score);
+      const peaks = [];
+      for (const candidate of candidates) {
+        const tooClose = peaks.some((peak) => Math.abs(1200 * Math.log2(candidate.freq / peak.freq)) < 22);
+        if (tooClose) continue;
+        peaks.push(candidate);
+        if (peaks.length >= maxPeaks) break;
+      }
+      return peaks.sort((a, b) => a.freq - b.freq);
+    }
+
+    function evaluateHarmonicPeakSet(peaks) {
+      const cleanPeaks = (peaks || [])
+        .filter((peak) => Number.isFinite(peak.freq) && peak.freq > 0 && Number.isFinite(peak.value) && peak.value > 0)
+        .map((peak) => ({ ...peak, value: clamp(peak.value, 0, 1) }))
+        .sort((a, b) => a.freq - b.freq);
+      const buckets = harmonicDefaultCurve();
+      if (cleanPeaks.length === 1) {
+        return {
+          peaks: cleanPeaks,
+          intervals: [],
+          curve: buckets,
+          consonance: 1,
+          tension: 0,
+          roughness: 0,
+          harmonicity: 1
+        };
+      }
+      if (cleanPeaks.length < 1) {
+        return {
+          peaks: [],
+          intervals: [],
+          curve: buckets,
+          consonance: 0,
+          tension: 0,
+          roughness: 0,
+          harmonicity: 0
+        };
+      }
+      const intervals = [];
+      let roughness = 0;
+      let intervalDissonance = 0;
+      let consonanceWeighted = 0;
+      let musicalConsonanceWeighted = 0;
+      let weightSum = 0;
+      let harmonicity = 0;
+      let clusterEnergy = 0;
+      for (let i = 0; i < cleanPeaks.length; i += 1) {
+        for (let j = i + 1; j < cleanPeaks.length; j += 1) {
+          const a = cleanPeaks[i];
+          const b = cleanPeaks[j];
+          const ratio = b.freq / a.freq;
+          if (ratio < 1.008 || ratio > 8) continue;
+          const nearest = nearestHarmonicInterval(ratio);
+          if (!nearest) continue;
+          const baseWeight = Math.sqrt(a.value * b.value);
+          const closeness = clamp(nearest.closeness, 0, 1);
+          const roughPair = harmonicRoughnessForPair(a.freq, b.freq, a.value, b.value);
+          const roughPenalty = clamp(Math.pow(roughPair / Math.max(0.0001, baseWeight), 0.62), 0, 1);
+          const acousticConsonance = clamp(nearest.acousticConsonance * closeness * (1 - roughPenalty * 0.58) + 0.04 * (1 - closeness), 0, 1);
+          const musicalConsonance = clamp(nearest.musicalConsonance * closeness + 0.04 * (1 - closeness), 0, 1);
+          const intervalConsonance = clamp(acousticConsonance * 0.58 + musicalConsonance * 0.42, 0, 1);
+          const dissonance = baseWeight * (1 - intervalConsonance) * (0.35 + closeness * 0.45);
+          roughness += roughPair;
+          intervalDissonance += dissonance;
+          consonanceWeighted += acousticConsonance * baseWeight;
+          musicalConsonanceWeighted += musicalConsonance * baseWeight;
+          weightSum += baseWeight;
+          harmonicity += baseWeight * closeness * nearest.acousticConsonance;
+          if (nearest.id === "min2" || nearest.id === "maj7") clusterEnergy += baseWeight * closeness;
+          const bucket = buckets.find((entry) => entry.id === nearest.id);
+          if (bucket) {
+            bucket.harmonicity += baseWeight * closeness * nearest.acousticConsonance;
+            bucket.roughness += roughPair + dissonance;
+            bucket.musical += baseWeight * musicalConsonance;
+            bucket.acoustic += baseWeight * acousticConsonance;
+            bucket.tension += baseWeight * clamp((1 - musicalConsonance) * 0.46 + roughPenalty * 0.54, 0, 1);
+            bucket.value += baseWeight * clamp(closeness * 0.72 + (1 - intervalConsonance) * 0.28, 0, 1);
+          }
+          intervals.push({
+            from: a.freq,
+            to: b.freq,
+            ratio,
+            label: nearest.label,
+            cents: nearest.cents,
+            closeness,
+            consonance: intervalConsonance,
+            acousticConsonance,
+            musicalConsonance,
+            roughness: roughPair + dissonance,
+            weight: baseWeight
+          });
+        }
+      }
+      const maxBucket = Math.max(0.0001, ...buckets.map((bucket) => Math.max(bucket.value, bucket.roughness, bucket.harmonicity)));
+      for (const bucket of buckets) {
+        bucket.value = clamp(bucket.value / maxBucket, 0, 1);
+        bucket.roughness = clamp(bucket.roughness / maxBucket, 0, 1);
+        bucket.harmonicity = clamp(bucket.harmonicity / maxBucket, 0, 1);
+        bucket.musical = clamp((bucket.musical || 0) / maxBucket, 0, 1);
+        bucket.acoustic = clamp((bucket.acoustic || 0) / maxBucket, 0, 1);
+        bucket.tension = clamp((bucket.tension || 0) / maxBucket, 0, 1);
+      }
+      const pairDenom = Math.max(0.0001, weightSum);
+      const roughNorm = clamp(Math.pow((roughness * 0.82 + intervalDissonance * 0.92) / pairDenom, 0.72), 0, 1);
+      const harmNorm = clamp(harmonicity / pairDenom, 0, 1);
+      const acousticConsonance = clamp(consonanceWeighted / pairDenom, 0, 1);
+      const musicalConsonance = clamp(musicalConsonanceWeighted / pairDenom, 0, 1);
+      const clusterNorm = clamp(clusterEnergy / pairDenom, 0, 1);
+      const acousticTension = clamp(roughNorm * 0.72 + (1 - acousticConsonance) * 0.2 + (1 - harmNorm) * 0.08 + clusterNorm * 0.18, 0, 1);
+      const musicalTension = clamp((1 - musicalConsonance) * 0.76 + clusterNorm * 0.16 + (1 - harmNorm) * 0.08, 0, 1);
+      const tension = clamp(acousticTension * 0.58 + musicalTension * 0.42, 0, 1);
+      const consonance = clamp(acousticConsonance * 0.58 + musicalConsonance * 0.42, 0, 1);
+      return {
+        peaks: cleanPeaks,
+        intervals: intervals.sort((a, b) => (b.roughness + b.weight * (1 - b.consonance)) - (a.roughness + a.weight * (1 - a.consonance))).slice(0, 28),
+        curve: buckets,
+        consonance,
+        acousticConsonance,
+        musicalConsonance,
+        acousticTension,
+        musicalTension,
+        tension,
+        roughness: roughNorm,
+        harmonicity: harmNorm
+      };
+    }
+
+    function harmonicCentsError(freq, fundamental, harmonic) {
+      if (!freq || !fundamental || !harmonic) return Infinity;
+      return Math.abs(1200 * Math.log2(freq / (fundamental * harmonic)));
+    }
+
+    function collapseHarmonicPeaksToTonalPeaks(rawPeaks) {
+      const sorted = (rawPeaks || [])
+        .filter((peak) => Number.isFinite(peak.freq) && peak.freq > 0 && Number.isFinite(peak.value) && peak.value > 0)
+        .map((peak) => ({ ...peak, value: clamp(peak.value, 0, 1), harmonicSupport: 0, harmonicCount: 0 }))
+        .sort((a, b) => a.freq - b.freq);
+      const tonal = [];
+      for (const peak of sorted) {
+        let owner = null;
+        let ownerHarmonic = 1;
+        let ownerError = Infinity;
+        for (const candidate of tonal) {
+          for (let harmonic = 2; harmonic <= 12; harmonic += 1) {
+            const error = harmonicCentsError(peak.freq, candidate.freq, harmonic);
+            if (error < ownerError) {
+              owner = candidate;
+              ownerHarmonic = harmonic;
+              ownerError = error;
+            }
+          }
+        }
+        const tolerance = ownerHarmonic <= 5 ? 34 : 24;
+        const strongEnoughOwner = owner && owner.value >= peak.value * (ownerHarmonic <= 4 ? 0.22 : 0.12);
+        if (owner && ownerError <= tolerance && strongEnoughOwner) {
+          const contribution = peak.value / Math.pow(ownerHarmonic, 0.86);
+          owner.harmonicSupport += contribution;
+          owner.harmonicCount += 1;
+          owner.value = clamp(owner.value + contribution * 0.18, 0, 1);
+          owner.db = Math.max(owner.db ?? -120, peak.db ?? -120);
+          continue;
+        }
+        const duplicate = tonal.find((candidate) => Math.abs(1200 * Math.log2(peak.freq / candidate.freq)) < 38);
+        if (duplicate) {
+          duplicate.value = clamp(Math.max(duplicate.value, peak.value) + Math.min(duplicate.value, peak.value) * 0.12, 0, 1);
+          duplicate.db = Math.max(duplicate.db ?? -120, peak.db ?? -120);
+          continue;
+        }
+        tonal.push({ ...peak });
+      }
+      return tonal
+        .map((peak) => ({
+          ...peak,
+          value: clamp(peak.value * (1 + Math.min(0.28, peak.harmonicSupport * 0.08)), 0, 1),
+          score: clamp((peak.score || peak.value) + Math.min(0.28, peak.harmonicSupport * 0.05), 0, 1)
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12)
+        .sort((a, b) => a.freq - b.freq);
+    }
+
+    function resetHarmonicTensionState() {
+      const state = meterState.harmonicTension;
+      state.peaks = [];
+      state.rawPeaks = [];
+      state.intervals = [];
+      state.curve = harmonicDefaultCurve();
+      state.consonance = 0;
+      state.acousticConsonance = 0;
+      state.musicalConsonance = 0;
+      state.tension = 0;
+      state.acousticTension = 0;
+      state.musicalTension = 0;
+      state.roughness = 0;
+      state.harmonicity = 0;
+    }
+
+    function updateHarmonicTensionState(hasLiveAudio) {
+      const state = meterState.harmonicTension;
+      if (!hasLiveAudio || !audioContext || !floatFreqData.length) {
+        resetHarmonicTensionState();
+        return;
+      }
+      const lowCut = clampFinite(Number(harmonicTensionLowCut?.value || 55), 20, 220, 55);
+      const sensitivity = clampFinite(Number(harmonicTensionSensitivity?.value || 1), 0.25, 2, 1);
+      const maxPeaks = clamp(Math.round(Number(harmonicTensionPeakSelect?.value || 16)), 4, 40);
+      const rawPeaks = findHarmonicTensionPeaks(maxPeaks, lowCut, sensitivity);
+      const tonalPeaks = collapseHarmonicPeaksToTonalPeaks(rawPeaks);
+      const result = evaluateHarmonicPeakSet(tonalPeaks);
+      state.peaks = tonalPeaks;
+      state.rawPeaks = rawPeaks;
+      state.intervals = result.intervals;
+      state.curve = result.curve;
+      state.acousticConsonance = lerp(state.acousticConsonance || 0, result.acousticConsonance ?? result.consonance, 0.58);
+      state.musicalConsonance = lerp(state.musicalConsonance || 0, result.musicalConsonance ?? result.consonance, 0.58);
+      state.acousticTension = lerp(state.acousticTension || 0, result.acousticTension ?? result.tension, 0.62);
+      state.musicalTension = lerp(state.musicalTension || 0, result.musicalTension ?? result.tension, 0.62);
+      const selectedModel = harmonicTensionModeSelect?.value || "hybrid";
+      const targetConsonance = selectedModel === "acoustic" ? result.acousticConsonance : selectedModel === "musical" ? result.musicalConsonance : result.consonance;
+      const targetTension = selectedModel === "acoustic" ? result.acousticTension : selectedModel === "musical" ? result.musicalTension : result.tension;
+      state.consonance = lerp(state.consonance || 0, targetConsonance, 0.58);
+      state.tension = lerp(state.tension || 0, targetTension, 0.62);
+      state.roughness = lerp(state.roughness || 0, result.roughness, 0.62);
+      state.harmonicity = lerp(state.harmonicity || 0, result.harmonicity, 0.58);
+    }
+
     function logBandDbProfile(freq, bands = 28) {
       if (!audioContext || !freq.length) return [];
       const nyquist = audioContext.sampleRate * 0.5;
@@ -3275,6 +3637,7 @@ const canvas = document.getElementById("blobCanvas");
       meterState.spectrumDelta = delta;
       meterState.spectrumPeak = peak;
       updateSpectralDynamicsState(metrics.rms > 0.001 || metrics.peak > 0.004);
+      updateHarmonicTensionState(metrics.rms > 0.001 || metrics.peak > 0.004);
 
       leftAnalyser.getByteTimeDomainData(leftTime);
       rightAnalyser.getByteTimeDomainData(rightTime);
@@ -5094,6 +5457,9 @@ const canvas = document.getElementById("blobCanvas");
       const recentlyDetected = now - tunerState.lastDetectedAt < 0.55;
       const detected = Boolean((tunerState.displayDetected || recentlyDetected) && safeNote !== "--" && safeFreq > 0);
       const atonal = sustainedSignal && stale && tunerState.density > 0.84 && tunerState.confidence < 0.18;
+      const readoutActive = detected || atonal || sustainedSignal;
+      const readoutAlpha = readoutActive ? 1 : clamp(1 - Math.max(0, now - tunerState.lastDetectedAt - 0.8) / 1.1, 0, 1);
+      const centsDisplay = Math.abs(safeCents) < 0.05 ? "0.0" : `${safeCents > 0 ? "+" : ""}${safeCents.toFixed(1)}`;
       const isInTune = detected && Math.abs(safeCents) <= 3;
       const centerX = x + w * 0.5;
       const top = y + 18;
@@ -5137,30 +5503,36 @@ const canvas = document.getElementById("blobCanvas");
       ctx.beginPath();
       ctx.arc(centerX, railY, 22, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.globalCompositeOperation = "screen";
-      const glow = ctx.createRadialGradient(dotX, railY, 2, dotX, railY, 28);
-      glow.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},0.72)`);
-      glow.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(dotX, railY, 28, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
-      ctx.beginPath();
-      ctx.arc(dotX, railY, 15, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.font = displayText === "WTF?" ? "800 22px Inter, ui-sans-serif, system-ui, sans-serif" : "800 24px Inter, ui-sans-serif, system-ui, sans-serif";
-      ctx.fillStyle = displayText === "WTF?" ? "rgba(255,58,24,0.92)" : "rgba(245,245,245,0.94)";
-      ctx.fillText(displayText, centerX, railY + 36);
+      if (readoutAlpha > 0.01) {
+        ctx.globalAlpha = readoutAlpha;
+        ctx.globalCompositeOperation = "screen";
+        const glow = ctx.createRadialGradient(dotX, railY, 2, dotX, railY, 28);
+        glow.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},0.72)`);
+        glow.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(dotX, railY, 28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+        ctx.beginPath();
+        ctx.arc(dotX, railY, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = displayText === "WTF?" ? "800 22px Inter, ui-sans-serif, system-ui, sans-serif" : "800 24px Inter, ui-sans-serif, system-ui, sans-serif";
+        ctx.fillStyle = displayText === "WTF?" ? "rgba(255,58,24,0.92)" : "rgba(245,245,245,0.94)";
+        ctx.fillText(displayText, centerX, railY + 36);
+        ctx.globalAlpha = 1;
+      }
       ctx.font = "700 13px Inter, ui-sans-serif, system-ui, sans-serif";
       ctx.textBaseline = "bottom";
       ctx.textAlign = "left";
-      ctx.fillStyle = "rgba(245,245,245,0.86)";
-      ctx.fillText(detected ? `${safeFreq.toFixed(1)} Hz` : "-- Hz", x + 42, y + h - 22);
-      ctx.textAlign = "center";
-      ctx.fillStyle = "rgba(166,188,210,0.74)";
-      ctx.fillText(`${safeCents >= 0 ? "+" : ""}${safeCents.toFixed(1)} cents`, centerX, y + h - 22);
+      if (readoutAlpha > 0.01) {
+        ctx.fillStyle = `rgba(245,245,245,${0.86 * readoutAlpha})`;
+        ctx.fillText(detected ? `${safeFreq.toFixed(1)} Hz` : atonal ? "Noise" : "-- Hz", x + 42, y + h - 22);
+        ctx.textAlign = "center";
+        ctx.fillStyle = `rgba(166,188,210,${0.74 * readoutAlpha})`;
+        ctx.fillText(detected ? `${centsDisplay} cents` : atonal ? "No stable pitch" : "--", centerX, y + h - 22);
+      }
       ctx.textAlign = "right";
       ctx.fillStyle = "rgba(245,245,245,0.86)";
       ctx.fillText(`A4 ${clampFinite(Number(tunerReference.value), 410, 480, 440).toFixed(1)} Hz`, x + w - 42, y + h - 22);
@@ -5210,17 +5582,26 @@ const canvas = document.getElementById("blobCanvas");
       signalCharacterPhysics.head.vx = 0;
       signalCharacterPhysics.head.vy = 0;
       signalCharacterPhysics.head.color = [140, 40, 110];
+      signalCharacterPhysics.head.glow = null;
+      signalCharacterPhysics.head.clumps.length = 0;
+      signalCharacterPhysics.head.impacts.length = 0;
+      signalCharacterPhysics.head.inner.length = 0;
       signalCharacterPhysics.tailBlob.x = 0;
       signalCharacterPhysics.tailBlob.y = 0;
       signalCharacterPhysics.tailBlob.vx = 0;
       signalCharacterPhysics.tailBlob.vy = 0;
       signalCharacterPhysics.tailBlob.color = [140, 40, 110];
+      signalCharacterPhysics.tailBlob.glow = null;
+      signalCharacterPhysics.tailBlob.clumps.length = 0;
+      signalCharacterPhysics.tailBlob.impacts.length = 0;
+      signalCharacterPhysics.tailBlob.inner.length = 0;
       signalCharacterPhysics.tailBlob.angles.length = 0;
       signalCharacterPhysics.tailBlob.freq.length = 0;
       signalCharacterPhysics.tailBlob.nodes.length = 0;
       signalCharacterPhysics.blobAngles.length = 0;
       signalCharacterPhysics.blobFreq.length = 0;
       signalCharacterPhysics.blobNodes.length = 0;
+      signalCharacterPhysics.lastBounds = null;
     }
 
     function updateSpringMass(mass, targetX, targetY, stiffness, damping) {
@@ -5234,6 +5615,19 @@ const canvas = document.getElementById("blobCanvas");
 
     function signalCharacterBlobRadius() {
       return 28 + signalCharacterState.dynamic * 9 + signalCharacterState.noisy * 8 + signalCharacterState.transientImpact * 8;
+    }
+
+    function signalCharacterRenderSafeBounds(bounds, sizeScale = 1, insetScale = 1) {
+      if (!bounds) return null;
+      const radius = signalCharacterBlobRadius() * sizeScale;
+      const side = Math.min(bounds.w, bounds.h);
+      const visualInset = clamp(radius * 1.34 * insetScale, 16, side * 0.22);
+      return {
+        x: bounds.x + visualInset,
+        y: bounds.y + visualInset,
+        w: Math.max(1, bounds.w - visualInset * 2),
+        h: Math.max(1, bounds.h - visualInset * 2)
+      };
     }
 
     function applySignalCharacterWall(body, bounds, radius, strength = 1) {
@@ -5272,9 +5666,13 @@ const canvas = document.getElementById("blobCanvas");
 
     function clampSignalCharacterTarget(targetX, targetY, bounds, radius) {
       if (!bounds) return { x: targetX, y: targetY };
+      const minX = bounds.x + radius;
+      const maxX = bounds.x + bounds.w - radius;
+      const minY = bounds.y + radius;
+      const maxY = bounds.y + bounds.h - radius;
       return {
-        x: clamp(targetX, bounds.x + radius, bounds.x + bounds.w - radius),
-        y: clamp(targetY, bounds.y + radius, bounds.y + bounds.h - radius)
+        x: minX > maxX ? bounds.x + bounds.w * 0.5 : clamp(targetX, minX, maxX),
+        y: minY > maxY ? bounds.y + bounds.h * 0.5 : clamp(targetY, minY, maxY)
       };
     }
 
@@ -5304,6 +5702,321 @@ const canvas = document.getElementById("blobCanvas");
         hit = true;
       }
       return hit;
+    }
+
+    function applySignalCharacterClumpWall(clump, bounds, radiusScale = 0.62, restitution = 0.42, friction = 0.72) {
+      if (!bounds) return null;
+      const radius = Math.max(3, clump.radius * radiusScale);
+      const incomingX = clump.vx;
+      const incomingY = clump.vy;
+      let hitX = 0;
+      let hitY = 0;
+      const left = bounds.x + radius;
+      const right = bounds.x + bounds.w - radius;
+      const top = bounds.y + radius;
+      const bottom = bounds.y + bounds.h - radius;
+      if (clump.x < left) {
+        clump.x = left;
+        clump.vx = Math.abs(clump.vx) * restitution;
+        clump.vy *= friction;
+        hitX = 1;
+      } else if (clump.x > right) {
+        clump.x = right;
+        clump.vx = -Math.abs(clump.vx) * restitution;
+        clump.vy *= friction;
+        hitX = -1;
+      }
+      if (clump.y < top) {
+        clump.y = top;
+        clump.vy = Math.abs(clump.vy) * restitution;
+        clump.vx *= friction;
+        hitY = 1;
+      } else if (clump.y > bottom) {
+        clump.y = bottom;
+        clump.vy = -Math.abs(clump.vy) * restitution;
+        clump.vx *= friction;
+        hitY = -1;
+      }
+      if (!hitX && !hitY) return null;
+      if (hitY) {
+        clump.scaleX = Math.max(clump.scaleX || 1, 1.16);
+        clump.scaleY = Math.min(clump.scaleY || 1, 0.82);
+      }
+      if (hitX) {
+        clump.scaleX = Math.min(clump.scaleX || 1, 0.82);
+        clump.scaleY = Math.max(clump.scaleY || 1, 1.16);
+      }
+      const normalImpact = Math.abs(hitX ? incomingX : 0) + Math.abs(hitY ? incomingY : 0);
+      const pressure = clamp(1.12 + normalImpact * 0.04 + clump.energy * 0.14, 0, 2.1);
+      clump.energy = Math.max(clump.energy, 1.22);
+      return { x: hitX, y: hitY, strength: pressure };
+    }
+
+    function registerSignalCharacterImpact(body, x, y, normalX, normalY, strength, radius) {
+      if (!body.impacts) body.impacts = [];
+      if (!normalX && !normalY) return;
+      const nLen = Math.max(0.0001, Math.hypot(normalX, normalY));
+      body.impacts.push({
+        x,
+        y,
+        nx: normalX / nLen,
+        ny: normalY / nLen,
+        strength: clamp(strength, 0, 3),
+        radius: Math.max(12, radius),
+        age: 0
+      });
+      if (body.impacts.length > 8) body.impacts.splice(0, body.impacts.length - 8);
+    }
+
+    function updateSignalCharacterImpacts(body) {
+      if (!body.impacts?.length) return;
+      for (const impact of body.impacts) {
+        impact.age += 1;
+        impact.strength *= 0.91;
+        impact.radius *= 0.992;
+      }
+      body.impacts = body.impacts.filter((impact) => impact.strength > 0.035 && impact.age < 36);
+    }
+
+    function signalCharacterPolygonArea(points) {
+      let area = 0;
+      for (let i = 0; i < points.length; i += 1) {
+        const a = points[i];
+        const b = points[(i + 1) % points.length];
+        area += a.x * b.y - b.x * a.y;
+      }
+      return area * 0.5;
+    }
+
+    function signalCharacterPointCentroid(points, fallback) {
+      if (!points.length) return { x: fallback.x, y: fallback.y };
+      let x = 0;
+      let y = 0;
+      points.forEach((point) => {
+        x += point.x;
+        y += point.y;
+      });
+      return { x: x / points.length, y: y / points.length };
+    }
+
+    function solveSignalCharacterDistance(a, b, rest, stiffness) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.max(0.0001, Math.hypot(dx, dy));
+      const correction = (dist - rest) / dist * stiffness * 0.5;
+      const cx = dx * correction;
+      const cy = dy * correction;
+      a.x += cx;
+      a.y += cy;
+      b.x -= cx;
+      b.y -= cy;
+    }
+
+    function solveSignalCharacterArea(points, targetArea, stiffness, centerFallback) {
+      const currentArea = Math.abs(signalCharacterPolygonArea(points));
+      if (currentArea < 1 || targetArea < 1) return;
+      const center = signalCharacterPointCentroid(points, centerFallback);
+      const scale = Math.sqrt(targetArea / currentArea);
+      const amount = clamp((scale - 1) * stiffness, -0.12, 0.12);
+      points.forEach((point) => {
+        point.x += (point.x - center.x) * amount;
+        point.y += (point.y - center.y) * amount;
+      });
+    }
+
+    function solveSignalCharacterNodeWall(node, bounds, body, impactRadius, impactStrength) {
+      if (!bounds) return false;
+      let nx = 0;
+      let ny = 0;
+      if (node.x < bounds.x) {
+        node.x = bounds.x;
+        nx = 1;
+      } else if (node.x > bounds.x + bounds.w) {
+        node.x = bounds.x + bounds.w;
+        nx = -1;
+      }
+      if (node.y < bounds.y) {
+        node.y = bounds.y;
+        ny = 1;
+      } else if (node.y > bounds.y + bounds.h) {
+        node.y = bounds.y + bounds.h;
+        ny = -1;
+      }
+      if (!nx && !ny) return false;
+      const normalSpeed = Math.max(0, -(node.vx || 0) * nx - (node.vy || 0) * ny);
+      node.vx = ((node.vx || 0) + nx * normalSpeed * 1.35) * 0.48;
+      node.vy = ((node.vy || 0) + ny * normalSpeed * 1.35) * 0.48;
+      registerSignalCharacterImpact(body, node.x, node.y, nx, ny, impactStrength + normalSpeed * 0.045, impactRadius);
+      return true;
+    }
+
+    function ensureSignalCharacterInnerParticles(body, count, baseRadius, sizeScale) {
+      if (!body.inner) body.inner = [];
+      while (body.inner.length < count) {
+        const index = body.inner.length;
+        const ring = index % 3;
+        const angle = index * 2.399963229728653;
+        const radius = baseRadius * (0.16 + ring * 0.14) * (0.85 + ((index * 17) % 11) / 48);
+        body.inner.push({
+          x: body.x + Math.cos(angle) * radius,
+          y: body.y + Math.sin(angle) * radius,
+          vx: 0,
+          vy: 0,
+          restX: Math.cos(angle) * radius,
+          restY: Math.sin(angle) * radius,
+          radius: baseRadius * (0.16 + ring * 0.025),
+          energy: 0.62,
+          phase: (index / Math.max(1, count)) % 1
+        });
+      }
+      if (body.inner.length > count) body.inner.length = count;
+      return body.inner;
+    }
+
+    function solveSignalCharacterParticleWall(particle, bounds, body, impactRadius, impactStrength) {
+      if (!bounds) return false;
+      const r = particle.radius || 1;
+      let nx = 0;
+      let ny = 0;
+      if (particle.x < bounds.x + r) {
+        particle.x = bounds.x + r;
+        nx = 1;
+      } else if (particle.x > bounds.x + bounds.w - r) {
+        particle.x = bounds.x + bounds.w - r;
+        nx = -1;
+      }
+      if (particle.y < bounds.y + r) {
+        particle.y = bounds.y + r;
+        ny = 1;
+      } else if (particle.y > bounds.y + bounds.h - r) {
+        particle.y = bounds.y + bounds.h - r;
+        ny = -1;
+      }
+      if (!nx && !ny) return false;
+      const normalSpeed = Math.max(0, -(particle.vx || 0) * nx - (particle.vy || 0) * ny);
+      const tangentFriction = 0.62;
+      if (nx) {
+        particle.vx = Math.abs(particle.vx || 0) * nx * 0.24;
+        particle.vy *= tangentFriction;
+      }
+      if (ny) {
+        particle.vy = Math.abs(particle.vy || 0) * ny * 0.24;
+        particle.vx *= tangentFriction;
+      }
+      registerSignalCharacterImpact(body, particle.x, particle.y, nx, ny, impactStrength + normalSpeed * 0.035, impactRadius);
+      return true;
+    }
+
+    function solveSignalCharacterInnerFlow(inner, surface, body, baseRadius, pressure, inertiaScale, bounds) {
+      const centerPull = (0.014 + signalCharacterState.tonal * 0.006) / Math.sqrt(inertiaScale);
+      const viscosity = clamp(0.035 + signalCharacterState.noisy * 0.025 + pressure * 0.035, 0.02, 0.12);
+      const impactStiffness = clamp(0.12 + signalCharacterState.transientImpact * 0.18 + pressure * 0.08, 0.08, 0.34);
+      for (const particle of inner) {
+        particle.prevX = particle.x;
+        particle.prevY = particle.y;
+        const restX = body.x + particle.restX;
+        const restY = body.y + particle.restY;
+        const bodyVx = body.vx || 0;
+        const bodyVy = body.vy || 0;
+        particle.vx = ((particle.vx || 0) + (restX - particle.x) * centerPull + bodyVx * 0.012) * 0.982;
+        particle.vy = ((particle.vy || 0) + (restY - particle.y) * centerPull + bodyVy * 0.012) * 0.982;
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+      }
+
+      for (const particle of inner) {
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (const node of surface) {
+          const dx = node.x - particle.x;
+          const dy = node.y - particle.y;
+          const dist = dx * dx + dy * dy;
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearest = node;
+          }
+        }
+        if (!nearest) continue;
+        const dx = nearest.x - particle.x;
+        const dy = nearest.y - particle.y;
+        const dist = Math.max(0.001, Math.hypot(dx, dy));
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const target = baseRadius * (0.42 + pressure * 0.08);
+        const compression = clamp((target - dist) / target, -0.45, 0.85);
+        const push = compression * impactStiffness;
+        particle.x -= nx * push * baseRadius * 0.28;
+        particle.y -= ny * push * baseRadius * 0.28;
+        nearest.x += nx * push * baseRadius * 0.42;
+        nearest.y += ny * push * baseRadius * 0.42;
+        const relVx = (nearest.vx || 0) - (particle.vx || 0);
+        const relVy = (nearest.vy || 0) - (particle.vy || 0);
+        particle.vx += relVx * viscosity;
+        particle.vy += relVy * viscosity;
+        nearest.vx -= relVx * viscosity * 0.25;
+        nearest.vy -= relVy * viscosity * 0.25;
+      }
+
+      if (bounds) {
+        for (const particle of inner) {
+          solveSignalCharacterParticleWall(particle, bounds, body, baseRadius * 1.4, pressure * 0.55);
+        }
+      }
+
+      for (const particle of inner) {
+        particle.vx = (particle.x - (particle.prevX ?? particle.x)) * 0.88;
+        particle.vy = (particle.y - (particle.prevY ?? particle.y)) * 0.88;
+        particle.energy = clamp(0.5 + Math.hypot(particle.vx, particle.vy) * 0.018 + pressure * 0.28, 0.35, 1.35);
+      }
+    }
+
+    function deformSignalCharacterNodesFromImpact(body, impactX, impactY, normalX, normalY, strength, radius) {
+      if (!body.nodes?.length) return;
+      body.nodes.forEach((node) => {
+        const dx = node.x - impactX;
+        const dy = node.y - impactY;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const local = clamp(1 - dist / Math.max(1, radius), 0, 1);
+        if (local <= 0) return;
+        const tangentX = -normalY;
+        const tangentY = normalX;
+        const shear = Math.sin((dx + dy) * 0.035) * 0.35;
+        node.vx += (normalX * 0.85 + tangentX * shear) * strength * local * local;
+        node.vy += (normalY * 0.85 + tangentY * shear) * strength * local * local;
+      });
+    }
+
+    function collideSignalCharacterBodies(a, b, strength = 1) {
+      const aClumps = a.clumps || [];
+      const bClumps = b.clumps || [];
+      if (!aClumps.length || !bClumps.length) return;
+      for (const ca of aClumps) {
+        for (const cb of bClumps) {
+          const dx = cb.x - ca.x;
+          const dy = cb.y - ca.y;
+          const dist = Math.max(0.001, Math.hypot(dx, dy));
+          const minDist = (ca.radius + cb.radius) * 0.56;
+          if (dist >= minDist) continue;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const overlap = minDist - dist;
+          const relativeVx = ca.vx - cb.vx;
+          const relativeVy = ca.vy - cb.vy;
+          const impact = clamp((overlap * 0.16 + Math.abs(relativeVx * nx + relativeVy * ny) * 0.035) * strength, 0, 16);
+          ca.x -= nx * overlap * 0.28;
+          ca.y -= ny * overlap * 0.28;
+          cb.x += nx * overlap * 0.28;
+          cb.y += ny * overlap * 0.28;
+          ca.vx -= nx * impact;
+          ca.vy -= ny * impact;
+          cb.vx += nx * impact;
+          cb.vy += ny * impact;
+          ca.energy = Math.max(ca.energy, 1.2);
+          cb.energy = Math.max(cb.energy, 1.2);
+          deformSignalCharacterNodesFromImpact(a, cb.x, cb.y, -nx, -ny, impact * 0.52, minDist * 2.2);
+          deformSignalCharacterNodesFromImpact(b, ca.x, ca.y, nx, ny, impact * 0.52, minDist * 2.2);
+        }
+      }
     }
 
     function applySignalCharacterTailImpact(head, tail, strength = 1) {
@@ -5384,27 +6097,11 @@ const canvas = document.getElementById("blobCanvas");
       const stiffness = 0.062 + signalCharacterState.transientImpact * 0.055 + signalCharacterState.spectralCrest * 0.022;
       const damping = 0.82 + signalCharacterState.dynamic * 0.08;
       const boundaryMode = signalCharacterBoundarySelect?.value || "none";
-      const radius = signalCharacterBlobRadius();
-      const headTarget = boundaryMode === "none"
-        ? { x: targetX, y: targetY }
-        : clampSignalCharacterTarget(targetX, targetY, bounds, radius);
-      const headTargetX = headTarget.x;
-      const headTargetY = headTarget.y;
-      updateSpringMass(signalCharacterPhysics.head, headTargetX, headTargetY, stiffness, damping);
-      if (boundaryMode !== "none") {
-        const hit = applySignalCharacterWall(signalCharacterPhysics.head, bounds, radius, 0.9);
-        if (hit) {
-          signalCharacterPhysics.head.vx *= 0.72;
-          signalCharacterPhysics.head.vy *= 0.72;
-        }
-      }
+      updateSpringMass(signalCharacterPhysics.head, targetX, targetY, stiffness, damping);
       const headPositionColor = signalCharacterColorAtPosition(signalCharacterPhysics.head, bounds, targetColor);
       const headColorSpeed = hasSignal ? 0.58 : 0.08;
       signalCharacterPhysics.head.color = signalCharacterPhysics.head.color.map((channel, index) => lerp(channel, headPositionColor[index], headColorSpeed));
       updateSpringMass(signalCharacterPhysics.tailBlob, signalCharacterPhysics.head.x, signalCharacterPhysics.head.y, stiffness * 0.1, 0.965);
-      if (boundaryMode !== "none") {
-        applySignalCharacterWall(signalCharacterPhysics.tailBlob, bounds, radius * 0.92, 0.46);
-      }
       const tailPositionColor = signalCharacterColorAtPosition(signalCharacterPhysics.tailBlob, bounds, signalCharacterPhysics.head.color);
       signalCharacterPhysics.tailBlob.color = signalCharacterPhysics.tailBlob.color.map((channel, index) => lerp(channel, tailPositionColor[index], hasSignal ? 0.075 : 0.012));
       if (boundaryMode === "everything") {
@@ -5437,7 +6134,323 @@ const canvas = document.getElementById("blobCanvas");
       return signalCharacterPhysics;
     }
 
-    function drawSignalCharacterBlobSkin(renderCtx, points, body, color, alpha, baseRadius, stretch, style) {
+    function signalCharacterShaderParams() {
+      return {
+        depth: clampFinite(Number(signalCharacterDepth?.value), 0, 2, 1),
+        glowViscosity: clampFinite(Number(signalCharacterGlowViscosity?.value), 0, 1, 0.7),
+        colorDepth: clampFinite(Number(signalCharacterColorDepth?.value), 0, 2, 0.8),
+        iridescence: clampFinite(Number(signalCharacterIridescence?.value), 0, 1, 0.55)
+      };
+    }
+
+    function signalCharacterDebugMode() {
+      return signalCharacterDebugSelect?.value || "off";
+    }
+
+    function modulateSignalCharacterColor(color, pressure, depth, colorDepth, pointRole) {
+      const warm = [
+        Math.min(255, color[0] + 52 + signalCharacterState.transientImpact * 38),
+        Math.min(255, color[1] + 28 + signalCharacterState.lowAnchor * 28),
+        Math.min(255, color[2] + 18)
+      ];
+      const cool = [
+        Math.max(0, color[0] * (0.56 - signalCharacterState.noisy * 0.08)),
+        Math.max(0, color[1] * (0.54 + signalCharacterState.lowAnchor * 0.08)),
+        Math.min(255, color[2] + 42 + signalCharacterState.noisy * 36)
+      ];
+      const amount = clamp(pressure * colorDepth * 0.42 + depth * 0.08, 0, 0.82);
+      const target = pointRole === "shadow" ? cool : warm;
+      return color.map((channel, index) => Math.round(lerp(channel, target[index], amount)));
+    }
+
+    function signalCharacterIridescentColor(phase, intensity, alpha) {
+      const p = phase * Math.PI * 2;
+      const r = Math.round(128 + Math.sin(p + 0.15) * 92 + Math.sin(p * 0.47 + 1.7) * 46);
+      const g = Math.round(128 + Math.sin(p + 2.15) * 90 + Math.sin(p * 0.52 + 0.3) * 54);
+      const b = Math.round(154 + Math.sin(p + 4.0) * 96 + Math.sin(p * 0.43 + 2.8) * 48);
+      return `rgba(${clamp(r, 18, 255)},${clamp(g, 18, 255)},${clamp(b, 28, 255)},${alpha * intensity})`;
+    }
+
+    function angleDistance(a, b) {
+      let d = (a - b + Math.PI) % (Math.PI * 2);
+      if (d < 0) d += Math.PI * 2;
+      return d - Math.PI;
+    }
+
+    function ensureSignalCharacterClumps(body, count) {
+      if (!body.clumps) body.clumps = [];
+      while (body.clumps.length < count) {
+        const index = body.clumps.length;
+        const seed = index * 12.9898 + 78.233;
+        const phase = Math.sin(seed) * 43758.5453;
+        body.clumps.push({
+          angle: (index / count) * Math.PI * 2,
+          orbit: 0.16 + (index % 3) * 0.08,
+          x: body.x,
+          y: body.y,
+          vx: 0,
+          vy: 0,
+          radius: 0,
+          scaleX: 1,
+          scaleY: 1,
+          energy: 0,
+          phase: phase - Math.floor(phase)
+        });
+      }
+      if (body.clumps.length > count) body.clumps.length = count;
+      return body.clumps;
+    }
+
+    function updateSignalCharacterClumps(body, shapeRadius, pressure, axis, params, inertiaScale, bounds = null, wallOptions = {}) {
+      const count = inertiaScale > 2 ? 5 : 8;
+      const clumps = ensureSignalCharacterClumps(body, count);
+      updateSignalCharacterImpacts(body);
+      const magnet = clamp(signalCharacterState.transientImpact * 0.54 + signalCharacterState.spectralCrest * 0.28 + signalCharacterState.lowAnchor * 0.18, 0, 1);
+      const noisyField = clamp(signalCharacterState.noisy * 0.55 + signalCharacterState.eventDensity * 0.35, 0, 1);
+      const cohesion = clamp(1 - signalCharacterState.noisy * 0.32 + signalCharacterState.tonal * 0.22, 0.35, 1.15);
+      const viscosity = params.glowViscosity;
+      const speed = Math.hypot(body.vx, body.vy);
+      const speedNorm = clamp(speed / 46, 0, 1.8);
+      for (let i = 0; i < clumps.length; i += 1) {
+        const clump = clumps[i];
+        const spread = (i / Math.max(1, clumps.length - 1)) - 0.5;
+        const magneticBend = Math.sin(clump.phase * Math.PI * 2 + signalCharacterState.eventDensity * 3.4) * (0.28 + noisyField * 0.42);
+        clump.angle = lerp(
+          clump.angle,
+          axis + spread * Math.PI * (0.82 + noisyField * 0.7) + magneticBend + signalCharacterState.lowAnchor * 0.36,
+          0.035 / Math.sqrt(inertiaScale)
+        );
+        const tailBias = spread < 0 ? 1.25 : 0.35;
+        const leadBias = spread > 0 ? 0.72 : 0.18;
+        const orbitTarget = shapeRadius * (0.18 + clump.orbit * cohesion + pressure * 0.08 + magnet * 0.18 + speedNorm * 0.18);
+        const dragBack = shapeRadius * speedNorm * viscosity * tailBias;
+        const leadPull = shapeRadius * speedNorm * (1 - viscosity * 0.42) * leadBias;
+        const targetX = body.x
+          + Math.cos(clump.angle) * orbitTarget
+          - Math.cos(axis) * dragBack
+          + Math.cos(axis) * leadPull;
+        const targetY = body.y
+          + Math.sin(clump.angle) * orbitTarget
+          - Math.sin(axis) * dragBack
+          + Math.sin(axis) * leadPull;
+        const stiffness = (0.095 - viscosity * 0.06 + magnet * 0.02) / Math.sqrt(inertiaScale);
+        const damping = clamp(0.82 + viscosity * 0.13 + inertiaScale * 0.012, 0, 0.982);
+        clump.vx = (clump.vx + (targetX - clump.x) * stiffness) * damping;
+        clump.vy = (clump.vy + (targetY - clump.y) * stiffness) * damping;
+        clump.x += clump.vx;
+        clump.y += clump.vy;
+        clump.radius = lerp(clump.radius, shapeRadius * (0.32 + clump.orbit * 0.56 + pressure * 0.12 + speedNorm * 0.08), 0.075);
+        clump.energy = lerp(clump.energy, clamp(0.54 + pressure * 0.58 + magnet * 0.46 + noisyField * 0.22 + speedNorm * 0.18, 0, 1.65), 0.1);
+        clump.scaleX = lerp(clump.scaleX || 1, 1, 0.075);
+        clump.scaleY = lerp(clump.scaleY || 1, 1, 0.075);
+        const hit = applySignalCharacterClumpWall(
+          clump,
+          bounds,
+          wallOptions.radiusScale ?? 0.64,
+          wallOptions.restitution ?? 0.42,
+          wallOptions.friction ?? 0.72
+        );
+        if (hit) {
+          if (hit.y) {
+            clump.vx += clamp((clump.x - body.x) * 0.035, -7.5, 7.5) * hit.strength;
+            body.vx -= clamp((clump.x - body.x) * 0.006, -1.2, 1.2);
+          }
+          if (hit.x) {
+            clump.vy += clamp((clump.y - body.y) * 0.035, -7.5, 7.5) * hit.strength;
+            body.vy -= clamp((clump.y - body.y) * 0.006, -1.2, 1.2);
+          }
+          body.vx += hit.x * clump.energy * 0.18;
+          body.vy += hit.y * clump.energy * 0.18;
+          registerSignalCharacterImpact(body, clump.x, clump.y, hit.x, hit.y, hit.strength * clump.energy * 1.35, clump.radius * 2.25);
+          deformSignalCharacterNodesFromImpact(body, clump.x, clump.y, hit.x, hit.y, hit.strength * clump.energy * 4.2, clump.radius * 4.4);
+        }
+      }
+      for (let i = 0; i < clumps.length; i += 1) {
+        for (let j = i + 1; j < clumps.length; j += 1) {
+          const a = clumps[i];
+          const b = clumps[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.max(0.001, Math.hypot(dx, dy));
+          const minDist = (a.radius + b.radius) * 0.18;
+          if (dist >= minDist) continue;
+          const push = (minDist - dist) * 0.026;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          a.vx -= nx * push;
+          a.vy -= ny * push;
+          b.vx += nx * push;
+          b.vy += ny * push;
+        }
+      }
+      return clumps;
+    }
+
+    function updateSignalCharacterGlow(body, axis, shapeRadius, pressure, params) {
+      if (!body.glow) {
+        body.glow = {
+          x: body.x,
+          y: body.y,
+          vx: 0,
+          vy: 0,
+          pressure: 0
+        };
+      }
+      const viscosity = params.glowViscosity;
+      const lag = shapeRadius * lerp(0.05, 0.34, viscosity) * (0.45 + pressure);
+      const targetX = body.x - Math.cos(axis) * lag + body.vx * lerp(0.02, 0.18, viscosity);
+      const targetY = body.y - Math.sin(axis) * lag + body.vy * lerp(0.02, 0.18, viscosity);
+      const stiffness = lerp(0.32, 0.055, viscosity);
+      const damping = lerp(0.58, 0.91, viscosity);
+      body.glow.vx = (body.glow.vx + (targetX - body.glow.x) * stiffness) * damping;
+      body.glow.vy = (body.glow.vy + (targetY - body.glow.y) * stiffness) * damping;
+      body.glow.x += body.glow.vx;
+      body.glow.y += body.glow.vy;
+      body.glow.pressure = lerp(body.glow.pressure, pressure, lerp(0.34, 0.07, viscosity));
+      return body.glow;
+    }
+
+    function signalCharacterFieldSample(x, y, body, clumps, baseRadius, pressure, centerWeight = 1) {
+      const dx = x - body.x;
+      const dy = y - body.y;
+      const centerRadius = baseRadius * (1.02 + pressure * 0.22 + signalCharacterState.lowAnchor * 0.16);
+      let density = centerWeight * (centerRadius * centerRadius * 0.72) / (dx * dx + dy * dy + centerRadius * centerRadius * 0.32);
+      let phase = density * 0.27 + signalCharacterState.noisy * 0.13;
+      for (const clump of clumps) {
+        const cdx = x - clump.x;
+        const cdy = y - clump.y;
+        const radius = Math.max(2, clump.radius);
+        const radiusX = Math.max(2, radius * clampFinite(clump.scaleX, 0.35, 2.25, 1));
+        const radiusY = Math.max(2, radius * clampFinite(clump.scaleY, 0.35, 2.25, 1));
+        const contribution = clump.energy / ((cdx * cdx) / (radiusX * radiusX) + (cdy * cdy) / (radiusY * radiusY) + 0.18);
+        density += contribution;
+        phase += contribution * (0.18 + clump.phase * 0.16);
+      }
+      if (body.impacts?.length) {
+        for (const impact of body.impacts) {
+          const dxI = x - impact.x;
+          const dyI = y - impact.y;
+          const nx = impact.nx;
+          const ny = impact.ny;
+          const tx = -ny;
+          const ty = nx;
+          const normal = dxI * nx + dyI * ny;
+          const tangent = dxI * tx + dyI * ty;
+          const r = Math.max(4, impact.radius);
+          const s = impact.strength;
+          const inward = Math.max(0, normal);
+          const dentCenter = inward - r * 0.18;
+          const dent = s * 0.92 / ((dentCenter * dentCenter) / (r * r * 0.52) + (tangent * tangent) / (r * r * 1.65) + 0.58);
+          const side = Math.abs(tangent) - r * 0.68;
+          const bulgeCenter = inward - r * 0.42;
+          const bulge = s * 0.52 / ((bulgeCenter * bulgeCenter) / (r * r * 0.9) + (side * side) / (r * r * 0.46) + 0.7);
+          density += bulge - dent;
+          phase += (bulge * 0.16 - dent * 0.09);
+        }
+      }
+      return { density, phase };
+    }
+
+    function drawSignalCharacterFieldMaterial(renderCtx, body, color, alpha, baseRadius, stretch, clumps, params, bounds = null, surfacePoints = null, innerPoints = null) {
+      const fieldSources = surfacePoints?.length ? [...surfacePoints, ...(innerPoints || [])] : clumps;
+      if (!fieldSources.length || !signalCharacterFieldCtx) return false;
+      const speed = Math.hypot(body.vx, body.vy);
+      const pressure = clamp(stretch / Math.max(1, baseRadius * 1.4) + signalCharacterState.transientImpact * 0.42 + speed * 0.012, 0, 1.45);
+      const sourceRadius = Math.max(3, baseRadius * (surfacePoints?.length ? 0.3 : 1));
+      const centerWeight = surfacePoints?.length ? 0.38 : 1;
+      const sampleSources = fieldSources.map((source, index) => ({
+        x: source.x,
+        y: source.y,
+        radius: source.radius || sourceRadius,
+        scaleX: source.scaleX || 1,
+        scaleY: source.scaleY || 1,
+        energy: source.energy ?? 0.75,
+        phase: source.phase ?? (index / Math.max(1, fieldSources.length))
+      }));
+      const fieldItems = [
+        { x: body.x, y: body.y, radius: baseRadius * ((surfacePoints?.length ? 0.95 : 1.65) + pressure * 0.18) },
+        ...sampleSources.map((source) => {
+          const sourceScaleX = source.scaleX || 1;
+          const sourceScaleY = source.scaleY || 1;
+          const radius = source.radius || sourceRadius;
+          return {
+            x: source.x,
+            y: source.y,
+            radius: radius
+              * Math.max(clampFinite(sourceScaleX, 0.35, 2.25, 1), clampFinite(sourceScaleY, 0.35, 2.25, 1))
+              * (1.08 + (source.energy || 0.65) * 0.12)
+          };
+        })
+      ];
+      const margin = baseRadius * (1.2 + pressure * 0.3);
+      const minX = Math.min(...fieldItems.map((item) => item.x - item.radius)) - margin;
+      const maxX = Math.max(...fieldItems.map((item) => item.x + item.radius)) + margin;
+      const minY = Math.min(...fieldItems.map((item) => item.y - item.radius)) - margin;
+      const maxY = Math.max(...fieldItems.map((item) => item.y + item.radius)) + margin;
+      const boxW = Math.max(8, maxX - minX);
+      const boxH = Math.max(8, maxY - minY);
+      const resolution = clamp(Math.round(Math.max(boxW, boxH) * 0.48), 72, 190);
+      const fw = Math.max(8, Math.round(resolution * boxW / Math.max(boxW, boxH)));
+      const fh = Math.max(8, Math.round(resolution * boxH / Math.max(boxW, boxH)));
+      if (signalCharacterFieldCanvas.width !== fw || signalCharacterFieldCanvas.height !== fh) {
+        signalCharacterFieldCanvas.width = fw;
+        signalCharacterFieldCanvas.height = fh;
+      }
+      const image = signalCharacterFieldCtx.createImageData(fw, fh);
+      const data = image.data;
+      const depth = params.depth;
+      const iridescence = params.iridescence;
+      const threshold = 1.05 - signalCharacterState.lowAnchor * 0.08 - pressure * 0.08;
+      const invW = boxW / Math.max(1, fw - 1);
+      const invH = boxH / Math.max(1, fh - 1);
+      for (let py = 0; py < fh; py += 1) {
+        const wy = minY + py * invH;
+        for (let px = 0; px < fw; px += 1) {
+          const wx = minX + px * invW;
+          const sample = signalCharacterFieldSample(wx, wy, body, sampleSources, baseRadius, pressure, centerWeight);
+          const edge = smoothstep(threshold * 0.82, threshold * 1.18 + depth * 0.08, sample.density);
+          if (edge <= 0.002) continue;
+          const left = signalCharacterFieldSample(wx - invW * 1.35, wy, body, sampleSources, baseRadius, pressure, centerWeight).density;
+          const right = signalCharacterFieldSample(wx + invW * 1.35, wy, body, sampleSources, baseRadius, pressure, centerWeight).density;
+          const up = signalCharacterFieldSample(wx, wy - invH * 1.35, body, sampleSources, baseRadius, pressure, centerWeight).density;
+          const down = signalCharacterFieldSample(wx, wy + invH * 1.35, body, sampleSources, baseRadius, pressure, centerWeight).density;
+          const gx = right - left;
+          const gy = down - up;
+          const grad = clamp(Math.hypot(gx, gy) * 0.58, 0, 1.5);
+          const thickness = clamp((sample.density - threshold) * 0.52, 0, 1.6);
+          const rim = clamp(grad * (1.2 - thickness * 0.32), 0, 1);
+          const metalShade = clamp(0.18 + thickness * 0.42 + rim * 0.22 + pressure * 0.08, 0, 1);
+          const petrolPhase = sample.phase * 2.8 + grad * 1.4 + (wx - body.x) * 0.004 - (wy - body.y) * 0.003;
+          const p = petrolPhase * Math.PI * 2;
+          const petrol = [
+            clamp(118 + Math.sin(p + 0.4) * 104 + Math.sin(p * 0.31) * 36, 0, 255),
+            clamp(130 + Math.sin(p + 2.1) * 112 + Math.sin(p * 0.27 + 1.4) * 42, 0, 255),
+            clamp(160 + Math.sin(p + 4.2) * 110 + Math.sin(p * 0.23 + 2.8) * 52, 0, 255)
+          ];
+          const shadow = modulateSignalCharacterColor(color, pressure, depth, params.colorDepth, "shadow");
+          const light = modulateSignalCharacterColor(color, pressure, depth, params.colorDepth, "light");
+          const petrolMix = clamp(iridescence * (0.34 + rim * 0.5 + pressure * 0.18), 0, 0.92);
+          const lightMix = clamp(rim * 0.42 + thickness * 0.12, 0, 0.72);
+          const rr = lerp(lerp(shadow[0], light[0], metalShade), petrol[0], petrolMix);
+          const gg = lerp(lerp(shadow[1], light[1], metalShade), petrol[1], petrolMix);
+          const bb = lerp(lerp(shadow[2], light[2], metalShade), petrol[2], petrolMix);
+          const index = (py * fw + px) * 4;
+          data[index] = Math.round(clamp(rr, 0, 255));
+          data[index + 1] = Math.round(clamp(gg, 0, 255));
+          data[index + 2] = Math.round(clamp(bb, 0, 255));
+          data[index + 3] = Math.round(clamp(edge * alpha * 255 * (0.72 + thickness * 0.28), 0, 255));
+        }
+      }
+      signalCharacterFieldCtx.clearRect(0, 0, fw, fh);
+      signalCharacterFieldCtx.putImageData(image, 0, 0);
+      renderCtx.save();
+      renderCtx.imageSmoothingEnabled = true;
+      renderCtx.drawImage(signalCharacterFieldCanvas, minX, minY, boxW, boxH);
+      renderCtx.restore();
+      return true;
+    }
+
+    function drawSignalCharacterBlobSkin(renderCtx, points, body, color, alpha, baseRadius, stretch, style, clumps = [], bounds = null, innerPoints = null) {
       const shaderStyle = style === "flat" ? "flat" : "soft3d";
       const clippedShape = () => {
         renderCtx.beginPath();
@@ -5484,19 +6497,33 @@ const canvas = document.getElementById("blobCanvas");
         renderCtx.closePath();
       };
       const shapeRadius = baseRadius * 1.4 + stretch * 0.55;
-      const lightX = body.x - shapeRadius * (0.32 + signalCharacterState.lowAnchor * 0.08);
-      const lightY = body.y - shapeRadius * (0.42 + signalCharacterState.transientImpact * 0.05);
-      const shadowX = body.x + shapeRadius * 0.42;
-      const shadowY = body.y + shapeRadius * 0.42;
+      const params = signalCharacterShaderParams();
+      const speed = Math.hypot(body.vx, body.vy);
+      const pressure = clamp(stretch / Math.max(1, shapeRadius) + signalCharacterState.transientImpact * 0.42 + speed * 0.012, 0, 1.35);
+      const axis = Math.atan2(body.vy, body.vx || 0.0001);
+      const depth = params.depth;
+      const glow = updateSignalCharacterGlow(body, axis, shapeRadius, pressure, params);
+      const litColor = modulateSignalCharacterColor(color, pressure, depth, params.colorDepth, "light");
+      const shadowColor = modulateSignalCharacterColor(color, pressure, depth, params.colorDepth, "shadow");
+      const lightX = body.x - shapeRadius * (0.28 + signalCharacterState.lowAnchor * 0.1 + depth * 0.06);
+      const lightY = body.y - shapeRadius * (0.36 + signalCharacterState.transientImpact * 0.08 + depth * 0.05);
+      const shadowX = body.x + shapeRadius * (0.32 + depth * 0.12);
+      const shadowY = body.y + shapeRadius * (0.32 + depth * 0.12);
+
+      if (shaderStyle === "soft3d") {
+        const fieldDrawn = drawSignalCharacterFieldMaterial(renderCtx, body, color, alpha, baseRadius, stretch, clumps, params, bounds, points, innerPoints);
+        if (fieldDrawn) return;
+      }
 
       renderCtx.save();
 
       clippedShape();
       if (shaderStyle === "soft3d") {
-        const skin = renderCtx.createRadialGradient(lightX, lightY, 2, shadowX, shadowY, shapeRadius * 1.65);
-        skin.addColorStop(0, `rgba(${Math.min(255, color[0] + 74)},${Math.min(255, color[1] + 74)},${Math.min(255, color[2] + 74)},${0.98 * alpha})`);
-        skin.addColorStop(0.45, `rgba(${color[0]},${color[1]},${color[2]},${0.88 * alpha})`);
-        skin.addColorStop(1, `rgba(${Math.round(color[0] * 0.34)},${Math.round(color[1] * 0.3)},${Math.round(color[2] * 0.42)},${0.92 * alpha})`);
+        const skin = renderCtx.createRadialGradient(lightX, lightY, 2, shadowX, shadowY, shapeRadius * (1.35 + depth * 0.42));
+        skin.addColorStop(0, `rgba(${litColor[0]},${litColor[1]},${litColor[2]},${(0.86 + depth * 0.1) * alpha})`);
+        skin.addColorStop(0.4, `rgba(${color[0]},${color[1]},${color[2]},${0.86 * alpha})`);
+        skin.addColorStop(0.74, `rgba(${Math.round(lerp(color[0], shadowColor[0], 0.48))},${Math.round(lerp(color[1], shadowColor[1], 0.48))},${Math.round(lerp(color[2], shadowColor[2], 0.48))},${0.9 * alpha})`);
+        skin.addColorStop(1, `rgba(${shadowColor[0]},${shadowColor[1]},${shadowColor[2]},${(0.82 + depth * 0.08) * alpha})`);
         renderCtx.fillStyle = skin;
       } else {
         renderCtx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},${0.9 * alpha})`;
@@ -5508,21 +6535,45 @@ const canvas = document.getElementById("blobCanvas");
         clippedShape();
         renderCtx.clip();
         renderCtx.globalCompositeOperation = "screen";
-        const speed = Math.hypot(body.vx, body.vy);
-        const pressure = clamp(stretch / Math.max(1, shapeRadius) + signalCharacterState.transientImpact * 0.42 + speed * 0.012, 0, 1.35);
-        const axis = Math.atan2(body.vy, body.vx || 0.0001);
+        for (const clump of clumps) {
+          const clumpPhase = clump.phase + clump.energy * 0.13 + signalCharacterState.noisy * 0.07;
+          const metal = renderCtx.createRadialGradient(
+            clump.x - shapeRadius * 0.08,
+            clump.y - shapeRadius * 0.11,
+            Math.max(1, clump.radius * 0.08),
+            clump.x,
+            clump.y,
+            Math.max(2, clump.radius * (0.92 + params.iridescence * 0.32))
+          );
+          metal.addColorStop(0, signalCharacterIridescentColor(clumpPhase + 0.08, params.iridescence, alpha * (0.18 + clump.energy * 0.1)));
+          metal.addColorStop(0.34, `rgba(${litColor[0]},${litColor[1]},${litColor[2]},${alpha * (0.12 + clump.energy * 0.08)})`);
+          metal.addColorStop(0.72, `rgba(${color[0]},${color[1]},${color[2]},${alpha * 0.035})`);
+          metal.addColorStop(1, "rgba(0,0,0,0)");
+          renderCtx.fillStyle = metal;
+          renderCtx.fillRect(clump.x - clump.radius, clump.y - clump.radius, clump.radius * 2, clump.radius * 2);
+        }
         for (const lobe of [
-          { alongScale: 0.72, acrossScale: 0.58, alongOffset: -shapeRadius * 0.16 * pressure, acrossOffset: -shapeRadius * 0.08, alpha: 0.16 },
-          { alongScale: 0.48, acrossScale: 0.82, alongOffset: shapeRadius * 0.21 * pressure, acrossOffset: shapeRadius * 0.05, alpha: 0.09 },
-          { alongScale: 0.34, acrossScale: 0.38, alongOffset: -shapeRadius * 0.04, acrossOffset: 0, alpha: 0.1 }
+          { alongScale: 0.68, acrossScale: 0.46, alongOffset: -shapeRadius * 0.12 * glow.pressure, acrossOffset: -shapeRadius * 0.06, alpha: 0.1 },
+          { alongScale: 0.44, acrossScale: 0.7, alongOffset: shapeRadius * 0.18 * glow.pressure, acrossOffset: shapeRadius * 0.04, alpha: 0.065 },
+          { alongScale: 0.27, acrossScale: 0.3, alongOffset: -shapeRadius * 0.03, acrossOffset: 0, alpha: 0.07 }
         ]) {
-          transformedShape(axis, lobe.alongScale, lobe.acrossScale, lobe.alongOffset, lobe.acrossOffset);
-          renderCtx.fillStyle = `rgba(${Math.min(255, color[0] + 76)},${Math.min(255, color[1] + 76)},${Math.min(255, color[2] + 76)},${lobe.alpha * alpha * (0.9 + pressure * 0.32)})`;
+          const glowShiftX = glow.x - body.x;
+          const glowShiftY = glow.y - body.y;
+          const glowAlong = glowShiftX * Math.cos(axis) + glowShiftY * Math.sin(axis);
+          const glowAcross = glowShiftX * -Math.sin(axis) + glowShiftY * Math.cos(axis);
+          transformedShape(
+            axis,
+            lobe.alongScale,
+            lobe.acrossScale,
+            lobe.alongOffset + glowAlong * 0.46,
+            lobe.acrossOffset + glowAcross * 0.46
+          );
+          renderCtx.fillStyle = `rgba(${litColor[0]},${litColor[1]},${litColor[2]},${lobe.alpha * alpha * (0.75 + glow.pressure * 0.42) * (0.5 + depth * 0.5)})`;
           renderCtx.fill();
         }
         renderCtx.globalCompositeOperation = "multiply";
-        transformedShape(axis, 1.04, 0.94, shapeRadius * 0.11 * pressure, shapeRadius * 0.04);
-        renderCtx.fillStyle = `rgba(0,0,0,${0.16 * alpha})`;
+        transformedShape(axis, 1.04, 0.94, shapeRadius * 0.1 * pressure, shapeRadius * 0.04);
+        renderCtx.fillStyle = `rgba(0,0,0,${0.12 * alpha * depth})`;
         renderCtx.fill();
         renderCtx.restore();
       }
@@ -5537,10 +6588,35 @@ const canvas = document.getElementById("blobCanvas");
         renderCtx.save();
         clippedShape();
         renderCtx.clip();
+        if (params.iridescence > 0.001) {
+          renderCtx.globalCompositeOperation = "screen";
+          const bandCount = 6;
+          const centerPhase = (
+            signalCharacterState.noisy * 0.19
+            + signalCharacterState.lowAnchor * 0.13
+            + signalCharacterState.transientImpact * 0.21
+            + (body.x + body.y) * 0.0017
+          ) % 1;
+          for (let i = 0; i < bandCount; i += 1) {
+            const bandT = (i / Math.max(1, bandCount - 1)) - 0.5;
+            const alongScale = 0.92 - Math.abs(bandT) * 0.28 + pressure * 0.06;
+            const acrossScale = 0.11 + Math.abs(Math.sin(centerPhase * Math.PI * 2 + i)) * 0.12;
+            const alongOffset = shapeRadius * bandT * (0.68 + pressure * 0.18);
+            const acrossOffset = Math.sin(centerPhase * Math.PI * 2 + i * 1.7) * shapeRadius * 0.13;
+            transformedShape(axis + Math.sin(centerPhase * Math.PI * 2) * 0.24, alongScale, acrossScale, alongOffset, acrossOffset);
+            renderCtx.fillStyle = signalCharacterIridescentColor(
+              centerPhase + i * 0.135 + pressure * 0.07,
+              params.iridescence,
+              alpha * (0.032 + pressure * 0.026 + depth * 0.012)
+            );
+            renderCtx.fill();
+          }
+          renderCtx.globalCompositeOperation = "source-over";
+        }
         const rim = renderCtx.createRadialGradient(lightX, lightY, shapeRadius * 0.25, body.x, body.y, shapeRadius * 1.15);
-        rim.addColorStop(0, `rgba(245,245,245,${0.18 * alpha})`);
+        rim.addColorStop(0, `rgba(245,245,245,${0.08 * alpha * depth})`);
         rim.addColorStop(0.52, "rgba(245,245,245,0)");
-        rim.addColorStop(1, `rgba(0,0,0,${0.18 * alpha})`);
+        rim.addColorStop(1, `rgba(0,0,0,${0.16 * alpha * depth})`);
         renderCtx.fillStyle = rim;
         renderCtx.fillRect(body.x - shapeRadius, body.y - shapeRadius, shapeRadius * 2, shapeRadius * 2);
         renderCtx.restore();
@@ -5548,52 +6624,213 @@ const canvas = document.getElementById("blobCanvas");
       renderCtx.restore();
     }
 
+    function drawSignalCharacterPhysicsDebug(renderCtx, surface, inner, body, alpha, bounds, targetArea, baseRadius, mode) {
+      if (!surface.length) return;
+      const currentArea = Math.abs(signalCharacterPolygonArea(surface));
+      renderCtx.save();
+      renderCtx.globalAlpha = alpha;
+      if (bounds) {
+        renderCtx.strokeStyle = "rgba(160,210,255,0.38)";
+        renderCtx.lineWidth = 1;
+        renderCtx.strokeRect(bounds.x, bounds.y, bounds.w, bounds.h);
+      }
+
+      renderCtx.lineCap = "round";
+      if (mode === "constraints") {
+        renderCtx.strokeStyle = "rgba(120,170,255,0.22)";
+        renderCtx.lineWidth = 1;
+        renderCtx.beginPath();
+        for (let i = 0; i < surface.length; i += 1) {
+          const a = surface[i];
+          const b = surface[(i + 1) % surface.length];
+          const c = surface[(i + 2) % surface.length];
+          renderCtx.moveTo(a.x, a.y);
+          renderCtx.lineTo(b.x, b.y);
+          renderCtx.moveTo(a.x, a.y);
+          renderCtx.lineTo(c.x, c.y);
+        }
+        renderCtx.stroke();
+
+        renderCtx.strokeStyle = "rgba(80,255,170,0.16)";
+        renderCtx.beginPath();
+        for (const particle of inner) {
+          renderCtx.moveTo(body.x, body.y);
+          renderCtx.lineTo(particle.x, particle.y);
+        }
+        renderCtx.stroke();
+      }
+
+      renderCtx.strokeStyle = "rgba(255,255,255,0.82)";
+      renderCtx.lineWidth = 1.25;
+      renderCtx.beginPath();
+      surface.forEach((point, index) => {
+        if (index === 0) renderCtx.moveTo(point.x, point.y);
+        else renderCtx.lineTo(point.x, point.y);
+      });
+      renderCtx.closePath();
+      renderCtx.stroke();
+
+      renderCtx.fillStyle = "rgba(255,255,255,0.86)";
+      for (const point of surface) {
+        renderCtx.beginPath();
+        renderCtx.arc(point.x, point.y, Math.max(1.7, baseRadius * 0.045), 0, Math.PI * 2);
+        renderCtx.fill();
+      }
+
+      renderCtx.fillStyle = "rgba(80,255,170,0.88)";
+      for (const particle of inner) {
+        renderCtx.beginPath();
+        renderCtx.arc(particle.x, particle.y, Math.max(2.2, particle.radius * 0.12), 0, Math.PI * 2);
+        renderCtx.fill();
+      }
+
+      renderCtx.strokeStyle = "rgba(255,90,70,0.86)";
+      renderCtx.lineWidth = 1;
+      renderCtx.beginPath();
+      renderCtx.moveTo(body.x - 5, body.y);
+      renderCtx.lineTo(body.x + 5, body.y);
+      renderCtx.moveTo(body.x, body.y - 5);
+      renderCtx.lineTo(body.x, body.y + 5);
+      renderCtx.stroke();
+
+      const labelX = bounds ? bounds.x + 8 : body.x + baseRadius;
+      const labelY = bounds ? bounds.y + bounds.h - 10 : body.y + baseRadius;
+      renderCtx.fillStyle = "rgba(190,225,255,0.82)";
+      renderCtx.font = `${Math.max(9, Math.round(10 * dpr))}px Inter, Arial, sans-serif`;
+      renderCtx.textBaseline = "bottom";
+      renderCtx.fillText(`pbd area ${Math.round(currentArea)}/${Math.round(targetArea)} nodes ${surface.length} inner ${inner.length}`, labelX, labelY);
+      renderCtx.restore();
+    }
+
     function drawSignalCharacterBlob(body, color, alpha, options = {}) {
-      const nodeCount = options.nodeCount || 13;
+      const nodeCount = options.nodeCount || 36;
       const angles = options.angles || signalCharacterPhysics.blobAngles;
       const frequencies = options.frequencies || signalCharacterPhysics.blobFreq;
       const nodes = options.nodes || signalCharacterPhysics.blobNodes;
       const bounds = options.bounds || null;
+      const renderBounds = options.renderBounds || bounds;
       const renderCtx = options.context || ctx;
       const wallEnabled = Boolean(bounds);
-      while (angles.length < nodeCount) {
-        const index = angles.length;
-        angles.push((index / nodeCount) * Math.PI * 2);
-        frequencies.push((options.frequencyBase || 0.018) + ((index * 37) % 71) / (options.frequencyDivisor || 2600));
-        nodes.push({ x: body.x, y: body.y, vx: 0, vy: 0 });
-      }
-      const speed = Math.hypot(body.vx, body.vy);
       const inertiaScale = options.inertiaScale || 1;
       const sizeScale = options.sizeScale || 1;
+      while (angles.length < nodeCount) {
+        const index = angles.length;
+        const restAngle = (index / nodeCount) * Math.PI * 2 - Math.PI / 2;
+        angles.push(restAngle);
+        frequencies.push((options.frequencyBase || 0.018) + ((index * 37) % 71) / (options.frequencyDivisor || 2600));
+        nodes.push({
+          x: body.x + Math.cos(restAngle) * 28 * sizeScale,
+          y: body.y + Math.sin(restAngle) * 28 * sizeScale,
+          vx: 0,
+          vy: 0,
+          restAngle
+        });
+      }
+      const speed = Math.hypot(body.vx, body.vy);
       const wobble = clamp(speed * 0.06 + signalCharacterState.transientImpact * 0.46 * inertiaScale + signalCharacterState.noisy * 0.25, 0, 1.35);
       const baseRadius = (25 + signalCharacterState.dynamic * 9 + signalCharacterState.noisy * 7) * sizeScale;
       const velocityAngle = Math.atan2(body.vy, body.vx || 0.0001);
-      const stretch = clamp(speed * 0.52 + signalCharacterState.transientImpact * 22 * inertiaScale + signalCharacterState.eventDensity * 12, 0, 48 * sizeScale);
-      const lateralSquash = clamp(stretch * 0.32 + signalCharacterState.noisy * 7, 0, 24);
+      const stretch = clamp(speed * 0.31 + signalCharacterState.transientImpact * 15 * inertiaScale + signalCharacterState.eventDensity * 8, 0, 34 * sizeScale);
+      const lateralSquash = clamp(stretch * 0.18 + signalCharacterState.noisy * 4, 0, 14);
+      const params = signalCharacterShaderParams();
+      const shapeRadius = baseRadius * 1.4 + stretch * 0.55;
+      const pbdPressure = clamp(stretch / Math.max(1, shapeRadius) + signalCharacterState.transientImpact * 0.42 + speed * 0.012, 0, 1.35);
+      const clumps = updateSignalCharacterClumps(
+        body,
+        shapeRadius,
+        pbdPressure,
+        velocityAngle,
+        params,
+        inertiaScale,
+        bounds,
+        {
+          radiusScale: inertiaScale > 2 ? 0.52 : 0.66,
+          restitution: options.nodeRestitution ?? 0.34,
+          friction: options.nodeFriction ?? 0.64
+        }
+      );
+      const targetArea = Math.PI * baseRadius * baseRadius * (1 + pbdPressure * 0.1);
+      const restEdge = 2 * baseRadius * Math.sin(Math.PI / nodeCount);
+      const restEdge2 = 2 * baseRadius * Math.sin((Math.PI * 2) / nodeCount);
+      const inner = ensureSignalCharacterInnerParticles(body, inertiaScale > 2 ? 18 : 24, baseRadius, sizeScale);
       const points = [];
+      const targets = [];
       for (let i = 0; i < nodeCount; i += 1) {
-        angles[i] += frequencies[i] * (1 + wobble * 3.2);
-        const angle = (i / nodeCount) * Math.PI * 2 - Math.PI / 2;
+        const angle = nodes[i].restAngle ?? angles[i];
         const alignment = Math.cos(angle - velocityAngle);
         const lateral = Math.sin(angle - velocityAngle);
-        const organic = Math.sin(angles[i] + i * 0.91) * wobble * 11 * sizeScale;
-        const radius = baseRadius + organic + alignment * stretch - Math.abs(lateral) * lateralSquash;
+        const organic = (
+          Math.sin(t * frequencies[i] * 80 + i * 0.91) * 0.58
+          + Math.sin(t * frequencies[i] * 37 + i * 1.63) * 0.42
+        ) * wobble * 8.4 * sizeScale;
+        const clumpBulge = clumps.reduce((sum, clump) => {
+          const clumpAngle = Math.atan2(clump.y - body.y, clump.x - body.x);
+          const local = clamp(1 - Math.abs(angleDistance(angle, clumpAngle)) / 0.86, 0, 1);
+          return sum + local * local * clump.energy * clump.radius * 0.08;
+        }, 0);
+        const radius = baseRadius + organic + alignment * stretch * 0.42 - Math.abs(lateral) * lateralSquash + clumpBulge;
         const targetX = body.x + Math.cos(angle) * radius;
         const targetY = body.y + Math.sin(angle) * radius;
+        targets.push({ x: targetX, y: targetY, alignment, lateral });
+      }
+      for (let i = 0; i < nodeCount; i += 1) {
         const node = nodes[i];
-        const nodeStiffness = (0.055 + Math.max(0, alignment) * 0.018 + signalCharacterState.transientImpact * 0.018) / inertiaScale;
-        const nodeDamping = clamp(0.9 + Math.abs(lateral) * 0.045 + (inertiaScale - 1) * 0.018, 0, 0.985);
-        node.vx = (node.vx + (targetX - node.x) * nodeStiffness) * nodeDamping;
-        node.vy = (node.vy + (targetY - node.y) * nodeStiffness) * nodeDamping;
+        const target = targets[i];
+        node.prevX = node.x;
+        node.prevY = node.y;
+        const memory = (0.012 + signalCharacterState.tonal * 0.006 + signalCharacterState.lowAnchor * 0.004) / Math.sqrt(inertiaScale);
+        const drive = (0.024 + Math.max(0, target.alignment) * 0.008 + signalCharacterState.transientImpact * 0.012) / Math.sqrt(inertiaScale);
+        const dampingPbd = clamp(0.955 + inertiaScale * 0.006 - signalCharacterState.transientImpact * 0.012, 0.9, 0.992);
+        node.vx = (node.vx + (target.x - node.x) * drive + (body.x - node.x) * memory * 0.22) * dampingPbd;
+        node.vy = (node.vy + (target.y - node.y) * drive + (body.y - node.y) * memory * 0.22) * dampingPbd;
         node.x += node.vx;
         node.y += node.vy;
-        if (wallEnabled) {
-          applySignalCharacterNodeWall(node, bounds, options.nodeRestitution ?? 0.34, options.nodeFriction ?? 0.64);
+      }
+      const iterations = inertiaScale > 2 ? 7 : 6;
+      for (let iter = 0; iter < iterations; iter += 1) {
+        for (let i = 0; i < nodeCount; i += 1) {
+          solveSignalCharacterDistance(nodes[i], nodes[(i + 1) % nodeCount], restEdge, 0.72);
+          solveSignalCharacterDistance(nodes[i], nodes[(i + 2) % nodeCount], restEdge2, 0.18);
         }
-        points.push({ x: node.x, y: node.y });
+        solveSignalCharacterArea(nodes, targetArea, 0.18, body);
+        for (let i = 0; i < nodeCount; i += 1) {
+          const node = nodes[i];
+          const target = targets[i];
+          node.x += (target.x - node.x) * (inertiaScale > 2 ? 0.006 : 0.012);
+          node.y += (target.y - node.y) * (inertiaScale > 2 ? 0.006 : 0.012);
+          if (wallEnabled) {
+            solveSignalCharacterNodeWall(node, bounds, body, baseRadius * 1.55, inertiaScale > 2 ? 0.42 : 0.72);
+          }
+        }
+      }
+      solveSignalCharacterInnerFlow(inner, nodes, body, baseRadius, pbdPressure, inertiaScale, bounds);
+      for (let iter = 0; iter < 2; iter += 1) {
+        for (let i = 0; i < nodeCount; i += 1) {
+          solveSignalCharacterDistance(nodes[i], nodes[(i + 1) % nodeCount], restEdge, 0.42);
+          solveSignalCharacterDistance(nodes[i], nodes[(i + 2) % nodeCount], restEdge2, 0.1);
+          if (wallEnabled) {
+            solveSignalCharacterNodeWall(nodes[i], bounds, body, baseRadius * 1.55, inertiaScale > 2 ? 0.28 : 0.5);
+          }
+        }
+        solveSignalCharacterArea(nodes, targetArea, 0.12, body);
+      }
+      const centroid = signalCharacterPointCentroid(nodes, body);
+      body.x = lerp(body.x, centroid.x, inertiaScale > 2 ? 0.025 : 0.045);
+      body.y = lerp(body.y, centroid.y, inertiaScale > 2 ? 0.025 : 0.045);
+      for (let i = 0; i < nodeCount; i += 1) {
+        const node = nodes[i];
+        node.vx = (node.x - (node.prevX ?? node.x)) * 0.82;
+        node.vy = (node.y - (node.prevY ?? node.y)) * 0.82;
+        points.push({ x: node.x, y: node.y, radius: baseRadius * 0.22, energy: 0.78, phase: i / nodeCount });
       }
 
-      drawSignalCharacterBlobSkin(renderCtx, points, body, color, alpha, baseRadius, stretch, options.shader || "soft3d");
+      const debugMode = signalCharacterDebugMode();
+      if (debugMode !== "off") {
+        drawSignalCharacterPhysicsDebug(renderCtx, nodes, inner, body, alpha, bounds, targetArea, baseRadius, debugMode);
+        return;
+      }
+
+      drawSignalCharacterBlobSkin(renderCtx, points, body, color, alpha, baseRadius, stretch, options.shader || "soft3d", clumps, renderBounds, inner);
     }
 
     function drawSignalCharacterMap(x, y, w, h) {
@@ -5602,6 +6839,7 @@ const canvas = document.getElementById("blobCanvas");
       const hasSignal = smoothed.rms > 0.012 || metrics.rms > 0.008 || metrics.peak > 0.018;
       const px = x + noiseAxis * w;
       const py = y + motionAxis * h;
+      signalCharacterPhysics.lastBounds = { x, y, w, h };
       const targetColor = [
         Math.round(120 + signalCharacterState.transient * 135),
         Math.round(40 + signalCharacterState.lowAnchor * 190),
@@ -5638,7 +6876,8 @@ const canvas = document.getElementById("blobCanvas");
         const tailColor = physics.tailBlob.color || headColor;
         const boundaryMode = signalCharacterBoundarySelect?.value || "none";
         const shaderMode = signalCharacterShaderSelect?.value || "soft3d";
-        const blobBounds = boundaryMode === "none" ? null : { x, y, w, h };
+        const headBounds = boundaryMode === "none" ? null : { x, y, w, h };
+        const tailBounds = boundaryMode === "none" ? null : { x, y, w, h };
         const blobContext = boundaryMode === "none" && characterOverlayCtx ? characterOverlayCtx : ctx;
         drawSignalCharacterBlob(
           physics.tailBlob,
@@ -5652,7 +6891,8 @@ const canvas = document.getElementById("blobCanvas");
             sizeScale: 0.92,
             frequencyBase: 0.006,
             frequencyDivisor: 5200,
-            bounds: blobBounds,
+            bounds: tailBounds,
+            renderBounds: { x, y, w, h },
             context: blobContext,
             shader: shaderMode,
             nodeRestitution: boundaryMode === "everything" ? 0.18 : 0.28,
@@ -5664,13 +6904,17 @@ const canvas = document.getElementById("blobCanvas");
           headColor.map((value) => Math.round(value)),
           physics.headAlpha,
           {
-            bounds: blobBounds,
+            bounds: headBounds,
+            renderBounds: { x, y, w, h },
             context: blobContext,
             shader: shaderMode,
             nodeRestitution: boundaryMode === "everything" ? 0.24 : 0.36,
             nodeFriction: boundaryMode === "everything" ? 0.58 : 0.68
           }
         );
+        if (boundaryMode === "everything") {
+          collideSignalCharacterBodies(physics.head, physics.tailBlob, 1.45);
+        }
         ctx.restore();
       }
 
@@ -5700,7 +6944,7 @@ const canvas = document.getElementById("blobCanvas");
       const contentBottom = Math.max(120, h - rawFooterReserve);
       const mapW = stackSignal ? w - pad * 2 : showBars ? Math.max(228, Math.floor(w * 0.52)) : w - pad * 2;
       const mapH = stackSignal
-        ? Math.max(canvasPxForCss(190), contentBottom * 0.34)
+        ? Math.max(canvasPxForCss(330), contentBottom * 0.56)
         : showBars ? Math.max(100, contentBottom - 38) : Math.max(100, contentBottom - 34);
       const mapX = x + pad;
       const mapY = y + 30;
@@ -6532,6 +7776,186 @@ const canvas = document.getElementById("blobCanvas");
       const labelSize = meterTextSize(10, 0, 13);
       drawMeterText(label, x + 14, meterTextBottomBaseline(y, h, labelSize, 10), labelSize, "rgba(166,188,210,0.78)");
     }
+
+    function harmonicTensionDisplayValue(bucket, mode) {
+      if (!bucket) return 0;
+      if (mode === "acoustic") return clamp((bucket.tension || 0) * 0.54 + (bucket.roughness || 0) * 0.46, 0, 1);
+      if (mode === "musical") return clamp((bucket.tension || 0) * 0.68 + bucket.value * 0.32, 0, 1);
+      return clamp((bucket.tension || 0) * 0.52 + (bucket.roughness || 0) * 0.28 + bucket.value * 0.2, 0, 1);
+    }
+
+    function drawHarmonicRadar(cx, cy, r, curve, mode, active) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(142,150,166,0.2)";
+      ctx.lineWidth = 1;
+      for (let i = 1; i <= 3; i += 1) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * i / 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      for (const target of harmonicIntervalTargets) {
+        const tx = cx + Math.cos(target.angle) * r;
+        const ty = cy + Math.sin(target.angle) * r;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+        const labelSize = meterTextSize(8, 1, 11);
+        drawMeterText(target.label, cx + Math.cos(target.angle) * (r + 11), cy + Math.sin(target.angle) * (r + 11) + labelSize * 0.35, labelSize, "rgba(166,188,210,0.66)");
+      }
+      const points = curve.map((bucket) => {
+        const value = active ? harmonicTensionDisplayValue(bucket, mode) : 0;
+        const radius = r * (0.16 + value * 0.78);
+        return {
+          x: cx + Math.cos(bucket.angle) * radius,
+          y: cy + Math.sin(bucket.angle) * radius,
+          value,
+          color: bucket.color
+        };
+      });
+      if (points.length) {
+        ctx.beginPath();
+        points.forEach((point, index) => {
+          if (index === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        });
+        ctx.closePath();
+        const fill = ctx.createRadialGradient(cx, cy, r * 0.08, cx, cy, r);
+        fill.addColorStop(0, "rgba(245,245,245,0.1)");
+        fill.addColorStop(0.42, "rgba(188,48,236,0.16)");
+        fill.addColorStop(1, "rgba(255,58,24,0.18)");
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = active ? "rgba(245,245,245,0.68)" : "rgba(245,245,245,0.18)";
+        ctx.lineWidth = 1.25;
+        ctx.stroke();
+        ctx.globalCompositeOperation = "screen";
+        for (const point of points) {
+          ctx.fillStyle = point.color;
+          ctx.globalAlpha = active ? clamp(0.22 + point.value * 0.74, 0.22, 0.92) : 0.12;
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 2.2 + point.value * 3.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawHarmonicCurve(x, y, w, h, curve, mode, active) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 4; i += 1) {
+        const gy = y + h * i / 4;
+        ctx.beginPath();
+        ctx.moveTo(x, gy);
+        ctx.lineTo(x + w, gy);
+        ctx.stroke();
+      }
+      const slot = w / Math.max(1, curve.length);
+      ctx.globalCompositeOperation = "screen";
+      curve.forEach((bucket, index) => {
+        const value = active ? harmonicTensionDisplayValue(bucket, mode) : 0;
+        const bx = x + index * slot + slot * 0.18;
+        const bw = Math.max(3, slot * 0.58);
+        const bh = value * h;
+        ctx.fillStyle = `rgba(245,245,245,${active ? 0.05 : 0.025})`;
+        ctx.fillRect(bx, y, bw, h);
+        ctx.fillStyle = bucket.color;
+        ctx.globalAlpha = active ? clamp(0.3 + value * 0.58, 0.3, 0.88) : 0.12;
+        ctx.fillRect(bx, y + h - bh, bw, bh);
+        ctx.globalAlpha = 1;
+        const labelSize = meterTextSize(8, 1, 11);
+        drawMeterText(bucket.label, bx, y + h + labelSize + 4, labelSize, "rgba(166,188,210,0.66)");
+      });
+      ctx.restore();
+    }
+
+    function drawHarmonicTensionPanel(x, y, w, h) {
+      ctx.fillStyle = "#030303";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#282828";
+      ctx.strokeRect(x, y, w, h);
+      const state = meterState.harmonicTension;
+      const view = harmonicTensionViewSelect?.value || "radarCurve";
+      const mode = harmonicTensionModeSelect?.value || "combined";
+      const active = state.peaks.length >= 1 && (state.tension > 0.01 || state.harmonicity > 0.01 || state.roughness > 0.01 || state.consonance > 0.01);
+      const pad = 14;
+      const plotX = x + pad;
+      const plotY = y + pad;
+      const plotW = w - pad * 2;
+      const plotH = h - pad * 2;
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      for (let i = 1; i < 4; i += 1) {
+        const gy = plotY + plotH * i / 4;
+        ctx.beginPath();
+        ctx.moveTo(plotX, gy);
+        ctx.lineTo(plotX + plotW, gy);
+        ctx.stroke();
+      }
+
+      const compact = useCompactGraphLayout();
+      const curve = state.curve.length ? state.curve : harmonicDefaultCurve();
+      const rowGap = meterRowMetrics("compact");
+      if (compact) {
+        let sy = plotY + 8;
+        drawMeterRow({ label: "Consonance", value: active ? state.consonance : 0, valueText: active ? state.consonance.toFixed(2) : "--", x: plotX, y: sy, w: plotW, color: "#57ff14", enabled: active });
+        sy += rowGap.height;
+        drawMeterRow({ label: "Tension", value: active ? state.tension : 0, valueText: active ? state.tension.toFixed(2) : "--", x: plotX, y: sy, w: plotW, color: "#ff3a18", enabled: active });
+        sy += rowGap.height;
+        drawMeterRow({ label: "Roughness", value: active ? state.roughness : 0, valueText: active ? state.roughness.toFixed(2) : "--", x: plotX, y: sy, w: plotW, color: "#b642ff", enabled: active });
+        sy += rowGap.height;
+        drawMeterRow({ label: "Harmonicity", value: active ? state.harmonicity : 0, valueText: active ? state.harmonicity.toFixed(2) : "--", x: plotX, y: sy, w: plotW, color: "#52a6ff", enabled: active });
+
+        const footerSize = meterTextSize(10, 0, 13);
+        const footerY = meterTextBottomBaseline(y, h, footerSize, 10);
+        const visualTop = sy + rowGap.height + 12;
+        const curveH = view === "radar" ? 0 : Math.max(44, Math.min(74, plotH * 0.2));
+        const curveY = footerY - footerSize - 10 - curveH;
+        const radarBottom = view === "curve" ? curveY : footerY - footerSize - canvasPxForCss(28);
+        if (view !== "curve") {
+          const availableH = Math.max(88, radarBottom - visualTop);
+          const labelClearance = canvasPxForCss(38);
+          const radialBoxW = Math.max(0, plotW - labelClearance * 2);
+          const radialBoxH = Math.max(0, availableH - labelClearance * 2);
+          const radarR = Math.max(canvasPxForCss(88), Math.min(radialBoxW * 0.5, radialBoxH * 0.5));
+          const radarCx = plotX + plotW * 0.5;
+          const radarCy = visualTop + labelClearance + radarR;
+          drawHarmonicRadar(radarCx, radarCy, radarR, curve, mode, active);
+        }
+        if (view !== "radar") {
+          drawHarmonicCurve(plotX, Math.max(visualTop, curveY), plotW, curveH, curve, mode, active);
+        }
+      } else {
+        const summaryW = Math.max(190, plotW * 0.28);
+        const radarW = view === "curve" ? 0 : plotW * 0.34;
+        const curveX = view === "radar" ? plotX + radarW + 8 : plotX + radarW + (radarW ? 18 : 0);
+        const curveW = view === "radar" ? Math.max(120, plotW - radarW - summaryW - 28) : Math.max(120, plotX + plotW - curveX - summaryW - 18);
+        if (view !== "curve") {
+          const radarR = Math.min(radarW, plotH * 0.74) * 0.42;
+          drawHarmonicRadar(plotX + radarW * 0.5, plotY + plotH * 0.48, radarR, curve, mode, active);
+        }
+        if (view !== "radar") {
+          drawHarmonicCurve(curveX, plotY + 18, curveW, Math.max(58, plotH * 0.56), curve, mode, active);
+        }
+        const sx = x + w - pad - summaryW;
+        let sy = plotY + 12;
+        drawMeterRow({ label: "Consonance", value: active ? state.consonance : 0, valueText: active ? state.consonance.toFixed(2) : "--", x: sx, y: sy, w: summaryW, color: "#57ff14", enabled: active });
+        sy += rowGap.height;
+        drawMeterRow({ label: "Tension", value: active ? state.tension : 0, valueText: active ? state.tension.toFixed(2) : "--", x: sx, y: sy, w: summaryW, color: "#ff3a18", enabled: active });
+        sy += rowGap.height;
+        drawMeterRow({ label: "Roughness", value: active ? state.roughness : 0, valueText: active ? state.roughness.toFixed(2) : "--", x: sx, y: sy, w: summaryW, color: "#b642ff", enabled: active });
+        sy += rowGap.height;
+        drawMeterRow({ label: "Harmonicity", value: active ? state.harmonicity : 0, valueText: active ? state.harmonicity.toFixed(2) : "--", x: sx, y: sy, w: summaryW, color: "#52a6ff", enabled: active });
+      }
+
+      const labelSize = meterTextSize(10, 0, 13);
+      const peakLabel = active
+        ? `${state.peaks.length} peaks · ${state.intervals[0]?.label || "--"} · ${mode}`
+        : "waiting for resonant peaks";
+      drawMeterText(peakLabel, x + 14, meterTextBottomBaseline(y, h, labelSize, 10), labelSize, active ? "rgba(166,188,210,0.78)" : "rgba(166,166,166,0.58)");
+    }
+
     function drawSpectrumPanel(x, y, w, h) {
       ctx.fillStyle = "#030303";
       ctx.fillRect(x, y, w, h);
@@ -6820,6 +8244,40 @@ const canvas = document.getElementById("blobCanvas");
       ctx.stroke();
     }
 
+    function drawStereoArcGrid(cx, cy, r, compact) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(142,150,166,0.26)";
+      ctx.lineWidth = compact ? 0.9 : 1;
+      for (let i = 1; i <= 3; i += 1) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, (r * i) / 3, Math.PI, Math.PI * 2);
+        ctx.stroke();
+      }
+      for (let i = -2; i <= 2; i += 1) {
+        const angle = (i / 2) * (Math.PI / 2);
+        const x2 = cx + Math.sin(angle) * r;
+        const y2 = cy - Math.cos(angle) * r;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(142,150,166,0.42)";
+      ctx.lineWidth = compact ? 1 : 1.15;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - r, cy);
+      ctx.lineTo(cx + r, cy);
+      ctx.stroke();
+      const labelSize = meterTextSize(9, 1, 12);
+      drawMeterText("L", cx - r + 2, cy + labelSize + 3, labelSize, "rgba(166,188,210,0.68)");
+      drawMeterText("M", cx - 4, cy + labelSize + 3, labelSize, "rgba(166,188,210,0.68)");
+      drawMeterText("R", cx + r - 9, cy + labelSize + 3, labelSize, "rgba(166,188,210,0.68)");
+      ctx.restore();
+    }
+
     function drawStereoCorrelationOverlay(cx, cy, r, compact) {
       const corr = clamp(meterState.correlation, -1, 1);
       const width = clamp(1 - (corr + 1) * 0.5 + smoothed.side * 0.45, 0, 1);
@@ -6869,6 +8327,19 @@ const canvas = document.getElementById("blobCanvas");
       };
     }
 
+    function stereoArcPointFromSample(l, rr, cx, cy, r, gain, widthGain, offsetX = 0, offsetY = 0) {
+      const mid = (l + rr) * 0.5;
+      const side = (l - rr) * 0.5;
+      const amp = clamp(Math.hypot(mid, side) * gain, 0, 1);
+      const pan = clamp(side * widthGain, -1, 1);
+      const angle = -pan * (Math.PI / 2);
+      const radius = r * Math.pow(amp, 0.48);
+      return {
+        x: cx + Math.sin(angle) * radius + offsetX,
+        y: cy - Math.cos(angle) * radius + offsetY
+      };
+    }
+
     function drawStereoClassicCloud(left, right, cx, cy, r, compact, spec) {
       const n = Math.min(left.length, right.length);
       if (!n) return;
@@ -6888,15 +8359,35 @@ const canvas = document.getElementById("blobCanvas");
       }
     }
 
+    function drawStereoArcCloud(left, right, cx, cy, r, compact, spec) {
+      const n = Math.min(left.length, right.length);
+      if (!n) return;
+      const bandRms = Math.max(rmsFloat(left), rmsFloat(right));
+      const gain = clamp(spec.target / Math.max(0.004, bandRms), 1, spec.maxGain);
+      const step = Math.max(1, Math.floor(n / spec.points));
+      const widthGain = (compact ? 3.4 : 3.85) * spec.sideGain;
+      const ampGain = (compact ? 2.6 : 2.95) * spec.midGain * gain;
+      const alpha = clamp(spec.alphaBase + Math.pow(bandRms * gain, 0.5) * spec.alphaLift, spec.alphaBase, spec.alphaMax);
+      const radius = compact ? spec.classicDot * 0.95 : spec.classicDot * 1.12;
+      ctx.fillStyle = `rgba(${spec.color[0]},${spec.color[1]},${spec.color[2]},${alpha})`;
+      for (let i = 0; i < n; i += step) {
+        const p = stereoArcPointFromSample(left[i], right[i], cx, cy, r, ampGain, widthGain, spec.offsetX || 0, spec.offsetY || 0);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     function drawStereoCorrelationCloud(left, right, cx, cy, r, compact, mode) {
       const n = Math.min(left.length, right.length);
       if (!n) return;
       const bandRms = Math.max(rmsFloat(left), rmsFloat(right));
+      const arc = mode === "arc";
       const classic = mode !== "tangle";
       const gain = clamp(0.24 / Math.max(0.004, bandRms), 1, classic ? 4.4 : 3.8);
       const visualWindow = classic ? Math.min(n, compact ? 2048 : 3072) : n;
       const start = classic ? Math.max(0, n - visualWindow) : 0;
-      const targetPoints = classic ? (compact ? 1500 : 2200) : 420;
+      const targetPoints = arc ? (compact ? 1350 : 1900) : classic ? (compact ? 1500 : 2200) : 420;
       const step = Math.max(1, Math.floor(visualWindow / targetPoints));
       const midGain = (compact ? 2.15 : 2.45) * gain;
       const sideGain = (compact ? 2.0 : 2.25) * gain;
@@ -6907,13 +8398,15 @@ const canvas = document.getElementById("blobCanvas");
       const color = corr < 0 ? [255, 86, 48] : [235, 238, 225];
       const points = [];
       for (let i = start; i < n; i += step) {
-        points.push(stereoPointFromSample(left[i], right[i], cx, cy, r, midGain, sideGain));
+        points.push(arc
+          ? stereoArcPointFromSample(left[i], right[i], cx, cy, r, midGain * 1.08, sideGain * 1.78)
+          : stereoPointFromSample(left[i], right[i], cx, cy, r, midGain, sideGain));
       }
       if (!points.length) return;
 
       ctx.save();
       ctx.globalCompositeOperation = "screen";
-      if (points.length > 1) {
+      if (points.length > 1 && !arc) {
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.strokeStyle = classic
@@ -6999,10 +8492,22 @@ const canvas = document.getElementById("blobCanvas");
       const showLow = stereoLowToggle.checked;
       const showMid = stereoMidToggle.checked;
       const showHigh = stereoHighToggle.checked;
-      const cx = x + (compact ? w * 0.27 : w * 0.34);
-      const cy = y + h * 0.48;
-      const r = Math.min(w * (compact ? 0.5 : 0.57), h) * 0.43;
-      drawStereoScopeGrid(cx, cy, r, compact);
+      const pad = compact ? 12 : 16;
+      const columnGap = compact ? 22 : 30;
+      const meterW = clamp(w * (compact ? 0.38 : 0.36), 190, Math.max(190, w * 0.42));
+      const bx = x + w - pad - meterW;
+      const bw = meterW;
+      const scopeX = x + pad;
+      const scopeY = y + pad;
+      const scopeW = Math.max(80, bx - columnGap - scopeX);
+      const scopeH = Math.max(72, h - pad * 2 - 12);
+      const cx = scopeX + scopeW * 0.5;
+      const cy = mode === "arc" ? scopeY + scopeH * 0.82 : scopeY + scopeH * 0.5;
+      const r = mode === "arc"
+        ? Math.min(scopeW * 0.5, scopeH * 0.78) * 0.92
+        : Math.min(scopeW, scopeH) * 0.48;
+      if (mode === "arc") drawStereoArcGrid(cx, cy, r, compact);
+      else drawStereoScopeGrid(cx, cy, r, compact);
       if (showCorr && mode === "tangle") drawStereoCorrelationOverlay(cx, cy, r, compact);
 
       if (leftAnalyser && rightAnalyser) {
@@ -7098,14 +8603,13 @@ const canvas = document.getElementById("blobCanvas");
         for (const spec of bandClouds) {
           if ((spec.id === "low" && !showLow) || (spec.id === "mid" && !showMid) || (spec.id === "high" && !showHigh)) continue;
           if (mode === "tangle") drawStereoTangleCloud(spec.left, spec.right, cx, cy, r, compact, spec);
+          else if (mode === "arc") drawStereoArcCloud(spec.left, spec.right, cx, cy, r, compact, spec);
           else drawStereoClassicCloud(spec.left, spec.right, cx, cy, r, compact, spec);
         }
       }
       ctx.restore();
       if (showCorr && hasStereoSignal) drawStereoCorrelationCloud(left, right, cx, cy, r, compact, mode);
 
-      const bx = x + w * 0.58;
-      const bw = w * 0.36;
       let stereoRowY = y + (compact ? 18 : 24);
       [
         ["Corr", meterState.correlation, "#f5f5f5", showCorr],
@@ -7129,8 +8633,8 @@ const canvas = document.getElementById("blobCanvas");
       });
       const stereoLegendSize = meterTextSize(9, 2);
       const stereoLegendY = meterTextBottomBaseline(y, h, stereoLegendSize);
-      drawMeterText("L/R", x + 12, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
-      drawMeterText("M/S rotated", x + 42, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
+      drawMeterText(mode === "arc" ? "Arc" : "L/R", x + 12, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
+      drawMeterText(mode === "arc" ? "pan / width" : "M/S rotated", x + 42, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
     }
 
     function findRisingZeroCrossing(values) {
@@ -7898,6 +9402,54 @@ const canvas = document.getElementById("blobCanvas");
       };
     }
 
+    function auditLayoutControlPositions() {
+      const rows = getLayoutRows().rows;
+      const failures = [];
+      const checks = rows.map((row) => {
+        const group = graphControls?.querySelector(`[data-module="${row.module.id}"]`);
+        if (!group || group.hidden) {
+          const result = {
+            module: row.module.id,
+            visible: false,
+            positionOk: false,
+            metrics: { expectedVisible: true }
+          };
+          failures.push(result);
+          return result;
+        }
+        const rect = group.getBoundingClientRect();
+        const expectedTop = getControlLaneTop(group, row.y);
+        const expectedLeft = METER_LAYOUT.left * graphControlScale;
+        const expectedWidth = METER_LAYOUT.fullWidth * graphControlScale;
+        const top = parseFloat(group.style.top) || 0;
+        const left = parseFloat(group.style.left) || 0;
+        const width = parseFloat(group.style.width) || rect.width;
+        const positionOk = Math.abs(top - expectedTop) <= 1.5
+          && Math.abs(left - expectedLeft) <= 1.5
+          && Math.abs(width - expectedWidth) <= 1.5;
+        const result = {
+          module: row.module.id,
+          visible: true,
+          positionOk,
+          metrics: {
+            top: Number(top.toFixed(2)),
+            expectedTop: Number(expectedTop.toFixed(2)),
+            left: Number(left.toFixed(2)),
+            expectedLeft: Number(expectedLeft.toFixed(2)),
+            width: Number(width.toFixed(2)),
+            expectedWidth: Number(expectedWidth.toFixed(2))
+          }
+        };
+        if (!positionOk) failures.push(result);
+        return result;
+      });
+      return {
+        ok: failures.length === 0,
+        failures,
+        checks
+      };
+    }
+
     function auditWaveformDisplayContract() {
       const display = contract.ui?.waveformDisplay || {};
       const reserve = display.labelReservePx || 12;
@@ -8098,6 +9650,11 @@ const canvas = document.getElementById("blobCanvas");
           signalCharacterDisplaySelect,
           signalCharacterBoundarySelect,
           signalCharacterShaderSelect,
+          signalCharacterDebugSelect,
+          signalCharacterDepth,
+          signalCharacterGlowViscosity,
+          signalCharacterColorDepth,
+          signalCharacterIridescence,
           signalCharacterFftWeight,
           signalCharacterNoise,
           signalCharacterTransient,
@@ -8120,6 +9677,11 @@ const canvas = document.getElementById("blobCanvas");
           hidesPointWithoutSignal: true,
           boundaries: signalCharacterBoundarySelect?.value || "none",
           shader: signalCharacterShaderSelect?.value || "soft3d",
+          physicsDebug: signalCharacterDebugSelect?.value || "off",
+          depth: Number(signalCharacterDepth?.value || 1),
+          glowViscosity: Number(signalCharacterGlowViscosity?.value || 0.7),
+          colorDepth: Number(signalCharacterColorDepth?.value || 0.8),
+          iridescence: Number(signalCharacterIridescence?.value || 0.55),
           trailPoints: signalCharacterTrail.length
         },
         metrics: {
@@ -8410,6 +9972,17 @@ const canvas = document.getElementById("blobCanvas");
     spectralDynamicsTilt.addEventListener("input", () => {
       spectralDynamicsTiltValue.textContent = `${Number(spectralDynamicsTilt.value).toFixed(1)}dB`;
     });
+    harmonicTensionModeSelect.addEventListener("change", () => updateHarmonicTensionState(metrics.rms > 0.001 || metrics.peak > 0.004));
+    harmonicTensionViewSelect.addEventListener("change", markLayoutControlsDirty);
+    harmonicTensionPeakSelect.addEventListener("change", () => updateHarmonicTensionState(metrics.rms > 0.001 || metrics.peak > 0.004));
+    harmonicTensionLowCut.addEventListener("input", () => {
+      harmonicTensionLowCutValue.textContent = `${Number(harmonicTensionLowCut.value).toFixed(0)}Hz`;
+      updateHarmonicTensionState(metrics.rms > 0.001 || metrics.peak > 0.004);
+    });
+    harmonicTensionSensitivity.addEventListener("input", () => {
+      harmonicTensionSensitivityValue.textContent = Number(harmonicTensionSensitivity.value).toFixed(2);
+      updateHarmonicTensionState(metrics.rms > 0.001 || metrics.peak > 0.004);
+    });
     spectrogramFftSelect.addEventListener("change", () => {
       configureSpectrogramAnalyser();
     });
@@ -8440,6 +10013,19 @@ const canvas = document.getElementById("blobCanvas");
     signalCharacterDisplaySelect.addEventListener("change", markLayoutControlsDirty);
     signalCharacterBoundarySelect.addEventListener("change", resetSignalCharacterPhysics);
     signalCharacterShaderSelect.addEventListener("change", markLayoutControlsDirty);
+    signalCharacterDebugSelect.addEventListener("change", markLayoutControlsDirty);
+    signalCharacterDepth.addEventListener("input", () => {
+      signalCharacterDepthValue.textContent = Number(signalCharacterDepth.value).toFixed(2);
+    });
+    signalCharacterGlowViscosity.addEventListener("input", () => {
+      signalCharacterGlowViscosityValue.textContent = Number(signalCharacterGlowViscosity.value).toFixed(2);
+    });
+    signalCharacterColorDepth.addEventListener("input", () => {
+      signalCharacterColorDepthValue.textContent = Number(signalCharacterColorDepth.value).toFixed(2);
+    });
+    signalCharacterIridescence.addEventListener("input", () => {
+      signalCharacterIridescenceValue.textContent = Number(signalCharacterIridescence.value).toFixed(2);
+    });
     signalCharacterFftWeight.addEventListener("input", () => {
       signalCharacterFftWeightValue.textContent = Number(signalCharacterFftWeight.value).toFixed(2);
     });
@@ -8482,9 +10068,67 @@ const canvas = document.getElementById("blobCanvas");
       if (event.target === canvas) return;
       closeFloatingInspector();
     });
+    window.METTR_SIGNAL_CHARACTER_TESTS = {
+      impulse(strength = 1) {
+        const bounds = signalCharacterPhysics.lastBounds || { x: 80, y: 140, w: W - 160, h: 260 };
+        const targetColor = [188, 48, 236];
+        signalCharacterState.transientImpact = clamp(0.72 * strength, 0, 1.6);
+        signalCharacterState.dynamic = clamp(0.58 * strength, 0, 1.2);
+        signalCharacterState.eventDensity = clamp(0.32 * strength, 0, 1);
+        signalCharacterState.noisy = clamp(0.18 * strength, 0, 1);
+        updateSignalCharacterPhysics(bounds.x + bounds.w * 0.52, bounds.y + bounds.h * 0.48, true, targetColor, bounds);
+        signalCharacterPhysics.head.vx += 46 * strength;
+        signalCharacterPhysics.head.vy -= 28 * strength;
+        signalCharacterPhysics.lastSignalAt = performance.now() / 1000;
+      },
+      swell(strength = 1) {
+        const bounds = signalCharacterPhysics.lastBounds || { x: 80, y: 140, w: W - 160, h: 260 };
+        const targetColor = [57, 255, 20];
+        signalCharacterState.lowAnchor = clamp(0.85 * strength, 0, 1);
+        signalCharacterState.dynamic = clamp(0.72 * strength, 0, 1);
+        signalCharacterState.tonal = clamp(0.78 * strength, 0, 1);
+        signalCharacterState.noisy = 0.08;
+        updateSignalCharacterPhysics(bounds.x + bounds.w * 0.5, bounds.y + bounds.h * 0.38, true, targetColor, bounds);
+        signalCharacterPhysics.head.vy += 8 * strength;
+        signalCharacterPhysics.lastSignalAt = performance.now() / 1000;
+      },
+      ferro(strength = 1) {
+        const bounds = signalCharacterPhysics.lastBounds || { x: 80, y: 140, w: W - 160, h: 260 };
+        const targetColor = [82, 158, 255];
+        signalCharacterState.noisy = clamp(0.72 * strength, 0, 1);
+        signalCharacterState.spectralCrest = clamp(0.82 * strength, 0, 1);
+        signalCharacterState.transientImpact = clamp(0.42 * strength, 0, 1);
+        signalCharacterState.eventDensity = clamp(0.76 * strength, 0, 1);
+        updateSignalCharacterPhysics(bounds.x + bounds.w * 0.58, bounds.y + bounds.h * 0.42, true, targetColor, bounds);
+        signalCharacterPhysics.head.vx -= 38 * strength;
+        signalCharacterPhysics.head.vy += 24 * strength;
+        signalCharacterPhysics.lastSignalAt = performance.now() / 1000;
+      },
+      collide(strength = 1) {
+        const bounds = signalCharacterPhysics.lastBounds || { x: 80, y: 140, w: W - 160, h: 260 };
+        const targetColor = [188, 48, 236];
+        signalCharacterState.transientImpact = clamp(0.82 * strength, 0, 1.6);
+        signalCharacterState.dynamic = clamp(0.7 * strength, 0, 1.2);
+        signalCharacterState.spectralCrest = clamp(0.72 * strength, 0, 1);
+        updateSignalCharacterPhysics(bounds.x + bounds.w * 0.5, bounds.y + bounds.h * 0.5, true, targetColor, bounds);
+        signalCharacterPhysics.head.x = bounds.x + bounds.w * 0.36;
+        signalCharacterPhysics.tailBlob.x = bounds.x + bounds.w * 0.64;
+        signalCharacterPhysics.head.y = bounds.y + bounds.h * 0.5;
+        signalCharacterPhysics.tailBlob.y = bounds.y + bounds.h * 0.5;
+        signalCharacterPhysics.head.vx = 42 * strength;
+        signalCharacterPhysics.tailBlob.vx = -24 * strength;
+        signalCharacterPhysics.head.vy = -6 * strength;
+        signalCharacterPhysics.tailBlob.vy = 8 * strength;
+        signalCharacterPhysics.lastSignalAt = performance.now() / 1000;
+      },
+      reset() {
+        resetSignalCharacterPhysics();
+      }
+    };
     window.METTR_AUDIT = {
       ...(window.METTR_AUDIT || {}),
       moduleHeaders: auditModuleHeaders,
+      layoutControlPositions: auditLayoutControlPositions,
       meterPrimitives: auditMeterPrimitiveContract,
       displayRenderSpacing: auditDisplayRenderSpacing,
       waveformDisplay: auditWaveformDisplayContract,

@@ -10,7 +10,7 @@ Audited surface:
 
 - Header controls: title, input source, layout selector, readout.
 - Module headers: title, gear, maximize/minimize, remove.
-- Graph modules: Spectrum, Spectral Dynamics, Spectrogram, Tuner, Signal Character, Waves Spectrogram, Oscilloscope, Waveforms, Stereometer, Loudness, Pattern Detector.
+- Graph modules: Spectrum, Spectral Dynamics, Harmonic Tension, Spectrogram, Tuner, Signal Character, Waves Spectrogram, Oscilloscope, Waveforms, Stereometer, Loudness, Pattern Detector.
 - Meter primitives: labels, values, bars, disabled states, section labels, legends.
 - Responsive behavior: desktop, tablet, mobile, narrow mobile.
 - Color system: semantic palette and repeated graph colors.
@@ -219,6 +219,28 @@ The audit must fail when Add Module:
 - leaves a visibly larger gap than a normal module-to-module transition;
 - overlaps the previous module body.
 
+### Module Header Position Contract
+
+Module headers are DOM controls over a canvas graph. Their placement must come from the layout model, not from whether a graph is currently inside the rendered canvas range.
+
+Required rule:
+
+```text
+for every active layout row:
+  header_top = getControlLaneTop(group, row.y)
+  header_left = layout.left * graphControlScale
+  header_width = layout.fullWidth * graphControlScale
+```
+
+The audit must fail when:
+
+- an active module header remains at CSS/default position because its graph is offscreen;
+- headers are only positioned inside the render loop when their graph body intersects the visible render range;
+- visual Y order differs from the selected layout order;
+- two active module headers overlap by more than 1 CSS px.
+
+This specifically guards against offscreen modules such as Spectrogram, Waves, Tuner, and Signal Character stacking at the top of the canvas in mobile/long layouts.
+
 ## Audio Presence / Silence Contract
 
 Meters may keep internal technical state while the user hears no audio, but user-facing dynamic overlays must not draw meaningful values on first app load or after sustained silence.
@@ -298,9 +320,22 @@ Current renderers found in `src/app.js`:
 | Loudness bars | Migrated to `drawMeterRow` |
 | Stereometer correlation bars | Migrated to `drawMeterRow` bipolar mode |
 | Signal Character decision bars | Migrated to `drawMeterRow` compact density |
+| Harmonic Tension summary bars | Must use `drawMeterRow` compact density |
 | Signal Character raw footer | Raised to effective text minimum, but still a special compact footer |
 
 This is the main inconsistency.
+
+### Radial / Polar Graphs
+
+Radial graph renderers must be audited as graph-effective content, not only as module containers.
+
+- Mobile detection inside renderers must use the shared responsive state, not raw canvas pixel width.
+- A mobile radial graph must use at least 70% of the available visual width after labels and padding.
+- A mobile radial graph must use at least 55% of the available visual height after meter rows and footer.
+- Radial labels are part of the effective graph bounds. Labels such as `P5`, `m6`, and `TT` must not touch or cross the module border.
+- The mobile module height contract must reserve space for meter rows, radial label clearance, radial diameter, footer, and gaps. A renderer may not rely on "leftover" height for a radial plot.
+- If a module has summary rows and a radial graph, mobile layout must stack summary rows above or below the graph; it must not keep a desktop side-by-side allocation.
+- Harmonic Tension is the reference case: the radial plot is the primary graph, while interval bars/curves are optional secondary views.
 
 ## Current Failures
 
@@ -396,6 +431,23 @@ Current requirement:
 
 - Stereometer rows must continue to use the same meter-row primitive with bipolar mode.
 - Disabled states must remain visible but subdued.
+
+### FIXED-003B: Stereometer Effective Graph Must Be Centered In Its Own Scope Region
+
+Location: `drawStereoPanel`.
+
+Previous failure:
+
+- The vectorscope center used hardcoded module percentages (`27%` compact, `34%` desktop).
+- The meter rows started from a separate hardcoded percentage.
+- This made the effective graph appear biased inside the remaining space, especially on mobile and mid-width layouts.
+
+Current requirement:
+
+- Stereometer must split the module body into a `scopeRect` and a `meterRect`.
+- Scope center must be computed from `scopeRect.x + scopeRect.w / 2`, not from total module width.
+- Scope radius must be derived from `scopeRect`, not from total module width.
+- Any new stereo mode must use the same scope/meter region contract.
 
 ### FIXED-004: Pattern Detector Main Bars Use The Shared Row Primitive
 

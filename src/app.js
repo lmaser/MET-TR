@@ -32,8 +32,10 @@ const canvas = document.getElementById("blobCanvas");
     const spectralDynamicsTilt = document.getElementById("spectralDynamicsTilt");
     const spectralDynamicsTiltValue = document.getElementById("spectralDynamicsTiltValue");
     const harmonicTensionModeSelect = document.getElementById("harmonicTensionModeSelect");
-    const harmonicTensionViewSelect = document.getElementById("harmonicTensionViewSelect");
     const harmonicTensionPeakSelect = document.getElementById("harmonicTensionPeakSelect");
+    const harmonicTensionFftSelect = document.getElementById("harmonicTensionFftSelect");
+    const harmonicTensionSmooth = document.getElementById("harmonicTensionSmooth");
+    const harmonicTensionSmoothValue = document.getElementById("harmonicTensionSmoothValue");
     const harmonicTensionLowCut = document.getElementById("harmonicTensionLowCut");
     const harmonicTensionLowCutValue = document.getElementById("harmonicTensionLowCutValue");
     const harmonicTensionSensitivity = document.getElementById("harmonicTensionSensitivity");
@@ -56,16 +58,7 @@ const canvas = document.getElementById("blobCanvas");
     const signalCharacterWindowSelect = document.getElementById("signalCharacterWindowSelect");
     const signalCharacterDisplaySelect = document.getElementById("signalCharacterDisplaySelect");
     const signalCharacterBoundarySelect = document.getElementById("signalCharacterBoundarySelect");
-    const signalCharacterShaderSelect = document.getElementById("signalCharacterShaderSelect");
     const signalCharacterDebugSelect = document.getElementById("signalCharacterDebugSelect");
-    const signalCharacterDepth = document.getElementById("signalCharacterDepth");
-    const signalCharacterDepthValue = document.getElementById("signalCharacterDepthValue");
-    const signalCharacterGlowViscosity = document.getElementById("signalCharacterGlowViscosity");
-    const signalCharacterGlowViscosityValue = document.getElementById("signalCharacterGlowViscosityValue");
-    const signalCharacterColorDepth = document.getElementById("signalCharacterColorDepth");
-    const signalCharacterColorDepthValue = document.getElementById("signalCharacterColorDepthValue");
-    const signalCharacterIridescence = document.getElementById("signalCharacterIridescence");
-    const signalCharacterIridescenceValue = document.getElementById("signalCharacterIridescenceValue");
     const signalCharacterFftWeight = document.getElementById("signalCharacterFftWeight");
     const signalCharacterFftWeightValue = document.getElementById("signalCharacterFftWeightValue");
     const signalCharacterNoise = document.getElementById("signalCharacterNoise");
@@ -94,6 +87,7 @@ const canvas = document.getElementById("blobCanvas");
     const waveformSpeedSelect = document.getElementById("waveformSpeedSelect");
     const waveformLoopSelect = document.getElementById("waveformLoopSelect");
     const stereoModeSelect = document.getElementById("stereoModeSelect");
+    const stereoRenderSelect = document.getElementById("stereoRenderSelect");
     const stereoLayerToggles = document.getElementById("stereoLayerToggles");
     const stereoCorrToggle = document.getElementById("stereoCorrToggle");
     const stereoLowToggle = document.getElementById("stereoLowToggle");
@@ -168,6 +162,8 @@ const canvas = document.getElementById("blobCanvas");
     const imageInfluenceValue = document.getElementById("imageInfluenceValue");
 
     const contract = window.METTR_CONTRACT;
+    const renderCore = window.METTR_RENDER_CORE || {};
+    const renderMath = renderCore.math || {};
     const W = contract.canvas.width;
     const H = contract.canvas.height;
     const METER_LAYOUT = contract.layout;
@@ -196,6 +192,7 @@ const canvas = document.getElementById("blobCanvas");
 
     let audioContext;
     let analyser;
+    let harmonicTensionAnalyser;
     let spectrogramAnalyser;
     let spectrogramLowAnalyser;
     let spectrogramMidAnalyser;
@@ -212,6 +209,7 @@ const canvas = document.getElementById("blobCanvas");
     let leftFreq = new Uint8Array(512);
     let rightFreq = new Uint8Array(512);
     let floatFreqData = new Float32Array(1024);
+    let harmonicTensionFreqData = new Float32Array(1024);
     let tunerFloatTimeData = new Float32Array(2048);
     let spectrogramFreqData = new Float32Array(2048);
     let spectrogramLowData = new Float32Array(16384);
@@ -1185,42 +1183,38 @@ const canvas = document.getElementById("blobCanvas");
       moveControlById("spectrumFftSelect", spectrumControlsMount);
       moveControlById("spectrumBarsSelect", spectrumControlsMount);
       moveControlById("spectrumTilt", spectrumControlsMount);
+      moveControlById("spectralDynamicsRangeSelect", spectralDynamicsControlsMount);
       moveControlById("spectralDynamicsFftSelect", spectralDynamicsControlsMount);
       moveControlById("spectralDynamicsWindowSelect", spectralDynamicsControlsMount);
-      moveControlById("spectralDynamicsRangeSelect", spectralDynamicsControlsMount);
       moveControlById("spectralDynamicsDisplaySelect", spectralDynamicsControlsMount);
       moveControlById("spectralDynamicsTilt", spectralDynamicsControlsMount);
       moveControlById("harmonicTensionModeSelect", harmonicTensionControlsMount);
-      moveControlById("harmonicTensionViewSelect", harmonicTensionControlsMount);
       moveControlById("harmonicTensionPeakSelect", harmonicTensionControlsMount);
+      moveControlById("harmonicTensionFftSelect", harmonicTensionControlsMount);
       moveControlById("harmonicTensionLowCut", harmonicTensionControlsMount);
       moveControlById("harmonicTensionSensitivity", harmonicTensionControlsMount);
+      moveControlById("harmonicTensionSmooth", harmonicTensionControlsMount);
+      moveControlById("spectrogramModeSelect", spectrogramControlsMount);
       moveControlById("spectrogramFftSelect", spectrogramControlsMount);
       moveControlById("spectrogramDetailSelect", spectrogramControlsMount);
+      moveControlById("spectrogramWindowSelect", spectrogramControlsMount);
+      moveControlById("spectrogramLoopSelect", spectrogramControlsMount);
       moveControlById("spectrogramScaleSelect", spectrogramControlsMount);
       moveControlById("spectrogramOrientationSelect", spectrogramControlsMount);
-      moveControlById("spectrogramModeSelect", spectrogramControlsMount);
-      moveControlById("spectrogramSpeedSelect", spectrogramControlsMount);
-      moveControlById("spectrogramWindowSelect", spectrogramControlsMount);
-      moveControlById("spectrogramTilt", spectrogramControlsMount);
       moveControlById("spectrogramFreqOverlaySelect", spectrogramControlsMount);
       moveControlById("spectrogramPianoOverlaySelect", spectrogramControlsMount);
-      moveControlById("spectrogramLoopSelect", spectrogramControlsMount);
+      moveControlById("spectrogramTilt", spectrogramControlsMount);
+      moveControlById("spectrogramSpeedSelect", spectrogramControlsMount);
       moveControlById("tunerReference", tunerControlsMount);
       moveControlById("signalCharacterModeSelect", signalCharacterControlsMount);
       moveControlById("signalCharacterWindowSelect", signalCharacterControlsMount);
       moveControlById("signalCharacterDisplaySelect", signalCharacterControlsMount);
       moveControlById("signalCharacterBoundarySelect", signalCharacterControlsMount);
-      moveControlById("signalCharacterShaderSelect", signalCharacterControlsMount);
-      moveControlById("signalCharacterDebugSelect", signalCharacterControlsMount);
-      moveControlById("signalCharacterDepth", signalCharacterControlsMount);
-      moveControlById("signalCharacterGlowViscosity", signalCharacterControlsMount);
-      moveControlById("signalCharacterColorDepth", signalCharacterControlsMount);
-      moveControlById("signalCharacterIridescence", signalCharacterControlsMount);
       moveControlById("signalCharacterFftWeight", signalCharacterControlsMount);
       moveControlById("signalCharacterNoise", signalCharacterControlsMount);
       moveControlById("signalCharacterTransient", signalCharacterControlsMount);
       moveControlById("signalCharacterSmoothing", signalCharacterControlsMount);
+      moveControlById("signalCharacterDebugSelect", signalCharacterControlsMount);
       moveControlById("phaseDungeonDetailSelect", phaseDungeonControlsMount);
       moveControlById("phaseDungeonMemorySelect", phaseDungeonControlsMount);
       moveControlById("phaseDungeonFog", phaseDungeonControlsMount);
@@ -1237,6 +1231,7 @@ const canvas = document.getElementById("blobCanvas");
       moveControlById("waveformSpeedSelect", waveformMediumControlsMount);
       moveControlById("waveformLoopSelect", waveformLongControlsMount);
       moveControlById("stereoModeSelect", stereoControlsMount);
+      moveControlById("stereoRenderSelect", stereoControlsMount);
       moveElementById("stereoLayerToggles", stereoControlsMount);
 
       const patternSection = document.querySelector("aside .algorithm-local");
@@ -1670,6 +1665,16 @@ const canvas = document.getElementById("blobCanvas");
       tunerFloatTimeData = new Float32Array(analyser.fftSize);
       resetSpectrumState();
       resetSpectralDynamicsState();
+    }
+
+    function configureHarmonicTensionAnalyser() {
+      if (!harmonicTensionAnalyser) return;
+      harmonicTensionAnalyser.fftSize = clamp(Number(harmonicTensionFftSelect?.value || 16384), 4096, 32768);
+      harmonicTensionAnalyser.minDecibels = -104;
+      harmonicTensionAnalyser.maxDecibels = -12;
+      harmonicTensionAnalyser.smoothingTimeConstant = clampFinite(Number(harmonicTensionSmooth?.value || 0.18), 0, 0.85, 0.18);
+      harmonicTensionFreqData = new Float32Array(harmonicTensionAnalyser.frequencyBinCount);
+      resetHarmonicTensionState();
     }
 
     function resetSpectrogramState(clear = true) {
@@ -3040,9 +3045,9 @@ const canvas = document.getElementById("blobCanvas");
       state.lastUpdatedAt = audioContext ? audioContext.currentTime : performance.now() / 1000;
     }
 
-    function spectrumFrequencyForBand(index, bars) {
-      if (!audioContext) return 0;
-      const nyquist = audioContext.sampleRate / 2;
+    function spectrumFrequencyForBand(index, bars, sampleRateOverride = null) {
+      const sampleRate = sampleRateOverride || (audioContext ? audioContext.sampleRate : 48000);
+      const nyquist = sampleRate / 2;
       const a = (index + 0.5) / Math.max(1, bars);
       return 16 * Math.pow(nyquist / 16, Math.pow(a, 1.34));
     }
@@ -3092,26 +3097,27 @@ const canvas = document.getElementById("blobCanvas");
       return harmonicIntervalTargets.map((target) => ({ ...target, value: 0, roughness: 0, harmonicity: 0 }));
     }
 
-    function findHarmonicTensionPeaks(maxPeaks, lowCut, sensitivity) {
-      if (!audioContext || !floatFreqData.length) return [];
+    function findHarmonicTensionPeaks(resolution, lowCut, sensitivity, freqBuffer = harmonicTensionFreqData) {
+      if (!audioContext || !freqBuffer.length) return [];
       const nyquist = audioContext.sampleRate * 0.5;
-      const binHz = nyquist / Math.max(1, floatFreqData.length - 1);
+      const binHz = nyquist / Math.max(1, freqBuffer.length - 1);
+      const candidateLimit = clamp(Math.round(Math.sqrt(resolution || 128) * 4), 16, Math.min(512, freqBuffer.length));
       const candidates = [];
-      for (let i = 3; i < floatFreqData.length - 3; i += 1) {
+      for (let i = 3; i < freqBuffer.length - 3; i += 1) {
         const freq = i * binHz;
-        if (freq < lowCut || freq > 16000) continue;
-        const db = Number.isFinite(floatFreqData[i]) ? floatFreqData[i] : -140;
-        if (db < -88 || db < floatFreqData[i - 1] || db < floatFreqData[i + 1]) continue;
+        if (freq < lowCut || freq > 6200) continue;
+        const db = Number.isFinite(freqBuffer[i]) ? freqBuffer[i] : -140;
+        if (db < -88 || db < freqBuffer[i - 1] || db < freqBuffer[i + 1]) continue;
         const shoulder = Math.max(
-          floatFreqData[Math.max(0, i - 5)],
-          floatFreqData[Math.max(0, i - 3)],
-          floatFreqData[Math.min(floatFreqData.length - 1, i + 3)],
-          floatFreqData[Math.min(floatFreqData.length - 1, i + 5)]
+          freqBuffer[Math.max(0, i - 5)],
+          freqBuffer[Math.max(0, i - 3)],
+          freqBuffer[Math.min(freqBuffer.length - 1, i + 3)],
+          freqBuffer[Math.min(freqBuffer.length - 1, i + 5)]
         );
         const prominence = db - shoulder;
         if (prominence < 0.8 && db < -54) continue;
-        const left = Number.isFinite(floatFreqData[i - 1]) ? floatFreqData[i - 1] : db;
-        const right = Number.isFinite(floatFreqData[i + 1]) ? floatFreqData[i + 1] : db;
+        const left = Number.isFinite(freqBuffer[i - 1]) ? freqBuffer[i - 1] : db;
+        const right = Number.isFinite(freqBuffer[i + 1]) ? freqBuffer[i + 1] : db;
         const denominator = left - 2 * db + right;
         const offset = Math.abs(denominator) > 0.000001 ? clamp(0.5 * (left - right) / denominator, -0.5, 0.5) : 0;
         const refinedFreq = clamp((i + offset) * binHz, lowCut, nyquist);
@@ -3125,7 +3131,7 @@ const canvas = document.getElementById("blobCanvas");
         const tooClose = peaks.some((peak) => Math.abs(1200 * Math.log2(candidate.freq / peak.freq)) < 22);
         if (tooClose) continue;
         peaks.push(candidate);
-        if (peaks.length >= maxPeaks) break;
+        if (peaks.length >= candidateLimit) break;
       }
       return peaks.sort((a, b) => a.freq - b.freq);
     }
@@ -3252,7 +3258,7 @@ const canvas = document.getElementById("blobCanvas");
       return Math.abs(1200 * Math.log2(freq / (fundamental * harmonic)));
     }
 
-    function collapseHarmonicPeaksToTonalPeaks(rawPeaks) {
+    function collapseHarmonicPeaksToTonalPeaks(rawPeaks, maxTonalPeaks = 32) {
       const sorted = (rawPeaks || [])
         .filter((peak) => Number.isFinite(peak.freq) && peak.freq > 0 && Number.isFinite(peak.value) && peak.value > 0)
         .map((peak) => ({ ...peak, value: clamp(peak.value, 0, 1), harmonicSupport: 0, harmonicCount: 0 }))
@@ -3263,18 +3269,20 @@ const canvas = document.getElementById("blobCanvas");
         let ownerHarmonic = 1;
         let ownerError = Infinity;
         for (const candidate of tonal) {
-          for (let harmonic = 2; harmonic <= 12; harmonic += 1) {
+          for (let harmonic = 2; harmonic <= 32; harmonic += 1) {
             const error = harmonicCentsError(peak.freq, candidate.freq, harmonic);
-            if (error < ownerError) {
+            if (error < ownerError - 0.001 || (Math.abs(error - ownerError) <= 0.001 && harmonic < ownerHarmonic)) {
               owner = candidate;
               ownerHarmonic = harmonic;
               ownerError = error;
             }
           }
         }
-        const tolerance = ownerHarmonic <= 5 ? 34 : 24;
+        const tolerance = ownerHarmonic <= 5 ? 48 : ownerHarmonic <= 12 ? 38 : 30;
         const strongEnoughOwner = owner && owner.value >= peak.value * (ownerHarmonic <= 4 ? 0.22 : 0.12);
-        if (owner && ownerError <= tolerance && strongEnoughOwner) {
+        const expectedHarmonicValue = owner ? owner.value / Math.pow(ownerHarmonic, 0.46) : 0;
+        const tooStrongForHarmonic = ownerHarmonic === 2 && peak.value > expectedHarmonicValue * 1.18;
+        if (owner && ownerError <= tolerance && strongEnoughOwner && !tooStrongForHarmonic) {
           const contribution = peak.value / Math.pow(ownerHarmonic, 0.86);
           owner.harmonicSupport += contribution;
           owner.harmonicCount += 1;
@@ -3290,15 +3298,196 @@ const canvas = document.getElementById("blobCanvas");
         }
         tonal.push({ ...peak });
       }
-      return tonal
+      const scored = tonal
         .map((peak) => ({
           ...peak,
           value: clamp(peak.value * (1 + Math.min(0.28, peak.harmonicSupport * 0.08)), 0, 1),
           score: clamp((peak.score || peak.value) + Math.min(0.28, peak.harmonicSupport * 0.05), 0, 1)
+        }));
+      const strongestValue = Math.max(0.0001, ...scored.map((peak) => peak.value || 0));
+      return scored
+        .filter((peak) => {
+          const relative = (peak.value || 0) / strongestValue;
+          const supported = (peak.harmonicSupport || 0) >= 0.045 || (peak.harmonicCount || 0) >= 2;
+          return relative >= 0.16 || supported;
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, clamp(Math.round(maxTonalPeaks), 8, 64))
+        .sort((a, b) => a.freq - b.freq);
+    }
+
+    function selectMusicalTonalPeaks(peaks, maxPeaks = 6) {
+      const cleanPeaks = (peaks || [])
+        .filter((peak) => Number.isFinite(peak.freq) && peak.freq > 0 && Number.isFinite(peak.value) && peak.value > 0)
+        .map((peak) => ({ ...peak, value: clamp(peak.value, 0, 1), score: clamp(peak.score || peak.value, 0, 1) }));
+      if (cleanPeaks.length <= 2) return cleanPeaks.sort((a, b) => a.freq - b.freq);
+      const strongestValue = Math.max(0.0001, ...cleanPeaks.map((peak) => peak.value));
+      const strongestScore = Math.max(0.0001, ...cleanPeaks.map((peak) => peak.score || peak.value));
+      const ranked = cleanPeaks
+        .map((peak) => {
+          const relativeValue = peak.value / strongestValue;
+          const relativeScore = (peak.score || peak.value) / strongestScore;
+          const lowAnchorBias = clamp(1 - Math.log2(Math.max(1, peak.freq / 2200)) * 0.18, 0.72, 1.08);
+          const support = clamp((peak.harmonicSupport || 0) * 0.65 + (peak.harmonicCount || 0) * 0.035, 0, 0.28);
+          const musicalScore = clamp((relativeValue * 0.68 + relativeScore * 0.32) * lowAnchorBias + support, 0, 1.4);
+          return { ...peak, musicalScore, relativeValue };
+        })
+        .sort((a, b) => b.musicalScore - a.musicalScore);
+      const selected = [];
+      const minimumScore = cleanPeaks.length > 5 ? 0.34 : 0.26;
+      for (const peak of ranked) {
+        const strong = peak.relativeValue >= 0.3 || peak.musicalScore >= minimumScore;
+        const supported = (peak.harmonicSupport || 0) >= 0.08 || (peak.harmonicCount || 0) >= 3;
+        if (!strong && !supported && selected.length >= 2) continue;
+        const duplicate = selected.some((candidate) => Math.abs(1200 * Math.log2(peak.freq / candidate.freq)) < 42);
+        if (duplicate) continue;
+        const octaveShadow = selected.some((candidate) => {
+          for (let harmonic = 2; harmonic <= 4; harmonic *= 2) {
+            const error = harmonicCentsError(peak.freq, candidate.freq, harmonic);
+            if (error <= 36 && (selected.length >= 2 || peak.relativeValue < 0.9)) return true;
+          }
+          return false;
+        });
+        if (octaveShadow) continue;
+        selected.push(peak);
+        if (selected.length >= maxPeaks) break;
+      }
+      if (selected.length < 2) {
+        for (const peak of ranked) {
+          if (!selected.some((candidate) => Math.abs(1200 * Math.log2(peak.freq / candidate.freq)) < 42)) selected.push(peak);
+          if (selected.length >= Math.min(2, ranked.length)) break;
+        }
+      }
+      return selected.sort((a, b) => a.freq - b.freq);
+    }
+
+    function inferMusicalFundamentalsFromHarmonicSieve(rawPeaks, maxPeaks = 6) {
+      const cleanPeaks = (rawPeaks || [])
+        .filter((peak) => Number.isFinite(peak.freq) && peak.freq >= 45 && peak.freq <= 6200 && Number.isFinite(peak.value) && peak.value > 0)
+        .map((peak) => ({
+          ...peak,
+          value: clamp(peak.value, 0, 1),
+          score: clamp(peak.score || peak.value, 0, 1)
         }))
         .sort((a, b) => b.score - a.score)
-        .slice(0, 12)
-        .sort((a, b) => a.freq - b.freq);
+        .slice(0, 96);
+      if (!cleanPeaks.length) return [];
+      const strongest = Math.max(0.0001, ...cleanPeaks.map((peak) => peak.value));
+      const seeds = [];
+      for (const peak of cleanPeaks) {
+        if (peak.value < strongest * 0.045 && (peak.score || 0) < 0.08) continue;
+        for (let harmonic = 1; harmonic <= 18; harmonic += 1) {
+          const fundamental = peak.freq / harmonic;
+          if (fundamental < 45 || fundamental > 1800) continue;
+          const harmonicBias = harmonic === 1 ? 1.08 : 1 / Math.pow(harmonic, 0.28);
+          const vote = peak.value * harmonicBias * (0.72 + clamp((peak.prominence || 2) / 18, 0, 0.38));
+          const existing = seeds.find((seed) => Math.abs(1200 * Math.log2(fundamental / seed.freq)) < 24);
+          if (existing) {
+            existing.freq = (existing.freq * existing.vote + fundamental * vote) / Math.max(0.0001, existing.vote + vote);
+            existing.vote += vote;
+            existing.seedCount += 1;
+          } else {
+            seeds.push({ freq: fundamental, vote, seedCount: 1 });
+          }
+        }
+      }
+      const candidates = seeds.map((seed) => {
+        let support = 0;
+        let weightedFreq = 0;
+        let weightSum = 0;
+        let harmonicCount = 0;
+        let directValue = 0;
+        let directError = Infinity;
+        for (let harmonic = 1; harmonic <= 28; harmonic += 1) {
+          const target = seed.freq * harmonic;
+          if (target > 6200) break;
+          const tolerance = harmonic <= 4 ? 34 : harmonic <= 12 ? 28 : 22;
+          let best = null;
+          let bestError = Infinity;
+          for (const peak of cleanPeaks) {
+            const error = Math.abs(1200 * Math.log2(peak.freq / target));
+            if (error < bestError) {
+              best = peak;
+              bestError = error;
+            }
+          }
+          if (!best || bestError > tolerance) continue;
+          const closeness = 1 - bestError / tolerance;
+          const harmonicWeight = 1 / Math.pow(harmonic, 0.34);
+          const contribution = best.value * harmonicWeight * closeness;
+          support += contribution;
+          weightedFreq += (best.freq / harmonic) * contribution;
+          weightSum += contribution;
+          harmonicCount += 1;
+          if (harmonic === 1) {
+            directValue = best.value * closeness;
+            directError = bestError;
+          }
+        }
+        const refinedFreq = weightSum > 0 ? weightedFreq / weightSum : seed.freq;
+        const harmonicRichness = clamp((harmonicCount - 1) / 7, 0, 1);
+        const directBoost = directValue > 0 ? 0.42 + directValue * 0.58 : 0.72;
+        const lowBias = clamp(1 - Math.log2(Math.max(1, refinedFreq / 1600)) * 0.12, 0.78, 1.1);
+        const confidence = clamp((support * directBoost * lowBias) / 2.2 + harmonicRichness * 0.16, 0, 1.4);
+        return {
+          freq: refinedFreq,
+          value: clamp(confidence, 0, 1),
+          score: clamp(confidence, 0, 1),
+          harmonicSupport: support,
+          harmonicCount,
+          directValue,
+          directError,
+          seedVote: seed.vote
+        };
+      })
+        .filter((candidate) => candidate.directValue >= 0.2 && (candidate.harmonicCount >= 2 || candidate.directValue >= 0.34))
+        .sort((a, b) => b.score - a.score);
+      const selected = [];
+      const topScore = Math.max(0.0001, candidates[0]?.score || 0);
+      for (const candidate of candidates) {
+        if (candidate.score < topScore * 0.3 && selected.length >= 2) continue;
+        const duplicate = selected.some((existing) => Math.abs(1200 * Math.log2(candidate.freq / existing.freq)) < 42);
+        if (duplicate) continue;
+        const harmonicShadow = selected.some((existing) => {
+          for (let harmonic = 2; harmonic <= 8; harmonic += 1) {
+            const error = harmonicCentsError(candidate.freq, existing.freq, harmonic);
+            const weakerDirectEvidence = (candidate.directValue || 0) <= (existing.directValue || existing.value || 0) * 0.9;
+            const weakerHarmonicEvidence = (candidate.harmonicCount || 0) <= (existing.harmonicCount || 0) * 0.78;
+            if (error <= 34 && weakerDirectEvidence && weakerHarmonicEvidence) return true;
+            if (error <= 34 && selected.length >= 2) return true;
+            if (error <= 34 && candidate.score < existing.score * 0.92) return true;
+          }
+          return false;
+        });
+        if (harmonicShadow) continue;
+        selected.push(candidate);
+        if (selected.length >= maxPeaks) break;
+      }
+      return selected.sort((a, b) => a.freq - b.freq);
+    }
+
+    function smoothHarmonicCurve(previousCurve, nextCurve, mode) {
+      const previous = previousCurve?.length ? previousCurve : harmonicDefaultCurve();
+      const next = nextCurve?.length ? nextCurve : harmonicDefaultCurve();
+      const attack = mode === "musical" ? 0.24 : 0.42;
+      const release = mode === "musical" ? 0.13 : 0.28;
+      return next.map((bucket, index) => {
+        const oldBucket = previous[index] || bucket;
+        const smoothField = (field) => {
+          const oldValue = clamp(oldBucket[field] || 0, 0, 1);
+          const newValue = clamp(bucket[field] || 0, 0, 1);
+          return lerp(oldValue, newValue, newValue >= oldValue ? attack : release);
+        };
+        return {
+          ...bucket,
+          value: smoothField("value"),
+          roughness: smoothField("roughness"),
+          harmonicity: smoothField("harmonicity"),
+          musical: smoothField("musical"),
+          acoustic: smoothField("acoustic"),
+          tension: smoothField("tension")
+        };
+      });
     }
 
     function resetHarmonicTensionState() {
@@ -3319,25 +3508,28 @@ const canvas = document.getElementById("blobCanvas");
 
     function updateHarmonicTensionState(hasLiveAudio) {
       const state = meterState.harmonicTension;
-      if (!hasLiveAudio || !audioContext || !floatFreqData.length) {
+      if (!hasLiveAudio || !audioContext || !harmonicTensionAnalyser || !harmonicTensionFreqData.length) {
         resetHarmonicTensionState();
         return;
       }
+      harmonicTensionAnalyser.getFloatFrequencyData(harmonicTensionFreqData);
       const lowCut = clampFinite(Number(harmonicTensionLowCut?.value || 55), 20, 220, 55);
       const sensitivity = clampFinite(Number(harmonicTensionSensitivity?.value || 1), 0.25, 2, 1);
-      const maxPeaks = clamp(Math.round(Number(harmonicTensionPeakSelect?.value || 16)), 4, 40);
-      const rawPeaks = findHarmonicTensionPeaks(maxPeaks, lowCut, sensitivity);
-      const tonalPeaks = collapseHarmonicPeaksToTonalPeaks(rawPeaks);
-      const result = evaluateHarmonicPeakSet(tonalPeaks);
-      state.peaks = tonalPeaks;
+      const resolution = clamp(Math.round(Number(harmonicTensionPeakSelect?.value || 128)), 16, Math.min(16384, harmonicTensionFreqData.length || 128));
+      const selectedModel = harmonicTensionModeSelect?.value || "hybrid";
+      const rawPeaks = findHarmonicTensionPeaks(resolution, lowCut, sensitivity, harmonicTensionFreqData);
+      const tonalLimit = selectedModel === "musical" ? 16 : clamp(Math.round(Math.log2(Math.max(16, resolution)) * 3), 12, 32);
+      const tonalPeaks = collapseHarmonicPeaksToTonalPeaks(rawPeaks, tonalLimit);
+      const analysisPeaks = selectedModel === "musical" ? inferMusicalFundamentalsFromHarmonicSieve(rawPeaks, 6) : tonalPeaks;
+      const result = evaluateHarmonicPeakSet(analysisPeaks);
+      state.peaks = analysisPeaks;
       state.rawPeaks = rawPeaks;
       state.intervals = result.intervals;
-      state.curve = result.curve;
+      state.curve = smoothHarmonicCurve(state.curve, result.curve, selectedModel);
       state.acousticConsonance = lerp(state.acousticConsonance || 0, result.acousticConsonance ?? result.consonance, 0.58);
       state.musicalConsonance = lerp(state.musicalConsonance || 0, result.musicalConsonance ?? result.consonance, 0.58);
       state.acousticTension = lerp(state.acousticTension || 0, result.acousticTension ?? result.tension, 0.62);
       state.musicalTension = lerp(state.musicalTension || 0, result.musicalTension ?? result.tension, 0.62);
-      const selectedModel = harmonicTensionModeSelect?.value || "hybrid";
       const targetConsonance = selectedModel === "acoustic" ? result.acousticConsonance : selectedModel === "musical" ? result.musicalConsonance : result.consonance;
       const targetTension = selectedModel === "acoustic" ? result.acousticTension : selectedModel === "musical" ? result.musicalTension : result.tension;
       state.consonance = lerp(state.consonance || 0, targetConsonance, 0.58);
@@ -3580,6 +3772,7 @@ const canvas = document.getElementById("blobCanvas");
         meterState.spectrumDelta = new Array(240).fill(0);
         meterState.spectrumPeak = new Array(240).fill(0);
         resetSpectralDynamicsState();
+        resetHarmonicTensionState();
         meterState.loudnessFrames = [];
         meterState.peakDb = -120;
         meterState.momentaryDb = -120;
@@ -3733,6 +3926,10 @@ const canvas = document.getElementById("blobCanvas");
       analyser = audioContext.createAnalyser();
       configureSpectrumAnalyser();
       source.connect(analyser);
+
+      harmonicTensionAnalyser = audioContext.createAnalyser();
+      configureHarmonicTensionAnalyser();
+      source.connect(harmonicTensionAnalyser);
 
       spectrogramAnalyser = audioContext.createAnalyser();
       configureSpectrogramAnalyser();
@@ -6136,10 +6333,10 @@ const canvas = document.getElementById("blobCanvas");
 
     function signalCharacterShaderParams() {
       return {
-        depth: clampFinite(Number(signalCharacterDepth?.value), 0, 2, 1),
-        glowViscosity: clampFinite(Number(signalCharacterGlowViscosity?.value), 0, 1, 0.7),
-        colorDepth: clampFinite(Number(signalCharacterColorDepth?.value), 0, 2, 0.8),
-        iridescence: clampFinite(Number(signalCharacterIridescence?.value), 0, 1, 0.55)
+        depth: 1,
+        glowViscosity: 0.7,
+        colorDepth: 0.8,
+        iridescence: 0.55
       };
     }
 
@@ -6875,7 +7072,7 @@ const canvas = document.getElementById("blobCanvas");
         const headColor = physics.head.color || targetColor;
         const tailColor = physics.tailBlob.color || headColor;
         const boundaryMode = signalCharacterBoundarySelect?.value || "none";
-        const shaderMode = signalCharacterShaderSelect?.value || "soft3d";
+        const shaderMode = "flat";
         const headBounds = boundaryMode === "none" ? null : { x, y, w, h };
         const tailBounds = boundaryMode === "none" ? null : { x, y, w, h };
         const blobContext = boundaryMode === "none" && characterOverlayCtx ? characterOverlayCtx : ctx;
@@ -7499,6 +7696,16 @@ const canvas = document.getElementById("blobCanvas");
       return clamp(Math.round(shaped * Math.max(0, length - 1)), 0, Math.max(0, length - 1));
     }
 
+    function wavesFrequencyColorNorm(row, rows, scale, length) {
+      const index = wavesFrequencyIndex(row, rows, scale, length);
+      const frequency = clamp(spectrumFrequencyForBand(index, length), 20, 20000);
+      return clamp(
+        (Math.log10(frequency) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20)),
+        0,
+        1
+      );
+    }
+
     function wavesColorFor(rowNorm, amp, alpha = 1) {
       const stops = [
         { at: 0, color: [255, 24, 18] },
@@ -7543,11 +7750,23 @@ const canvas = document.getElementById("blobCanvas");
         column.push(value);
       }
       if (peak > 0.001) {
+        const lift = typeof renderMath.visibilityLift === "function"
+          ? renderMath.visibilityLift(peak, 0.72, 1.84, 0.28)
+          : clamp(0.72 + 0.28 / Math.max(0.25, peak), 0.72, 1.84);
         for (let i = 0; i < column.length; i += 1) {
-          column[i] = clamp(Math.pow(column[i] / peak, 0.82) * renderGain, 0, 2);
+          const normalized = Math.pow(column[i], 0.82) * renderGain * lift;
+          column[i] = softLimitWavesAmplitude(normalized, 1.72);
         }
       }
       return column;
+    }
+
+    function softLimitWavesAmplitude(value, ceiling = 1.72) {
+      if (typeof renderMath.softLimit === "function") return renderMath.softLimit(value, ceiling);
+      const positive = Math.max(0, finiteOr(value, 0));
+      if (positive <= 1) return positive;
+      const excess = positive - 1;
+      return 1 + (ceiling - 1) * (1 - Math.exp(-excess / Math.max(0.001, ceiling - 1)));
     }
 
     function updateWavesMotion(strength) {
@@ -7587,7 +7806,8 @@ const canvas = document.getElementById("blobCanvas");
 
     function projectWavesPoint(plotX, plotY, plotW, plotH, u, v, amp, projection, strength, ageNorm = 0, slope = 0) {
       const warp = wavesSurfaceWarp(plotW, plotH, u, v, amp, projection, strength, ageNorm, slope);
-      const warpedAmp = clamp(amp + warp.z, 0, 1.3);
+      const lowMass = projection === "waves" ? 1 + Math.pow(1 - v, 1.75) * 0.58 : 1;
+      const warpedAmp = softLimitWavesAmplitude((amp + warp.z) * lowMass, 1.62);
       if (projection === "flat") {
         return {
           x: plotX + u * plotW,
@@ -7601,7 +7821,7 @@ const canvas = document.getElementById("blobCanvas");
       const timeY = -plotH * 0.18;
       const freqX = plotW * 0.2;
       const freqY = -plotH * 0.36;
-      const zY = plotH * (0.1 + Math.min(strength, 1.4) * 0.12);
+      const zY = plotH * (0.11 + Math.min(strength, 1.4) * 0.13);
       return {
         x: baseX + u * timeX + v * freqX + warp.x,
         y: baseY + u * timeY + v * freqY - warpedAmp * zY + warp.y,
@@ -7649,13 +7869,26 @@ const canvas = document.getElementById("blobCanvas");
       ctx.restore();
     }
 
-    function drawWavesSurface(history, plotX, plotY, plotW, plotH, rows, projection, strength, alphaScale) {
+    function wavesDisplayScale(scale) {
+      return scale === "log-hz-color" ? "log" : scale;
+    }
+
+    function wavesColorNormForRow(row, rows, scale, sourceLength) {
+      if (scale !== "log-hz-color") return row / Math.max(1, rows - 1);
+      return wavesFrequencyColorNorm(row, rows, wavesDisplayScale(scale), sourceLength);
+    }
+
+    function drawWavesSurface(history, plotX, plotY, plotW, plotH, rows, projection, strength, alphaScale, scale, sourceLength) {
       if (history.length < 2) return;
       ctx.save();
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.globalCompositeOperation = "screen";
       const historyDenom = Math.max(1, history.length - 1);
+      const colorNorms = new Array(rows);
+      for (let row = 0; row < rows; row += 1) {
+        colorNorms[row] = wavesColorNormForRow(row, rows, scale, sourceLength);
+      }
       if (projection !== "flat") {
         const colStep = Math.max(1, Math.floor(history.length / 72));
         for (let col = 0; col < history.length - colStep; col += colStep) {
@@ -7681,14 +7914,17 @@ const canvas = document.getElementById("blobCanvas");
             ctx.lineTo(p2.x, p2.y);
             ctx.lineTo(p3.x, p3.y);
             ctx.closePath();
-            ctx.fillStyle = wavesColorFor((v0 + v1) * 0.5, amp, alphaScale * (0.018 + amp * 0.105));
+            const colorNorm = (colorNorms[row] + colorNorms[row + 1]) * 0.5;
+            ctx.fillStyle = wavesColorFor(colorNorm, amp, alphaScale * (0.018 + amp * 0.105));
             ctx.fill();
           }
         }
       }
       for (let row = rows - 1; row >= 0; row -= 1) {
         const rowNorm = row / Math.max(1, rows - 1);
-        ctx.lineWidth = projection === "flat" ? 1.1 : 1.15 + rowNorm * 0.56;
+        ctx.lineWidth = projection === "flat"
+          ? 1.1
+          : 1.16 + Math.pow(1 - rowNorm, 1.2) * 0.42 + rowNorm * 0.12;
         ctx.beginPath();
         for (let col = 0; col < history.length; col += 1) {
           const u = col / historyDenom;
@@ -7700,7 +7936,7 @@ const canvas = document.getElementById("blobCanvas");
           else ctx.lineTo(point.x, point.y);
         }
         const latest = history[history.length - 1][row] || 0;
-        ctx.strokeStyle = wavesColorFor(rowNorm, latest, alphaScale * (0.13 + latest * 0.42));
+        ctx.strokeStyle = wavesColorFor(colorNorms[row], latest, alphaScale * (0.13 + latest * 0.42));
         ctx.stroke();
       }
       if (projection !== "flat") {
@@ -7737,6 +7973,7 @@ const canvas = document.getElementById("blobCanvas");
       const plotH = h - pad * 2;
       const projection = wavesModeSelect?.value || "waves";
       const scale = wavesInputSelect?.value || "log";
+      const displayScale = wavesDisplayScale(scale);
       const rows = clampFinite(Number(wavesDensitySelect?.value || 52), 16, 64, 52);
       const persistence = clampFinite(Number(wavesPersistence?.value || 0.62), 0, 1, 0.62);
       const gainDb = clampFinite(Number(wavesGlow?.value || 0), -24, 24, 0);
@@ -7752,7 +7989,7 @@ const canvas = document.getElementById("blobCanvas");
       }
 
       updateWavesMotion(strength);
-      const column = makeWavesColumn(rows, scale, gainDb);
+      const column = makeWavesColumn(rows, displayScale, gainDb);
       wavesState.trails.push(column);
       while (wavesState.trails.length > maxColumns) wavesState.trails.shift();
       wavesState.pointCount = wavesState.trails.length * rows;
@@ -7769,7 +8006,19 @@ const canvas = document.getElementById("blobCanvas");
       ctx.fillStyle = fade;
       ctx.fillRect(plotX, plotY, plotW, plotH);
       drawWavesAxes(plotX, plotY, plotW, plotH, projection);
-      drawWavesSurface(wavesState.trails, plotX, plotY, plotW, plotH, rows, projection, strength, 0.9);
+      drawWavesSurface(
+        wavesState.trails,
+        plotX,
+        plotY,
+        plotW,
+        plotH,
+        rows,
+        projection,
+        strength,
+        0.9,
+        scale,
+        meterState.spectrum.length || 240
+      );
       ctx.restore();
 
       const label = `${projection} · ${scale} · ${rows} bands · ${gainDb.toFixed(1)}dB · ${wavesState.trails.length} frames`;
@@ -7780,8 +8029,20 @@ const canvas = document.getElementById("blobCanvas");
     function harmonicTensionDisplayValue(bucket, mode) {
       if (!bucket) return 0;
       if (mode === "acoustic") return clamp((bucket.tension || 0) * 0.54 + (bucket.roughness || 0) * 0.46, 0, 1);
-      if (mode === "musical") return clamp((bucket.tension || 0) * 0.68 + bucket.value * 0.32, 0, 1);
+      if (mode === "musical") return clamp((bucket.tension || 0) * 0.84 + (bucket.value || 0) * 0.16, 0, 1);
       return clamp((bucket.tension || 0) * 0.52 + (bucket.roughness || 0) * 0.28 + bucket.value * 0.2, 0, 1);
+    }
+
+    function harmonicDisplayValues(curve, mode, active) {
+      const values = curve.map((bucket) => active ? harmonicTensionDisplayValue(bucket, mode) : 0);
+      if (mode !== "musical") return values;
+      const peak = Math.max(0.0001, ...values);
+      return values.map((value) => {
+        const relative = value / peak;
+        if (relative < 0.24) return 0;
+        const magnetized = smoothstep(0.24, 0.88, relative);
+        return peak * magnetized;
+      });
     }
 
     function drawHarmonicRadar(cx, cy, r, curve, mode, active) {
@@ -7803,16 +8064,37 @@ const canvas = document.getElementById("blobCanvas");
         const labelSize = meterTextSize(8, 1, 11);
         drawMeterText(target.label, cx + Math.cos(target.angle) * (r + 11), cy + Math.sin(target.angle) * (r + 11) + labelSize * 0.35, labelSize, "rgba(166,188,210,0.66)");
       }
-      const points = curve.map((bucket) => {
-        const value = active ? harmonicTensionDisplayValue(bucket, mode) : 0;
-        const radius = r * (0.16 + value * 0.78);
-        return {
-          x: cx + Math.cos(bucket.angle) * radius,
-          y: cy + Math.sin(bucket.angle) * radius,
-          value,
-          color: bucket.color
-        };
-      });
+      const displayValues = harmonicDisplayValues(curve, mode, active);
+      const localPeak = Math.max(0.0001, ...displayValues);
+      const radialResolution = clamp(Math.round(Number(harmonicTensionPeakSelect?.value || 128)), 16, 16384);
+      const intervalStep = Math.PI * 2 / Math.max(1, curve.length);
+      const angularSigma = intervalStep * (mode === "musical" ? 0.17 : 0.42);
+      const points = [];
+      for (let i = 0; i < radialResolution; i += 1) {
+        const angle = -Math.PI * 0.5 + Math.PI * 2 * i / radialResolution;
+        let weighted = 0;
+        let weights = 0;
+        for (let j = 0; j < curve.length; j += 1) {
+          const bucket = curve[j];
+          const raw = displayValues[j] || 0;
+          let delta = Math.abs(angle - bucket.angle);
+          delta = Math.min(delta, Math.PI * 2 - delta);
+          const weight = Math.exp(-(delta * delta) / (2 * angularSigma * angularSigma));
+          const normalizedValue = active ? clamp(raw / localPeak, 0, 1) : 0;
+          weighted += normalizedValue * weight;
+          weights += weight;
+        }
+        const normalized = weights > 0 ? clamp(weighted / weights, 0, 1) : 0;
+        const shaped = Math.pow(normalized, mode === "musical" ? 1.62 : 0.58);
+        const radius = active && normalized > 0.0001 ? r * (0.055 + shaped * 0.91) : r * 0.045;
+        points.push({
+          x: cx + Math.cos(angle) * radius,
+          y: cy + Math.sin(angle) * radius,
+          angle,
+          value: normalized,
+          normalized
+        });
+      }
       if (points.length) {
         ctx.beginPath();
         points.forEach((point, index) => {
@@ -7829,45 +8111,67 @@ const canvas = document.getElementById("blobCanvas");
         ctx.strokeStyle = active ? "rgba(245,245,245,0.68)" : "rgba(245,245,245,0.18)";
         ctx.lineWidth = 1.25;
         ctx.stroke();
-        ctx.globalCompositeOperation = "screen";
-        for (const point of points) {
-          ctx.fillStyle = point.color;
-          ctx.globalAlpha = active ? clamp(0.22 + point.value * 0.74, 0.22, 0.92) : 0.12;
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, 2.2 + point.value * 3.8, 0, Math.PI * 2);
-          ctx.fill();
-        }
       }
       ctx.restore();
     }
 
-    function drawHarmonicCurve(x, y, w, h, curve, mode, active) {
+    function drawHarmonicConsonanceStrip(state, x, y, w, h, active) {
       ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
-      ctx.lineWidth = 1;
-      for (let i = 1; i < 4; i += 1) {
-        const gy = y + h * i / 4;
-        ctx.beginPath();
-        ctx.moveTo(x, gy);
-        ctx.lineTo(x + w, gy);
-        ctx.stroke();
+      ctx.strokeStyle = "rgba(245,245,245,0.14)";
+      ctx.strokeRect(x, y, w, h);
+      const bg = ctx.createLinearGradient(x, y, x + w, y);
+      bg.addColorStop(0, "rgba(255,58,24,0.34)");
+      bg.addColorStop(0.34, "rgba(255,139,43,0.2)");
+      bg.addColorStop(0.58, "rgba(255,222,30,0.16)");
+      bg.addColorStop(1, "rgba(87,255,20,0.28)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+
+      if (!active) {
+        ctx.fillStyle = "rgba(0,0,0,0.72)";
+        ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+        ctx.restore();
+        return;
       }
-      const slot = w / Math.max(1, curve.length);
+
+      const intervals = state.intervals || [];
+      const strongest = Math.max(0.0001, ...intervals.map((interval) => interval.weight || 0));
+      const severeWeight = intervals.reduce((sum, interval) => {
+        const severe = interval.label === "TT" || interval.label === "m2" || interval.label === "M7";
+        return sum + (severe ? (interval.weight || 0) * clamp(interval.closeness || 0, 0, 1) : 0);
+      }, 0);
+      const totalWeight = intervals.reduce((sum, interval) => sum + (interval.weight || 0) * clamp(interval.closeness || 0, 0, 1), 0);
+      const severeShare = totalWeight > 0 ? clamp(severeWeight / totalWeight, 0, 1) : 0;
+      const balance = clamp((state.consonance || 0) * 0.54 + (1 - (state.tension || 0)) * 0.46 - severeShare * 0.42, 0, 1);
+      const markerX = x + 1 + balance * (w - 2);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x + 1, y + 1, w - 2, h - 2);
+      ctx.clip();
       ctx.globalCompositeOperation = "screen";
-      curve.forEach((bucket, index) => {
-        const value = active ? harmonicTensionDisplayValue(bucket, mode) : 0;
-        const bx = x + index * slot + slot * 0.18;
-        const bw = Math.max(3, slot * 0.58);
-        const bh = value * h;
-        ctx.fillStyle = `rgba(245,245,245,${active ? 0.05 : 0.025})`;
-        ctx.fillRect(bx, y, bw, h);
-        ctx.fillStyle = bucket.color;
-        ctx.globalAlpha = active ? clamp(0.3 + value * 0.58, 0.3, 0.88) : 0.12;
-        ctx.fillRect(bx, y + h - bh, bw, bh);
-        ctx.globalAlpha = 1;
-        const labelSize = meterTextSize(8, 1, 11);
-        drawMeterText(bucket.label, bx, y + h + labelSize + 4, labelSize, "rgba(166,188,210,0.66)");
-      });
+      for (const interval of intervals.slice(0, 36)) {
+        const consonance = clamp(interval.consonance ?? interval.musicalConsonance ?? 0, 0, 1);
+        const position = x + 1 + consonance * (w - 2);
+        const energy = clamp(Math.sqrt((interval.weight || 0) / strongest) * clamp(interval.closeness || 0.5, 0, 1), 0, 1);
+        const barW = Math.max(2, canvasPxForCss(2 + energy * 7));
+        const barH = Math.max(2, (h - 4) * (0.28 + energy * 0.72));
+        const hue = lerp(8, 112, Math.pow(consonance, 0.85));
+        ctx.fillStyle = `hsla(${hue}, 100%, ${lerp(50, 72, energy)}%, ${0.22 + energy * 0.72})`;
+        ctx.fillRect(position - barW * 0.5, y + h - 2 - barH, barW, barH);
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = "rgba(245,245,245,0.82)";
+      ctx.lineWidth = Math.max(1, canvasPxForCss(1));
+      ctx.beginPath();
+      ctx.moveTo(markerX, y - canvasPxForCss(2));
+      ctx.lineTo(markerX, y + h + canvasPxForCss(2));
+      ctx.stroke();
+
+      const labelSize = meterTextSize(8, 1, 11);
+      drawMeterText("Dissonance", x, y - canvasPxForCss(4), labelSize, "rgba(255,110,78,0.82)");
+      drawMeterText("Consonance", x + w - canvasPxForCss(68), y - canvasPxForCss(4), labelSize, "rgba(135,255,98,0.82)");
       ctx.restore();
     }
 
@@ -7877,7 +8181,6 @@ const canvas = document.getElementById("blobCanvas");
       ctx.strokeStyle = "#282828";
       ctx.strokeRect(x, y, w, h);
       const state = meterState.harmonicTension;
-      const view = harmonicTensionViewSelect?.value || "radarCurve";
       const mode = harmonicTensionModeSelect?.value || "combined";
       const active = state.peaks.length >= 1 && (state.tension > 0.01 || state.harmonicity > 0.01 || state.roughness > 0.01 || state.consonance > 0.01);
       const pad = 14;
@@ -7909,35 +8212,27 @@ const canvas = document.getElementById("blobCanvas");
 
         const footerSize = meterTextSize(10, 0, 13);
         const footerY = meterTextBottomBaseline(y, h, footerSize, 10);
-        const visualTop = sy + rowGap.height + 12;
-        const curveH = view === "radar" ? 0 : Math.max(44, Math.min(74, plotH * 0.2));
-        const curveY = footerY - footerSize - 10 - curveH;
-        const radarBottom = view === "curve" ? curveY : footerY - footerSize - canvasPxForCss(28);
-        if (view !== "curve") {
-          const availableH = Math.max(88, radarBottom - visualTop);
-          const labelClearance = canvasPxForCss(38);
-          const radialBoxW = Math.max(0, plotW - labelClearance * 2);
-          const radialBoxH = Math.max(0, availableH - labelClearance * 2);
-          const radarR = Math.max(canvasPxForCss(88), Math.min(radialBoxW * 0.5, radialBoxH * 0.5));
-          const radarCx = plotX + plotW * 0.5;
-          const radarCy = visualTop + labelClearance + radarR;
-          drawHarmonicRadar(radarCx, radarCy, radarR, curve, mode, active);
-        }
-        if (view !== "radar") {
-          drawHarmonicCurve(plotX, Math.max(visualTop, curveY), plotW, curveH, curve, mode, active);
-        }
+        const stripH = canvasPxForCss(20);
+        const stripY = sy + rowGap.height + canvasPxForCss(15);
+        drawHarmonicConsonanceStrip(state, plotX, stripY, plotW, stripH, active);
+        const visualTop = stripY + stripH + canvasPxForCss(12);
+        const radarBottom = footerY - footerSize - canvasPxForCss(28);
+        const availableH = Math.max(88, radarBottom - visualTop);
+        const labelClearance = canvasPxForCss(38);
+        const radialBoxW = Math.max(0, plotW - labelClearance * 2);
+        const radialBoxH = Math.max(0, availableH - labelClearance * 2);
+        const radarR = Math.max(canvasPxForCss(88), Math.min(radialBoxW * 0.5, radialBoxH * 0.5));
+        const radarCx = plotX + plotW * 0.5;
+        const radarCy = visualTop + labelClearance + radarR;
+        drawHarmonicRadar(radarCx, radarCy, radarR, curve, mode, active);
       } else {
         const summaryW = Math.max(190, plotW * 0.28);
-        const radarW = view === "curve" ? 0 : plotW * 0.34;
-        const curveX = view === "radar" ? plotX + radarW + 8 : plotX + radarW + (radarW ? 18 : 0);
-        const curveW = view === "radar" ? Math.max(120, plotW - radarW - summaryW - 28) : Math.max(120, plotX + plotW - curveX - summaryW - 18);
-        if (view !== "curve") {
-          const radarR = Math.min(radarW, plotH * 0.74) * 0.42;
-          drawHarmonicRadar(plotX + radarW * 0.5, plotY + plotH * 0.48, radarR, curve, mode, active);
-        }
-        if (view !== "radar") {
-          drawHarmonicCurve(curveX, plotY + 18, curveW, Math.max(58, plotH * 0.56), curve, mode, active);
-        }
+        const radarW = plotW - summaryW - 22;
+        const stripH = canvasPxForCss(20);
+        const stripY = plotY + plotH - stripH - canvasPxForCss(24);
+        const radarR = Math.min(radarW, (stripY - plotY) * 0.84) * 0.44;
+        drawHarmonicRadar(plotX + radarW * 0.5, plotY + (stripY - plotY) * 0.5, radarR, curve, mode, active);
+        drawHarmonicConsonanceStrip(state, plotX, stripY, radarW, stripH, active);
         const sx = x + w - pad - summaryW;
         let sy = plotY + 12;
         drawMeterRow({ label: "Consonance", value: active ? state.consonance : 0, valueText: active ? state.consonance.toFixed(2) : "--", x: sx, y: sy, w: summaryW, color: "#57ff14", enabled: active });
@@ -8378,12 +8673,23 @@ const canvas = document.getElementById("blobCanvas");
       }
     }
 
-    function drawStereoCorrelationCloud(left, right, cx, cy, r, compact, mode) {
+    function stereoLayoutMode() {
+      const rawLayout = stereoModeSelect?.value || "radial";
+      return rawLayout === "arc" ? "arc" : "radial";
+    }
+
+    function stereoRenderMode() {
+      const rawLayout = stereoModeSelect?.value || "radial";
+      if (rawLayout === "tangle") return "tangle";
+      return stereoRenderSelect?.value === "tangle" ? "tangle" : "normal";
+    }
+
+    function drawStereoCorrelationCloud(left, right, cx, cy, r, compact, layoutMode, renderMode) {
       const n = Math.min(left.length, right.length);
       if (!n) return;
       const bandRms = Math.max(rmsFloat(left), rmsFloat(right));
-      const arc = mode === "arc";
-      const classic = mode !== "tangle";
+      const arc = layoutMode === "arc";
+      const classic = renderMode !== "tangle";
       const gain = clamp(0.24 / Math.max(0.004, bandRms), 1, classic ? 4.4 : 3.8);
       const visualWindow = classic ? Math.min(n, compact ? 2048 : 3072) : n;
       const start = classic ? Math.max(0, n - visualWindow) : 0;
@@ -8435,7 +8741,7 @@ const canvas = document.getElementById("blobCanvas");
       ctx.restore();
     }
 
-    function drawStereoTangleCloud(left, right, cx, cy, r, compact, spec) {
+    function drawStereoTangleCloud(left, right, cx, cy, r, compact, spec, layoutMode) {
       const n = Math.min(left.length, right.length);
       if (!n) return;
       const bandRms = Math.max(rmsFloat(left), rmsFloat(right));
@@ -8443,13 +8749,17 @@ const canvas = document.getElementById("blobCanvas");
       const step = Math.max(1, Math.floor(n / spec.points));
       const midGain = (compact ? 2.3 : 2.68) * spec.midGain * gain;
       const sideGain = (compact ? 2.08 : 2.38) * spec.sideGain * gain;
+      const widthGain = (compact ? 3.4 : 3.85) * spec.sideGain;
+      const ampGain = (compact ? 2.6 : 2.95) * spec.midGain * gain;
       const alpha = clamp(spec.alphaBase + Math.pow(bandRms * gain, 0.55) * spec.alphaLift, spec.alphaBase, spec.alphaMax);
       const dotRadius = compact ? spec.dot * 0.42 : spec.dot * 0.5;
       const glowRadius = dotRadius * spec.glowScale;
       const glowAlpha = alpha * spec.glowAlpha;
       const points = [];
       for (let i = 0; i < n; i += step) {
-        points.push(stereoPointFromSample(left[i], right[i], cx, cy, r, midGain, sideGain, spec.offsetX || 0, spec.offsetY || 0));
+        points.push(layoutMode === "arc"
+          ? stereoArcPointFromSample(left[i], right[i], cx, cy, r, ampGain, widthGain, spec.offsetX || 0, spec.offsetY || 0)
+          : stereoPointFromSample(left[i], right[i], cx, cy, r, midGain, sideGain, spec.offsetX || 0, spec.offsetY || 0));
       }
       if (points.length < 2) return;
 
@@ -8487,7 +8797,8 @@ const canvas = document.getElementById("blobCanvas");
       ctx.strokeStyle = "#282828";
       ctx.strokeRect(x, y, w, h);
       const compact = useCompactGraphLayout() || h < 120;
-      const mode = stereoModeSelect.value;
+      const layoutMode = stereoLayoutMode();
+      const renderMode = stereoRenderMode();
       const showCorr = stereoCorrToggle.checked;
       const showLow = stereoLowToggle.checked;
       const showMid = stereoMidToggle.checked;
@@ -8502,13 +8813,13 @@ const canvas = document.getElementById("blobCanvas");
       const scopeW = Math.max(80, bx - columnGap - scopeX);
       const scopeH = Math.max(72, h - pad * 2 - 12);
       const cx = scopeX + scopeW * 0.5;
-      const cy = mode === "arc" ? scopeY + scopeH * 0.82 : scopeY + scopeH * 0.5;
-      const r = mode === "arc"
+      const cy = layoutMode === "arc" ? scopeY + scopeH * 0.82 : scopeY + scopeH * 0.5;
+      const r = layoutMode === "arc"
         ? Math.min(scopeW * 0.5, scopeH * 0.78) * 0.92
         : Math.min(scopeW, scopeH) * 0.48;
-      if (mode === "arc") drawStereoArcGrid(cx, cy, r, compact);
+      if (layoutMode === "arc") drawStereoArcGrid(cx, cy, r, compact);
       else drawStereoScopeGrid(cx, cy, r, compact);
-      if (showCorr && mode === "tangle") drawStereoCorrelationOverlay(cx, cy, r, compact);
+      if (showCorr && renderMode === "tangle") drawStereoCorrelationOverlay(cx, cy, r, compact);
 
       if (leftAnalyser && rightAnalyser) {
         leftAnalyser.getByteTimeDomainData(leftTime);
@@ -8602,13 +8913,13 @@ const canvas = document.getElementById("blobCanvas");
       if (hasStereoSignal) {
         for (const spec of bandClouds) {
           if ((spec.id === "low" && !showLow) || (spec.id === "mid" && !showMid) || (spec.id === "high" && !showHigh)) continue;
-          if (mode === "tangle") drawStereoTangleCloud(spec.left, spec.right, cx, cy, r, compact, spec);
-          else if (mode === "arc") drawStereoArcCloud(spec.left, spec.right, cx, cy, r, compact, spec);
+          if (renderMode === "tangle") drawStereoTangleCloud(spec.left, spec.right, cx, cy, r, compact, spec, layoutMode);
+          else if (layoutMode === "arc") drawStereoArcCloud(spec.left, spec.right, cx, cy, r, compact, spec);
           else drawStereoClassicCloud(spec.left, spec.right, cx, cy, r, compact, spec);
         }
       }
       ctx.restore();
-      if (showCorr && hasStereoSignal) drawStereoCorrelationCloud(left, right, cx, cy, r, compact, mode);
+      if (showCorr && hasStereoSignal) drawStereoCorrelationCloud(left, right, cx, cy, r, compact, layoutMode, renderMode);
 
       let stereoRowY = y + (compact ? 18 : 24);
       [
@@ -8633,8 +8944,8 @@ const canvas = document.getElementById("blobCanvas");
       });
       const stereoLegendSize = meterTextSize(9, 2);
       const stereoLegendY = meterTextBottomBaseline(y, h, stereoLegendSize);
-      drawMeterText(mode === "arc" ? "Arc" : "L/R", x + 12, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
-      drawMeterText(mode === "arc" ? "pan / width" : "M/S rotated", x + 42, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
+      drawMeterText(layoutMode === "arc" ? "Semicircle" : "L/R", x + 12, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
+      drawMeterText(layoutMode === "arc" ? `pan / width ${renderMode === "tangle" ? "tangled" : "normal"}` : `M/S rotated ${renderMode === "tangle" ? "tangled" : "normal"}`, x + 72, stereoLegendY, stereoLegendSize, "rgba(166,166,166,0.7)");
     }
 
     function findRisingZeroCrossing(values) {
@@ -9570,7 +9881,8 @@ const canvas = document.getElementById("blobCanvas");
         hasRenderableLayer: visibleCount > 0,
         corrOnlyRenderable: layers.corr && !layers.low && !layers.mid && !layers.high,
         metrics: {
-          mode: stereoModeSelect?.value || "classic",
+          layout: stereoLayoutMode(),
+          render: stereoRenderMode(),
           visibleCount
         }
       };
@@ -9605,6 +9917,36 @@ const canvas = document.getElementById("blobCanvas");
           speed: spectrogramSpeedSelect?.value || null,
           window: spectrogramWindowSelect?.value || null,
           piano: spectrogramPianoOverlaySelect?.value || null
+        }
+      };
+    }
+
+    function auditHarmonicTensionContract() {
+      return {
+        available: availableLayoutModules.includes("harmonicTension"),
+        active: currentLayoutModules.includes("harmonicTension"),
+        controlsPresent: [
+          harmonicTensionModeSelect,
+          harmonicTensionPeakSelect,
+          harmonicTensionFftSelect,
+          harmonicTensionLowCut,
+          harmonicTensionSensitivity,
+          harmonicTensionSmooth
+        ].every(Boolean),
+        rendererPresent: typeof METERING_MODULE_BY_ID.harmonicTension?.renderer === "function",
+        displayContract: {
+          radarOnly: true,
+          pointOverlay: false,
+          consonanceDissonanceStrip: typeof drawHarmonicConsonanceStrip === "function"
+        },
+        metrics: {
+          mode: harmonicTensionModeSelect?.value || null,
+          resolution: Number(harmonicTensionPeakSelect?.value || 0),
+          fft: Number(harmonicTensionFftSelect?.value || 0),
+          peaks: meterState.harmonicTension.peaks.length,
+          intervals: meterState.harmonicTension.intervals.length,
+          consonance: meterState.harmonicTension.consonance,
+          tension: meterState.harmonicTension.tension
         }
       };
     }
@@ -9649,12 +9991,7 @@ const canvas = document.getElementById("blobCanvas");
           signalCharacterWindowSelect,
           signalCharacterDisplaySelect,
           signalCharacterBoundarySelect,
-          signalCharacterShaderSelect,
           signalCharacterDebugSelect,
-          signalCharacterDepth,
-          signalCharacterGlowViscosity,
-          signalCharacterColorDepth,
-          signalCharacterIridescence,
           signalCharacterFftWeight,
           signalCharacterNoise,
           signalCharacterTransient,
@@ -9676,12 +10013,8 @@ const canvas = document.getElementById("blobCanvas");
           flatBarsOnly: true,
           hidesPointWithoutSignal: true,
           boundaries: signalCharacterBoundarySelect?.value || "none",
-          shader: signalCharacterShaderSelect?.value || "soft3d",
+          shader: "flat",
           physicsDebug: signalCharacterDebugSelect?.value || "off",
-          depth: Number(signalCharacterDepth?.value || 1),
-          glowViscosity: Number(signalCharacterGlowViscosity?.value || 0.7),
-          colorDepth: Number(signalCharacterColorDepth?.value || 0.8),
-          iridescence: Number(signalCharacterIridescence?.value || 0.55),
           trailPoints: signalCharacterTrail.length
         },
         metrics: {
@@ -9777,6 +10110,27 @@ const canvas = document.getElementById("blobCanvas");
         wavesGlow
       ];
       const hasSignal = metrics.rms > 0.006 || smoothed.rms > 0.012 || metrics.peak > 0.016;
+      const auditRows = 52;
+      const auditBands = 240;
+      const nearestColorNorm = (targetHz) => {
+        let best = { error: Infinity, norm: 0, frequency: 0 };
+        for (let row = 0; row < auditRows; row += 1) {
+          const index = wavesFrequencyIndex(row, auditRows, "log", auditBands);
+          const frequency = spectrumFrequencyForBand(index, auditBands, 48000);
+          const error = Math.abs(Math.log(frequency / targetHz));
+          if (error < best.error) {
+            best = {
+              error,
+              frequency,
+              norm: wavesFrequencyColorNorm(row, auditRows, "log", auditBands)
+            };
+          }
+        }
+        return best;
+      };
+      const low60 = nearestColorNorm(60);
+      const high10000 = nearestColorNorm(10000);
+      const wavesScale = wavesInputSelect?.value || "log";
       return {
         available: availableLayoutModules.includes("waves"),
         active: currentLayoutModules.includes("waves"),
@@ -9803,17 +10157,28 @@ const canvas = document.getElementById("blobCanvas");
           spectralSurfaceCells: true,
           wavemakerSurfaceWarp: true,
           heavyInertiaWarp: true,
-          floatingParticles: false
+          softAmplitudeLimit: softLimitWavesAmplitude(3, 1.62) < 1.62 && softLimitWavesAmplitude(1, 1.62) === 1,
+          noPerColumnPeakCeiling: !/column\[i\]\s*\/\s*peak/.test(makeWavesColumn.toString()),
+          floatingParticles: false,
+          legacyLogColorByVisualRow: wavesScale === "log" ? wavesColorNormForRow(24, 52, "log", 240) === 24 / 51 : true,
+          physicalHzColorMode: wavesScale === "log-hz-color" ? low60.norm < 0.18 && high10000.norm > 0.82 : true,
+          defaultScaleIsExplicitHzColor: Array.from(wavesInputSelect?.options || []).some((option) => option.defaultSelected && option.value === "log-hz-color")
         },
         metrics: {
           mode: wavesModeSelect?.value || null,
-          scale: wavesInputSelect?.value || null,
+          scale: wavesScale,
           detail: Number(wavesDensitySelect?.value || 0),
           persistence: Number(wavesPersistence?.value || 0),
           inputGainDb: Number(wavesGlow?.value || 0),
           frames: wavesState.trails.length,
           points: wavesState.pointCount,
-          hasSignal
+          hasSignal,
+          colorAudit: {
+            low60HzNorm: low60.norm,
+            low60HzMappedFrequency: low60.frequency,
+            high10kHzNorm: high10000.norm,
+            high10kHzMappedFrequency: high10000.frequency
+          }
         }
       };
     }
@@ -9956,6 +10321,9 @@ const canvas = document.getElementById("blobCanvas");
     stereoModeSelect.addEventListener("change", () => {
       closeFloatingInspector();
     });
+    stereoRenderSelect.addEventListener("change", () => {
+      closeFloatingInspector();
+    });
     spectrumFftSelect.addEventListener("change", () => {
       configureSpectrumAnalyser();
     });
@@ -9973,8 +10341,17 @@ const canvas = document.getElementById("blobCanvas");
       spectralDynamicsTiltValue.textContent = `${Number(spectralDynamicsTilt.value).toFixed(1)}dB`;
     });
     harmonicTensionModeSelect.addEventListener("change", () => updateHarmonicTensionState(metrics.rms > 0.001 || metrics.peak > 0.004));
-    harmonicTensionViewSelect.addEventListener("change", markLayoutControlsDirty);
     harmonicTensionPeakSelect.addEventListener("change", () => updateHarmonicTensionState(metrics.rms > 0.001 || metrics.peak > 0.004));
+    harmonicTensionFftSelect.addEventListener("change", () => {
+      configureHarmonicTensionAnalyser();
+      updateHarmonicTensionState(metrics.rms > 0.001 || metrics.peak > 0.004);
+    });
+    harmonicTensionSmooth.addEventListener("input", () => {
+      harmonicTensionSmoothValue.textContent = Number(harmonicTensionSmooth.value).toFixed(2);
+      if (harmonicTensionAnalyser) {
+        harmonicTensionAnalyser.smoothingTimeConstant = clampFinite(Number(harmonicTensionSmooth.value), 0, 0.85, 0.18);
+      }
+    });
     harmonicTensionLowCut.addEventListener("input", () => {
       harmonicTensionLowCutValue.textContent = `${Number(harmonicTensionLowCut.value).toFixed(0)}Hz`;
       updateHarmonicTensionState(metrics.rms > 0.001 || metrics.peak > 0.004);
@@ -10012,20 +10389,7 @@ const canvas = document.getElementById("blobCanvas");
     });
     signalCharacterDisplaySelect.addEventListener("change", markLayoutControlsDirty);
     signalCharacterBoundarySelect.addEventListener("change", resetSignalCharacterPhysics);
-    signalCharacterShaderSelect.addEventListener("change", markLayoutControlsDirty);
     signalCharacterDebugSelect.addEventListener("change", markLayoutControlsDirty);
-    signalCharacterDepth.addEventListener("input", () => {
-      signalCharacterDepthValue.textContent = Number(signalCharacterDepth.value).toFixed(2);
-    });
-    signalCharacterGlowViscosity.addEventListener("input", () => {
-      signalCharacterGlowViscosityValue.textContent = Number(signalCharacterGlowViscosity.value).toFixed(2);
-    });
-    signalCharacterColorDepth.addEventListener("input", () => {
-      signalCharacterColorDepthValue.textContent = Number(signalCharacterColorDepth.value).toFixed(2);
-    });
-    signalCharacterIridescence.addEventListener("input", () => {
-      signalCharacterIridescenceValue.textContent = Number(signalCharacterIridescence.value).toFixed(2);
-    });
     signalCharacterFftWeight.addEventListener("input", () => {
       signalCharacterFftWeightValue.textContent = Number(signalCharacterFftWeight.value).toFixed(2);
     });
@@ -10135,6 +10499,7 @@ const canvas = document.getElementById("blobCanvas");
       layoutAddSlotSpacing: auditLayoutAddSlotSpacing,
       stereoLayers: auditStereoLayerContract,
       spectrogram: auditSpectrogramContract,
+      harmonicTension: auditHarmonicTensionContract,
       tuner: auditTunerContract,
       signalCharacter: auditSignalCharacterContract,
       phaseDungeon: auditPhaseDungeonContract,

@@ -150,6 +150,15 @@
       </label>
 
       <label>
+        Spectral Dynamics Range
+        <select id="spectralDynamicsRangeSelect">
+          <option value="minmax" selected>Min/Max</option>
+          <option value="peak">Peak Hold</option>
+          <option value="delta">Delta Only</option>
+        </select>
+      </label>
+
+      <label>
         Spectral Dynamics FFT
         <select id="spectralDynamicsFftSelect">
           <option value="1024">1024</option>
@@ -167,15 +176,6 @@
           <option value="medium" selected>Medium</option>
           <option value="long">Long</option>
           <option value="freeze">Freeze</option>
-        </select>
-      </label>
-
-      <label>
-        Spectral Dynamics Range
-        <select id="spectralDynamicsRangeSelect">
-          <option value="minmax" selected>Min/Max</option>
-          <option value="peak">Peak Hold</option>
-          <option value="delta">Delta Only</option>
         </select>
       </label>
 
@@ -203,20 +203,29 @@
       </label>
 
       <label>
-        Harmonic Tension View
-        <select id="harmonicTensionViewSelect">
-          <option value="radar" selected>Radar</option>
-          <option value="radarCurve">Radar + Curve</option>
-          <option value="curve">Curve</option>
+        Harmonic Resolution
+        <select id="harmonicTensionPeakSelect">
+          <option value="16">16</option>
+          <option value="32">32</option>
+          <option value="64">64</option>
+          <option value="128" selected>128</option>
+          <option value="256">256</option>
+          <option value="512">512</option>
+          <option value="1024">1024</option>
+          <option value="2048">2048</option>
+          <option value="4096">4096</option>
+          <option value="8192">8192</option>
+          <option value="16384">16384</option>
         </select>
       </label>
 
       <label>
-        Harmonic Peak Count
-        <select id="harmonicTensionPeakSelect">
-          <option value="8">8</option>
-          <option value="16" selected>16</option>
-          <option value="32">32</option>
+        Harmonic FFT
+        <select id="harmonicTensionFftSelect">
+          <option value="4096">4096</option>
+          <option value="8192">8192</option>
+          <option value="16384" selected>16384</option>
+          <option value="32768">32768</option>
         </select>
       </label>
 
@@ -228,6 +237,20 @@
       <label>
         Harmonic Sensitivity <span id="harmonicTensionSensitivityValue">1.00</span>
         <input id="harmonicTensionSensitivity" type="range" min="0.25" max="2" step="0.01" value="1">
+      </label>
+
+      <label>
+        Harmonic Smooth <span id="harmonicTensionSmoothValue">0.18</span>
+        <input id="harmonicTensionSmooth" type="range" min="0" max="0.85" step="0.01" value="0.18">
+      </label>
+
+      <label>
+        Spectrogram Mode
+        <select id="spectrogramModeSelect">
+          <option value="classic">Classic</option>
+          <option value="sharp" selected>Sharp</option>
+          <option value="sharper">Sharper</option>
+        </select>
       </label>
 
       <label>
@@ -250,6 +273,24 @@
       </label>
 
       <label>
+        Spectrogram History Window
+        <select id="spectrogramWindowSelect">
+          <option value="tiny" selected>Tiny</option>
+          <option value="short">Short</option>
+          <option value="medium">Medium</option>
+          <option value="long">Long</option>
+        </select>
+      </label>
+
+      <label>
+        Spectrogram Loop
+        <select id="spectrogramLoopSelect">
+          <option value="scroll" selected>Scroll</option>
+          <option value="static">Static</option>
+        </select>
+      </label>
+
+      <label>
         Spectrogram Scale
         <select id="spectrogramScaleSelect">
           <option value="log" selected>Logarithmic</option>
@@ -264,40 +305,6 @@
           <option value="horizontal" selected>Horizontal</option>
           <option value="vertical">Vertical</option>
         </select>
-      </label>
-
-      <label>
-        Spectrogram Mode
-        <select id="spectrogramModeSelect">
-          <option value="classic">Classic</option>
-          <option value="sharp" selected>Sharp</option>
-          <option value="sharper">Sharper</option>
-        </select>
-      </label>
-
-      <label>
-        Spectrogram Speed
-        <select id="spectrogramSpeedSelect">
-          <option value="0.5" selected>Slow</option>
-          <option value="1">Normal</option>
-          <option value="2">Fast</option>
-          <option value="4">Very Fast</option>
-        </select>
-      </label>
-
-      <label>
-        Spectrogram History Window
-        <select id="spectrogramWindowSelect">
-          <option value="tiny" selected>Tiny</option>
-          <option value="short">Short</option>
-          <option value="medium">Medium</option>
-          <option value="long">Long</option>
-        </select>
-      </label>
-
-      <label>
-        Spectrogram Tilt <span id="spectrogramTiltValue">0.0dB</span>
-        <input id="spectrogramTilt" type="range" min="-12" max="12" step="0.5" value="0">
       </label>
 
       <label>
@@ -317,10 +324,17 @@
       </label>
 
       <label>
-        Spectrogram Loop
-        <select id="spectrogramLoopSelect">
-          <option value="scroll" selected>Scroll</option>
-          <option value="static">Static</option>
+        Spectrogram Tilt <span id="spectrogramTiltValue">0.0dB</span>
+        <input id="spectrogramTilt" type="range" min="-12" max="12" step="0.5" value="0">
+      </label>
+
+      <label>
+        Spectrogram Speed
+        <select id="spectrogramSpeedSelect">
+          <option value="0.5" selected>Slow</option>
+          <option value="1">Normal</option>
+          <option value="2">Fast</option>
+          <option value="4">Very Fast</option>
         </select>
       </label>
 
@@ -365,43 +379,6 @@
       </label>
 
       <label>
-        Character Map Shader
-        <select id="signalCharacterShaderSelect">
-          <option value="flat">Flat</option>
-          <option value="soft3d" selected>Soft 3D</option>
-        </select>
-      </label>
-
-      <label>
-        Character Physics Debug
-        <select id="signalCharacterDebugSelect">
-          <option value="off" selected>Off</option>
-          <option value="particles">Particles</option>
-          <option value="constraints">Constraints</option>
-        </select>
-      </label>
-
-      <label>
-        Character Depth <span id="signalCharacterDepthValue">1.00</span>
-        <input id="signalCharacterDepth" type="range" min="0" max="2" step="0.01" value="1">
-      </label>
-
-      <label>
-        Character Glow Viscosity <span id="signalCharacterGlowViscosityValue">0.70</span>
-        <input id="signalCharacterGlowViscosity" type="range" min="0" max="1" step="0.01" value="0.7">
-      </label>
-
-      <label>
-        Character Color Depth <span id="signalCharacterColorDepthValue">0.80</span>
-        <input id="signalCharacterColorDepth" type="range" min="0" max="2" step="0.01" value="0.8">
-      </label>
-
-      <label>
-        Character Iridescence <span id="signalCharacterIridescenceValue">0.55</span>
-        <input id="signalCharacterIridescence" type="range" min="0" max="1" step="0.01" value="0.55">
-      </label>
-
-      <label>
         Signal FFT Weight <span id="signalCharacterFftWeightValue">0.65</span>
         <input id="signalCharacterFftWeight" type="range" min="0" max="1" step="0.01" value="0.65">
       </label>
@@ -419,6 +396,15 @@
       <label>
         Signal Smoothing <span id="signalCharacterSmoothingValue">0.60</span>
         <input id="signalCharacterSmoothing" type="range" min="0" max="1" step="0.01" value="0.6">
+      </label>
+
+      <label>
+        Character Physics Debug
+        <select id="signalCharacterDebugSelect">
+          <option value="off" selected>Off</option>
+          <option value="particles">Particles</option>
+          <option value="constraints">Constraints</option>
+        </select>
       </label>
 
       <label>
@@ -476,11 +462,18 @@
       </label>
 
       <label>
-        Stereometer Mode
+        Stereometer Layout
         <select id="stereoModeSelect">
-          <option value="classic" selected>Classic</option>
-          <option value="tangle">Tangle</option>
-          <option value="arc">Arc</option>
+          <option value="radial" selected>Radial</option>
+          <option value="arc">Semicircle</option>
+        </select>
+      </label>
+
+      <label>
+        Stereometer Render
+        <select id="stereoRenderSelect">
+          <option value="normal" selected>Normal</option>
+          <option value="tangle">Tangled</option>
         </select>
       </label>
 
@@ -530,8 +523,9 @@
       <label>
         Frequency Scale
         <select id="wavesInputSelect">
-          <option value="log" selected>Log</option>
+          <option value="log">Log</option>
           <option value="musical">Musical</option>
+          <option value="log-hz-color" selected>Log Hz Color</option>
         </select>
       </label>
 
@@ -558,16 +552,6 @@
         <h1>Pattern Detector</h1>
 
         <label>
-          Detection Sensitivity <span id="patternSensitivityValue">1.00</span>
-          <input id="patternSensitivity" type="range" min="0.25" max="2.5" step="0.05" value="1">
-        </label>
-
-        <label>
-          Hit Threshold <span id="patternThresholdValue">0.45</span>
-          <input id="patternThreshold" type="range" min="0.15" max="0.85" step="0.01" value="0.45">
-        </label>
-
-        <label>
           Rhythm Window
           <select id="patternWindowSelect">
             <option value="1.5">Short</option>
@@ -583,6 +567,16 @@
             <option value="0.08" selected>Normal</option>
             <option value="0.12">Strict</option>
           </select>
+        </label>
+
+        <label>
+          Detection Sensitivity <span id="patternSensitivityValue">1.00</span>
+          <input id="patternSensitivity" type="range" min="0.25" max="2.5" step="0.05" value="1">
+        </label>
+
+        <label>
+          Hit Threshold <span id="patternThresholdValue">0.45</span>
+          <input id="patternThreshold" type="range" min="0.15" max="0.85" step="0.01" value="0.45">
         </label>
 
         <p class="section-title">Elements Out</p>
@@ -716,6 +710,7 @@
   <script src="./src/metering-legacy.js" defer></script>
   <script src="./src/metering-contract.js" defer></script>
   <script src="./src/display-output.js" defer></script>
+  <script src="./src/render-core.js" defer></script>
   <script src="./src/app.js" defer></script>
 </body>
 </html>

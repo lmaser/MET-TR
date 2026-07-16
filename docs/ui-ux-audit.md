@@ -55,6 +55,33 @@ Therefore, hardcoded canvas bar heights are not acceptable for mobile readabilit
 
 All modules must use the same primitives for comparable UI elements.
 
+## Rendering Core Contract
+
+Graph rendering must be split into shared math/normalization primitives and module-specific drawing.
+Module renderers may choose a visual style, but they must not silently redefine basic mapping behavior.
+
+Required rules:
+
+- Shared render/math helpers live in `src/render-core.js`.
+- `index.html` must load `src/render-core.js` before `src/app.js`.
+- Hard visual clipping is not allowed for display height unless the graph meaning explicitly requires clipping.
+- If a graph needs containment, it must use a named limiter such as `softLimit`, not an inline `clamp(..., 0, fixedMax)`.
+- Graphs must receive or derive a clear `plotRect`; they must not hand-place the effective graph by unrelated decorative offsets.
+- When a visual normalization fix is made in one graph, the target primitive must be considered for extraction before copying logic locally.
+
+Audit command:
+
+```text
+node tools/rendering-audit.mjs
+```
+
+The audit must fail if:
+
+- `render-core.js` is missing or loaded after `app.js`;
+- a migrated graph stops using the shared core;
+- Waves Spectrogram returns to per-column peak hard-normalization;
+- Waves Spectrogram returns to fixed projection clipping.
+
 ### Text
 
 | Primitive | Desktop CSS px | Mobile CSS px |
@@ -337,6 +364,15 @@ Radial graph renderers must be audited as graph-effective content, not only as m
 - If a module has summary rows and a radial graph, mobile layout must stack summary rows above or below the graph; it must not keep a desktop side-by-side allocation.
 - Harmonic Tension is the reference case: the radial plot is the primary graph, while interval bars/curves are optional secondary views.
 
+### Analysis Window Ownership
+
+Meters must not share analysis windows when their perceptual job differs.
+
+- Spectrum/Spectral Dynamics may use medium/high FFT sizes for frequency detail.
+- Harmonic Tension owns a dedicated analyser, FFT size, and smoothing value. It should default to a longer FFT and moderate smoothing so transients do not dominate interval perception.
+- Pattern Detector/transient modules must not depend on Harmonic Tension FFT size. They should continue to use short-window/envelope/flux logic for timing.
+- Changing Spectrum FFT must not change Harmonic Tension behaviour; changing Harmonic FFT must not reconfigure Spectrum.
+
 ## Current Failures
 
 ### FIXED-007: Mobile Layout Must Use Effective Viewport Width
@@ -448,6 +484,11 @@ Current requirement:
 - Scope center must be computed from `scopeRect.x + scopeRect.w / 2`, not from total module width.
 - Scope radius must be derived from `scopeRect`, not from total module width.
 - Any new stereo mode must use the same scope/meter region contract.
+- Stereometer layout and rendering style are separate controls:
+  - `Layout` controls graph geometry only (`Radial`, `Semicircle`).
+  - `Render` controls trace style only (`Normal`, `Tangled`).
+  - Adding a new trace style must not implicitly change graph geometry.
+  - Adding a new geometry must not implicitly change trace style.
 
 ### FIXED-004: Pattern Detector Main Bars Use The Shared Row Primitive
 
